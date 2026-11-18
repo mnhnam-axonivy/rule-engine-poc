@@ -1,0 +1,101 @@
+Dialogs:
+  com:
+    axonivy:
+      portal:
+        components:
+          Common:
+            Cancel: Annuler
+            CancelContext: "Annuler {0}"
+            Categories: Catégories
+            ConfirmForDelete: Etes-vous sûr de vouloir supprimer ?
+            Confirmation: Confirmation
+            Description: Description
+            More: Plus
+            Name: Nom
+            'No': Non
+            NotAvailable: '-'
+            Process:
+              ProcessName: Nom du processus
+            RequiredFieldMessage: Ce champ est obligatoire
+            Save: Enregistrer
+            SaveContext: "Enregistrer {0}"
+            SideStepPrefix: 'Tâche de contournement pour: '
+            Task:
+              Activator: Responsable
+            Type: Type
+            'Yes': Oui
+          DocumentTable:
+            AddDocument: Ajouter un document
+            AddDocumentHelpText: 'Faites glisser vos fichiers ici pour les télécharger ou '
+            BrowseFiles: Parcourir les fichiers
+            Delete: Supprimer
+            DeleteDocumentNote: '{0} a supprimé(e) {1}'
+            DeleteSuceed: Le fichier a été supprimé avec succès
+            Download: Télécharger
+            EmptyFileMessage: La taille du fichier ne doit pas être vide
+            ErrorFileUploadSize: La taille du fichier doit être inférieure à {0}.
+            FileContainScript: Ce fichier n'est pas autorisé à être téléchargé en raison du contenu du script!
+            FileContainVirus: Échec du téléchargement, virus/infection détecté !
+            FileFunction: Fonctions
+            FileLimitMessage: Le nombre maximum de fichiers à télécharger est atteint !
+            FilenameEmpty: Le nom du fichier ne peut pas être vide.
+            InvalidFileMessage: Ce type de fichier n'est pas accepté!
+            Name: Nom du fichier
+            NoFile: Aucun fichier trouvé !
+            Preview: Aperçu
+            RenamingDocument: Renommer le document
+            RenamingDocumentNote: '{0} a renommé le fichier {1} en {2}'
+            RenamingDocumentSuccess: Renommé avec succès.
+            RenamingFailed: Une erreur s'est produite lors du renommage du document.
+            Size: Taille du fichier
+            SupportFileTypes: 'Types de fichiers pris en charge pour le téléchargement : {0}'
+            Type: Type
+            Upload: Ajouter un nouveau fichier
+            UploadDocumentNote: '{0} a téléchargé(e) {1}'
+            UploadFailed: Une erreur est survenue lors de l’envoi du fichier. Veuillez contacter votre administrateur.
+            UploadFileExists: Le fichier {0} existe déjà
+            UploadSucceed: Le fichier a été téléchargé avec succès
+          Enums:
+            BasicDocumentType:
+              CONTRACT: Contrat
+              DOCUMENTATION: Documentation
+              EMAIL: Courriel electronique
+              INFORMATION: nformation
+              OTHERS: Autres
+          ProcessChain:
+            currentStepIsNotDefined: L'étape actuelle ({0}) de la chaîne de processus n'est pas définie
+          ProcessViewer:
+            CouldNotFindLinkedProcess: Impossible de trouver le processus lié !
+            NoPermissionToView: Vous n'avez pas l'autorisation requise pour visualiser ce processus.
+            ProcessCanNotBeLoaded: Le processus ne peut pas être chargé.
+            ProcessDetails: Détails du processus
+            ProcessId: Id du processus
+            ProcessInfo: Informations sur le processus
+            ProcessInfoIconTooltip: Cliquez pour voir les détails du démarrage du processus
+            ProcessIsHidden: Le processus en cours est masqué !
+            ProcessNotFound: Le processus défini est introuvable.
+            ProcessType:
+              CASE_MAP: Carte de cas
+              EXTERNAL_LINK: Lien externe
+              IVY_PROCESS: Processus d'entreprise
+            ProcessViewerIFrameTitle: Cadre de visualisation du processus
+          SideStepType:
+            PARALLEL: Lancer une tâche en arrière-plan (en parallèle)
+            SWITCH: Mettre cette tâche en pause et démarrer le processus (basculer)
+Labels:
+  Close: Fermer
+  CloseContext: "Fermer {0}"
+  DisabledUserPrefix: (désactivé)
+  Enums:
+    NewFilenameValidation:
+      ALREADY_EXIST: Il existe déjà un fichier avec le même nom à cet emplacement.
+      INVALID_FORMAT: 'Un nom de fichier ne peut pas contenir les caractères suivants : \ / : * ? " < > |'
+  NoName: Aucun nom
+  NoResults: Aucun résultat
+  None: Aucun
+  NotAvailable: '-'
+  ParentRole: Rôle supérieur
+  TooltipNoNameFormatted: <{0}> ({1})
+  TooltipUserNameFormatted: '{0} ({1})'
+patterns:
+  timePattern: HH:mm

@@ -1,0 +1,82 @@
+.process-viewer-data {
+  height : 100%;
+  overflow: auto;
+}
+
+.process-viewer-data.has-error-message {
+  font-weight: var(--process-viewer-data-has-error-message-font-weight);
+  font-size: var(--process-viewer-data-has-error-message-font-size);
+}
+
+.process-viewer-information {
+  height: fit-content;
+}
+
+.process-viewer-information .process-information-title {
+  font-weight: bold;
+}
+
+.process-viewer-fit-content {
+  min-width: fit-content;
+}
+
+.process-details-column-title {
+  opacity: 0.65;
+  font-size: var(--process-details-column-title-font-size);
+  align-items: center;
+}
+
+.process-viewer-information .process-viewer-info-link {
+  cursor: pointer;
+  margin-left: 3px;
+}
+
+.process-viewer-information .process-viewer-info-link:hover {
+  text-decoration: none;
+}
+
+.process-viewer-information .process-viewer-info-link i {
+  vertical-align: middle;
+}
+
+.process-viewer-info-panel .ui-overlaypanel-content {
+  padding-left: 0;
+  padding-right: 0;
+  width: 40vw;
+}
+
+.process-viewer-info-container .process-information-title {
+  margin-left: 2px;
+  margin-bottom: 7px;
+}
+
+@media screen and (max-width: 40em) {
+  .process-viewer-info-container {
+    max-width: auto;
+  }
+}
+
+.process-technical-information-group {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.process-technical-information-group .process-details-column-title {
+  width: 20%;
+}
+
+.process-technical-information-group .process-details-column-value {
+  width: 80%;
+}
+
+.process-viewer-diagram {
+  height: calc(100% - 78px);
+}
+
+.process-viewer-frame {
+  height: 100%;
+}
+
+.process-viewer-data .empty-message-container {
+	margin: 90px 0px;
+}

@@ -1,0 +1,101 @@
+Dialogs:
+  com:
+    axonivy:
+      portal:
+        components:
+          Common:
+            Cancel: Cancel
+            CancelContext: Cancel {0}
+            Categories: Categories
+            ConfirmForDelete: Are you sure you want to delete this item?
+            Confirmation: Confirmation
+            Description: Description
+            More: More
+            Name: Name
+            'No': 'No'
+            NotAvailable: N/A
+            Process:
+              ProcessName: Process name
+            RequiredFieldMessage: This field is required
+            Save: Save
+            SaveContext: Save {0}
+            SideStepPrefix: 'Side step task for: '
+            Task:
+              Activator: Responsible
+            Type: Type
+            'Yes': 'Yes'
+          DocumentTable:
+            AddDocument: Add document
+            AddDocumentHelpText: 'Drag & drop your files here to upload or '
+            BrowseFiles: Browse files
+            Delete: Delete
+            DeleteDocumentNote: '{0} has deleted {1}'
+            DeleteSuceed: File deleted successfully
+            Download: Download
+            EmptyFileMessage: File size should not be empty
+            ErrorFileUploadSize: The file size must be lower than {0}
+            FileContainScript: This file is not allowed to upload because it contains some script!
+            FileContainVirus: Upload failed, virus/infection detected!
+            FileFunction: Functions
+            FileLimitMessage: The maximum number of files are already uploaded!
+            FilenameEmpty: Filename cannot be empty.
+            InvalidFileMessage: This file type is not accepted!
+            Name: Filename
+            NoFile: No files are found!
+            Preview: Preview
+            RenamingDocument: Rename document
+            RenamingDocumentNote: '{0} has renamed the file {1} to {2}'
+            RenamingDocumentSuccess: Rename successfully.
+            RenamingFailed: An error occurs while renaming the document.
+            Size: File size
+            SupportFileTypes: 'Supported file types for upload: {0}'
+            Type: Type
+            Upload: Upload new file
+            UploadDocumentNote: '{0} has uploaded {1}'
+            UploadFailed: An error occurred while uploading this file. Please ask your administrator for this issue.
+            UploadFileExists: File {0} already exists
+            UploadSucceed: The file was uploaded successfully
+          Enums:
+            BasicDocumentType:
+              CONTRACT: Contract
+              DOCUMENTATION: Documentation
+              EMAIL: Email
+              INFORMATION: Information
+              OTHERS: Others
+          ProcessChain:
+            currentStepIsNotDefined: Current step ({0}) of process chain is not defined
+          ProcessViewer:
+            CouldNotFindLinkedProcess: Could not find the linked process!
+            NoPermissionToView: You do not have the required permission to view this process.
+            ProcessCanNotBeLoaded: Process can not be loaded.
+            ProcessDetails: Process details
+            ProcessId: Process Id
+            ProcessInfo: Process Information
+            ProcessInfoIconTooltip: Click to see details of the process start
+            ProcessIsHidden: The current process is hidden!
+            ProcessNotFound: The defined process cannot be found.
+            ProcessType:
+              CASE_MAP: Case Map
+              EXTERNAL_LINK: External Link
+              IVY_PROCESS: Business Process
+            ProcessViewerIFrameTitle: Process viewer frame
+          SideStepType:
+            PARALLEL: Start a background task (parallel)
+            SWITCH: Pause this task and start process (switch)
+Labels:
+  Close: Close
+  CloseContext: Close {0}
+  DisabledUserPrefix: (disabled)
+  Enums:
+    NewFilenameValidation:
+      ALREADY_EXIST: There is already a file with the same name in this location.
+      INVALID_FORMAT: 'A file name can''t contain any of the following characters: \ / : * ? " < > |'
+  NoName: no name
+  NoResults: No results
+  None: None
+  NotAvailable: N/A
+  ParentRole: Parent role
+  TooltipNoNameFormatted: <{0}> ({1})
+  TooltipUserNameFormatted: '{0} ({1})'
+patterns:
+  timePattern: HH:mm

@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "SetBusinessDetailsPageData",
+  "namespace" : "com.axonivy.portal.components",
+  "fields" : [ {
+    "name" : "linkToBusinessDetailsPage",
+    "modifiers" : [ ]
+  }, {
+    "name" : "params",
+    "type" : "java.util.Map"
+  } ]
+}

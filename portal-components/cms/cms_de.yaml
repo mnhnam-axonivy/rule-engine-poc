@@ -1,0 +1,101 @@
+Dialogs:
+  com:
+    axonivy:
+      portal:
+        components:
+          Common:
+            Cancel: Abbrechen
+            CancelContext: "{0} abbrechen"
+            Categories: Kategorien
+            ConfirmForDelete: Sind Sie sicher, dass Sie diesen Eintrag löschen wollen?
+            Confirmation: Bestätigung
+            Description: Beschreibung
+            More: Mehr
+            Name: Titel
+            'No': Nein
+            NotAvailable: N/V
+            Process:
+              ProcessName: Prozessname
+            RequiredFieldMessage: Dies ist ein Pflichtfeld
+            Save: Speichern
+            SaveContext: "{0} speichern"
+            SideStepPrefix: 'Seitenschrittaufgabe für: '
+            Task:
+              Activator: Verantwortlich
+            Type: Typ
+            'Yes': Ja
+          DocumentTable:
+            AddDocument: Dokument hinzufügen
+            AddDocumentHelpText: 'Zieh deine Dateien per Drag & Drop hierher, um sie hochzuladen, oder '
+            BrowseFiles: Dateien durchsuchen
+            Delete: Löschen
+            DeleteDocumentNote: '{0} hat folgendes gelöscht: {1}'
+            DeleteSuceed: Datei wurde erfolgreich gelöscht
+            Download: Herunterladen
+            EmptyFileMessage: Die Datei darf nicht leer sein
+            ErrorFileUploadSize: Die Dateigrösse muss kleiner als {0} sein.
+            FileContainScript: Diese Datei darf aufgrund von Skript-Inhalten nicht hochgeladen werden!
+            FileContainVirus: Upload fehlgeschlagen, Virus/Infektion entdeckt!
+            FileFunction: Funktionen
+            FileLimitMessage: Limit an hochgeladenen Dateien erreicht!
+            FilenameEmpty: Dateiname darf nicht leer sein.
+            InvalidFileMessage: Dateityp nicht gültig!
+            Name: Dateiname
+            NoFile: Keine Dateien vorhanden!
+            Preview: Vorschau
+            RenamingDocument: Dokument umbenennen
+            RenamingDocumentNote: '{0} hat die Datei {1} in {2} umbenannt'
+            RenamingDocumentSuccess: Erfolgreich umbenannt.
+            RenamingFailed: Beim Umbenennen des Dokuments ist ein Fehler aufgetreten.
+            Size: Dateigröße
+            SupportFileTypes: 'Unterstützte Dateiformate für den Upload: {0}'
+            Type: Typ
+            Upload: Neue Datei hochladen
+            UploadDocumentNote: '{0} hat {1} hochgeladen.'
+            UploadFailed: Während des Hochladens ist ein Fehler aufgetreten. Bitte fragen Sie Ihren Administrator.
+            UploadFileExists: Datei {0} ist bereits vorhanden
+            UploadSucceed: Die Datei wurde erfolgreich hochgeladen
+          Enums:
+            BasicDocumentType:
+              CONTRACT: Vertrag
+              DOCUMENTATION: Dokumentation
+              EMAIL: Email
+              INFORMATION: Information
+              OTHERS: Andere Dateiformate
+          ProcessChain:
+            currentStepIsNotDefined: Aktueller Schritt ({0}) der Prozesskette ist nicht definiert
+          ProcessViewer:
+            CouldNotFindLinkedProcess: Der verlinkte Prozess konnte nicht gefunden werden!
+            NoPermissionToView: Sie besitzen nicht die erforderlichen Rechte um diesen Prozess zu sehen.
+            ProcessCanNotBeLoaded: Prozess kann nicht geladen werden.
+            ProcessDetails: Prozess-Details
+            ProcessId: Prozess-ID
+            ProcessInfo: Prozess-Informationen
+            ProcessInfoIconTooltip: Klicken Sie hier, um Details zum Prozessstart anzuzeigen
+            ProcessIsHidden: Der aktueller Prozess ist ausgeblendet!
+            ProcessNotFound: Der definierte Process kann nicht gefunden werden.
+            ProcessType:
+              CASE_MAP: Fall Karte
+              EXTERNAL_LINK: External Link
+              IVY_PROCESS: Geschäftsprozess
+            ProcessViewerIFrameTitle: Prozessbetrachterrahmen
+          SideStepType:
+            PARALLEL: Eine Hintergrundaufgabe starten (parallel)
+            SWITCH: Diese Aufgabe anhalten und Prozess starten (umschalten)
+Labels:
+  Close: Schließen
+  CloseContext: "{0} schließen"
+  DisabledUserPrefix: (inaktiv)
+  Enums:
+    NewFilenameValidation:
+      ALREADY_EXIST: Es gibt bereits eine Datei mit diesem Namen an diesem Speicherort.
+      INVALID_FORMAT: 'Ein Dateiname darf keines der folgenden Zeichen enthalten: \ / : * ? " < > |'
+  NoName: kein Name
+  NoResults: Keine Ergebnisse
+  None: Keine
+  NotAvailable: N/V
+  ParentRole: Übergeordnete Rolle
+  TooltipNoNameFormatted: <{0}> ({1})
+  TooltipUserNameFormatted: '{0} ({1})'
+patterns:
+  timePattern: HH:mm

@@ -1,0 +1,43 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:f="jakarta.faces.core"
+  xmlns:h="jakarta.faces.html" xmlns:ui="jakarta.faces.facelets"
+  xmlns:cc="jakarta.faces.composite" xmlns:p="primefaces"
+  xmlns:pc="jakarta.faces.composite/components"
+  xmlns:c="jakarta.tags.core">
+  
+
+<cc:interface>
+  <cc:attribute name="isShowAvatar" type="java.lang.Boolean" default="#{portalComponentAvatarBean.getPortalShowAvatarSettingOrDefault(true)}" />
+  <cc:attribute name="id" />
+  <cc:attribute name="displayNameId" default="username" />
+  <cc:attribute name="displayName" required="true" type="java.lang.String"/>
+  <cc:attribute name="displayNameRendered" type="java.lang.Boolean" default="true" />
+  <cc:attribute name="securityMember" required="true" />
+  <cc:attribute name="displayNameStyleClass" type="java.lang.String"/>
+  <cc:attribute name="containerStyleClass" />
+  <cc:attribute name="representName" />
+  <cc:attribute name="isStandAlone" type="java.lang.Boolean" default="true" />
+  <cc:attribute name="isShowTechnicalDisplayNameOnTooltip" type="java.lang.Boolean" default="#{portalComponentAvatarBean.getPortalShowTechnicalTooltipOrDefault(false)}" />
+  <cc:attribute name="showLabel" type="java.lang.Boolean" default="true"/>
+</cc:interface>
+
+<cc:implementation>
+  <h:outputStylesheet library="css" name="portal-components-utility.css" />
+  <h:outputStylesheet library="css" name="security-member-avatar-component.css" />
+
+  <c:set var="tooltipTechnicalDisplayName"
+    value="#{cc.attrs.isShowTechnicalDisplayNameOnTooltip ? portalComponentAvatarBean.tooltipTechnicalDisplayName(cc.attrs.securityMember) : cc.attrs.displayName}" />
+  <c:set var="isDisplayNameVisible" value="#{cc.attrs.displayNameRendered and !userMenuBean.isMobileDevice()}" />
+  <div id="#{cc.attrs.id}" class="#{cc.attrs.isShowAvatar ? 'has-avatar' : ''} #{cc.attrs.containerStyleClass}">
+    <ui:fragment rendered="#{cc.attrs.securityMember != null or cc.attrs.representName != null}">
+      <pc:avatar securityMember="#{cc.attrs.securityMember}" renderedAvatar="#{cc.attrs.isShowAvatar}" representName="#{cc.attrs.representName}" showLabel="#{cc.attrs.showLabel}"
+        alt="#{isDisplayNameVisible ? '' : cc.attrs.displayName}"/>
+    </ui:fragment>
+    <cc:renderFacet name="alternativeAvatar" />
+    <h:outputText id="#{cc.attrs.displayNameId}" value="#{cc.attrs.displayName}" title="#{tooltipTechnicalDisplayName}"
+      rendered="#{cc.attrs.displayNameRendered and !userMenuBean.isMobileDevice()}"
+      styleClass="u-truncate-text #{cc.attrs.isShowAvatar ? 'name-after-avatar' : ''} #{cc.attrs.displayNameStyleClass} #{(cc.attrs.securityMember == null and cc.attrs.representName == null) ? 'u-no-padding-left' : ''}">
+    </h:outputText>
+    <cc:renderFacet name="afterName" />
+  </div>
+</cc:implementation>
+</html>

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" id="_definitions_order_approval" name="order-approval" namespace="https://axonivy.com/dmn/order-approval" expressionLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" typeLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" exporter="Axon Ivy Rules Engine">
+  <inputData id="_input_amount" name="amount">
+    <variable id="_input_var_amount" name="amount" typeRef="number"/>
+  </inputData>
+  <inputData id="_input_customerType" name="customerType">
+    <variable id="_input_var_customerType" name="customerType" typeRef="string"/>
+  </inputData>
+  <inputData id="_input_country" name="country">
+    <variable id="_input_var_country" name="country" typeRef="string"/>
+  </inputData>
+  <decision id="_decision_route" name="route">
+    <description>Who approves an order: auto, manager or director.</description>
+    <variable id="_decision_var_route" name="route" typeRef="string"/>
+    <informationRequirement id="_requirement_amount">
+      <requiredInput href="#_input_amount"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_customerType">
+      <requiredInput href="#_input_customerType"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_country">
+      <requiredInput href="#_input_country"/>
+    </informationRequirement>
+    <decisionTable id="_table_route" hitPolicy="FIRST">
+      <input id="_table_input_1" label="amount">
+        <inputExpression id="_table_input_expression_1" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <input id="_table_input_2" label="customerType">
+        <inputExpression id="_table_input_expression_2" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <input id="_table_input_3" label="country">
+        <inputExpression id="_table_input_expression_3" typeRef="string">
+          <text>country</text>
+        </inputExpression>
+      </input>
+      <output id="_table_output_route" label="route"/>
+      <annotation name="Description"/>
+      <rule id="_rule_1">
+        <inputEntry id="_rule_1_input_1">
+          <text>&lt; 1000</text>
+        </inputEntry>
+        <inputEntry id="_rule_1_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_1_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_1_output_route">
+          <text>"auto"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Small orders are approved automatically</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_2">
+        <inputEntry id="_rule_2_input_1">
+          <text>&gt;= 50000</text>
+        </inputEntry>
+        <inputEntry id="_rule_2_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_2_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_2_output_route">
+          <text>"director"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Very large orders</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_3">
+        <inputEntry id="_rule_3_input_1">
+          <text>&gt;= 5000</text>
+        </inputEntry>
+        <inputEntry id="_rule_3_input_2">
+          <text>"NEW"</text>
+        </inputEntry>
+        <inputEntry id="_rule_3_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_3_output_route">
+          <text>"director"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Large orders of new customers</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_4">
+        <inputEntry id="_rule_4_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_4_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_4_input_3">
+          <text>not("CH", "DE", "AT")</text>
+        </inputEntry>
+        <outputEntry id="_rule_4_output_route">
+          <text>"manager"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Orders from abroad</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_5">
+        <inputEntry id="_rule_5_input_1">
+          <text>[1000..5000)</text>
+        </inputEntry>
+        <inputEntry id="_rule_5_input_2">
+          <text>"REGULAR", "VIP"</text>
+        </inputEntry>
+        <inputEntry id="_rule_5_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_5_output_route">
+          <text>"auto"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Medium orders of known customers</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_6">
+        <inputEntry id="_rule_6_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_6_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_6_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_6_output_route">
+          <text>"manager"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Every other order goes to a manager</text>
+        </annotationEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_diagram_route" name="Default DRD" useAlternativeInputDataShape="false">
+      <dmndi:DMNShape id="_shape__decision_route" dmnElementRef="_decision_route" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="80" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape__input_amount" dmnElementRef="_input_amount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="60" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_amount" dmnElementRef="_requirement_amount" sourceElement="_shape__input_amount" targetElement="_shape__decision_route">
+        <di:waypoint x="140" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="_shape__input_customerType" dmnElementRef="_input_customerType" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_customerType" dmnElementRef="_requirement_customerType" sourceElement="_shape__input_customerType" targetElement="_shape__decision_route">
+        <di:waypoint x="340" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="_shape__input_country" dmnElementRef="_input_country" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="460" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_country" dmnElementRef="_requirement_country" sourceElement="_shape__input_country" targetElement="_shape__decision_route">
+        <di:waypoint x="540" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

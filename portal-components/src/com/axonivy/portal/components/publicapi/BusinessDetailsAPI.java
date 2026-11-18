@@ -1,0 +1,122 @@
+package com.axonivy.portal.components.publicapi;
+
+import static com.axonivy.portal.components.constant.CustomFields.BUSINESS_DETAILS;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Optional;
+
+import org.apache.commons.lang3.Strings;
+
+import com.axonivy.portal.components.dto.BusinessDetailsDTO;
+import com.axonivy.portal.components.service.exception.PortalException;
+import com.axonivy.portal.components.util.ProcessStartUtils;
+
+import ch.ivyteam.ivy.workflow.start.IWebStartable;
+
+/**
+ * Portal API for modify business case details
+ *
+ */
+public class BusinessDetailsAPI {
+
+  /**
+   * <p>Creates and sets path to case custom string field {@code businessDetails} for displaying business case details page.</p>
+   * <p>Use {@code com.axonivy.portal.components.dto.BusinessDetailsDTO.builder()} to
+   * build {@code BusinessDetailsDTO}</p>
+   * <p>This API supports two types of business details:
+   * {@link IWebStartable#getId() IWebStartable ID} and external link.</p> 
+   *
+   * <p>Examples:</p>
+   * <p>For IWebStartable ID:</p>
+   * <pre><code>BusinessDetailsAPI.create(BusinessDetailsDTO.builder()
+   * .path("designer/portal-components-examples/Start Processes/BusinessDetails/showInvestmentRequestCustomFields.ivp").build());</code></pre>
+   * Noted that you could use the end part of an IWebStartable ID like `Start Processes/BusinessDetails/showInvestmentRequestCustomFields.ivp` 
+   * but you need to make sure there is only one IWebStartable in the security context ends with that path.
+   * <p>For external link:</p>
+   * <pre><code>BusinessDetailsAPI.create(BusinessDetailsDTO.builder().path("https://www.google.com").build());</code></pre>
+   *
+   * <p>To disable start process in frame, use {@code isEmbedInFrame(Boolean)} in builder. By default, {@code isEmbedInFrame} is true. {@code isEmbedInFrame} does not affect to business detail for external link.</p>
+   * 
+   * <p>To specify ICase, use {@code iCase(ICase)} in builder. By default, {@code Ivy.wfCase()} is used.
+   * @param businessDetailsDTO BusinessDetailsDTO
+   */
+  public static void create(BusinessDetailsDTO businessDetailsDTO) {
+    String customField;
+    String path = businessDetailsDTO.getPath();
+    if (detectExternalLink(path)) {
+      customField = path;
+    } else {
+      IWebStartable targetStartable = Optional.ofNullable(ProcessStartUtils.findWebStartableByUserFriendlyRequestPath(path))
+          .orElseThrow(() -> new PortalException(String.format("Cannot find IWebStartable by ID [%s].", path)));
+      customField = targetStartable.getId();
+      StringBuilder params = new StringBuilder();
+      Map<String, String> parameters = businessDetailsDTO.getParameters();
+
+      if (parameters != null && !parameters.isEmpty()) {
+        parameters.forEach((key, value) -> {
+          params.append("&")
+                .append(URLEncoder.encode(key, StandardCharsets.UTF_8))
+                .append("=")
+                .append(URLEncoder.encode(value, StandardCharsets.UTF_8));
+        });
+      }
+
+      if (businessDetailsDTO.isEmbedInFrame()) {
+        params.append("&embedInFrame");
+      }
+
+      if (params.length() > 0) {
+        customField += "?" + params.substring(1);
+      }
+    }
+    businessDetailsDTO.getCase().customFields().stringField(BUSINESS_DETAILS).set(customField);
+  }
+
+  /**
+   * <p>Creates and sets path to case custom string field {@code businessDetails} of current case for displaying business case details page.</p>
+   *
+   * <p>Examples:</p>
+   * <pre><code>BusinessDetailsAPI.create("designer/portal-components-examples/Start Processes/BusinessDetails/showInvestmentRequestCustomFields.ivp");</code></pre>
+   * <pre><code>BusinessDetailsAPI.create("https://www.google.com");</code></pre>
+   *
+   * @param link String could be an external link or {@link IWebStartable#getId() IWebStartable ID}
+   */
+  public static void create(String link) {
+    BusinessDetailsDTO businessDetailsDTO = BusinessDetailsDTO.builder().path(link).build();
+    create(businessDetailsDTO);
+  }
+  
+  /**
+   * Creates and sets path to case custom string field {@code businessDetails} of current case 
+   * for displaying business case details page with URL parameters.
+   *
+   * <p>This method builds a {@link BusinessDetailsDTO} with the 
+   * provided link and parameters, then delegates to {@link #create(BusinessDetailsDTO)}.</p>
+   *
+   * <p>Examples:</p>
+   * <pre><code>Map&lt;String, String&gt; params = new HashMap&lt;&gt;();
+   * params.put("customerName", "John Doe");
+   * params.put("mode", "view");
+   * BusinessDetailsAPI.create(
+   *   "designer/portal-components-examples/Start Processes/BusinessDetails/showInvestmentRequestCustomFields.ivp",
+   *   params
+   * );</code></pre>
+   *
+   * @param link String could be an external link or {@link IWebStartable#getId() IWebStartable ID}
+   * @param parameters URL parameters to append to the business details link, can be null or empty
+   */
+  public static void create(String link, Map<String, String> parameters) {
+    BusinessDetailsDTO businessDetailsDTO = BusinessDetailsDTO.builder()
+        .path(link)
+        .parameters(parameters)
+        .build();
+    create(businessDetailsDTO);
+  }
+  
+
+  private static boolean detectExternalLink(String path) {
+    return Strings.CI.startsWith(path, "http:") || Strings.CI.startsWith(path, "https:");
+  }
+}

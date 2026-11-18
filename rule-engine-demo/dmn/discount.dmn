@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" id="_definitions_discount" name="discount" namespace="https://axonivy.com/dmn/discount" expressionLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" typeLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" exporter="Axon Ivy Rules Engine">
+  <inputData id="_input_purchaseAmount" name="purchaseAmount">
+    <variable id="_input_var_purchaseAmount" name="purchaseAmount" typeRef="number"/>
+  </inputData>
+  <inputData id="_input_type" name="type">
+    <variable id="_input_var_type" name="type" typeRef="string"/>
+  </inputData>
+  <inputData id="_input_country" name="country">
+    <variable id="_input_var_country" name="country" typeRef="string"/>
+  </inputData>
+  <decision id="_decision_discount" name="discount">
+    <description>Discount in percent for a member purchase.</description>
+    <variable id="_decision_var_discount" name="discount" typeRef="number"/>
+    <informationRequirement id="_requirement_purchaseAmount">
+      <requiredInput href="#_input_purchaseAmount"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_type">
+      <requiredInput href="#_input_type"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_country">
+      <requiredInput href="#_input_country"/>
+    </informationRequirement>
+    <decisionTable id="_table_discount" hitPolicy="FIRST">
+      <input id="_table_input_1" label="purchaseAmount">
+        <inputExpression id="_table_input_expression_1" typeRef="number">
+          <text>purchaseAmount</text>
+        </inputExpression>
+      </input>
+      <input id="_table_input_2" label="type">
+        <inputExpression id="_table_input_expression_2" typeRef="string">
+          <text>type</text>
+        </inputExpression>
+      </input>
+      <input id="_table_input_3" label="country">
+        <inputExpression id="_table_input_expression_3" typeRef="string">
+          <text>country</text>
+        </inputExpression>
+      </input>
+      <output id="_table_output_discount" label="discount"/>
+      <annotation name="Description"/>
+      <rule id="_rule_1">
+        <inputEntry id="_rule_1_input_1">
+          <text>&gt;= 1000</text>
+        </inputEntry>
+        <inputEntry id="_rule_1_input_2">
+          <text>"Gold"</text>
+        </inputEntry>
+        <inputEntry id="_rule_1_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_1_output_discount">
+          <text>15</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Gold members with a large purchase</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_2">
+        <inputEntry id="_rule_2_input_1">
+          <text>&gt;= 1000</text>
+        </inputEntry>
+        <inputEntry id="_rule_2_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_2_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_2_output_discount">
+          <text>10</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Every large purchase</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_3">
+        <inputEntry id="_rule_3_input_1">
+          <text>[500..1000)</text>
+        </inputEntry>
+        <inputEntry id="_rule_3_input_2">
+          <text>"Gold"</text>
+        </inputEntry>
+        <inputEntry id="_rule_3_input_3">
+          <text>"CH"</text>
+        </inputEntry>
+        <outputEntry id="_rule_3_output_discount">
+          <text>8</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Swiss Gold members</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_4">
+        <inputEntry id="_rule_4_input_1">
+          <text>[500..1000)</text>
+        </inputEntry>
+        <inputEntry id="_rule_4_input_2">
+          <text>"Gold", "Silver"</text>
+        </inputEntry>
+        <inputEntry id="_rule_4_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_4_output_discount">
+          <text>5</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Members with a medium purchase</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_5">
+        <inputEntry id="_rule_5_input_1">
+          <text>&lt; 500</text>
+        </inputEntry>
+        <inputEntry id="_rule_5_input_2">
+          <text>"Gold"</text>
+        </inputEntry>
+        <inputEntry id="_rule_5_input_3">
+          <text>"CH"</text>
+        </inputEntry>
+        <outputEntry id="_rule_5_output_discount">
+          <text>2</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Swiss Gold members with a small purchase</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_rule_6">
+        <inputEntry id="_rule_6_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_6_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_rule_6_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_rule_6_output_discount">
+          <text>0</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Everyone else</text>
+        </annotationEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_diagram_discount" name="Default DRD" useAlternativeInputDataShape="false">
+      <dmndi:DMNShape id="_shape__decision_discount" dmnElementRef="_decision_discount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="80" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape__input_purchaseAmount" dmnElementRef="_input_purchaseAmount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="60" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_purchaseAmount" dmnElementRef="_requirement_purchaseAmount" sourceElement="_shape__input_purchaseAmount" targetElement="_shape__decision_discount">
+        <di:waypoint x="140" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="_shape__input_type" dmnElementRef="_input_type" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_type" dmnElementRef="_requirement_type" sourceElement="_shape__input_type" targetElement="_shape__decision_discount">
+        <di:waypoint x="340" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="_shape__input_country" dmnElementRef="_input_country" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="460" y="300" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_country" dmnElementRef="_requirement_country" sourceElement="_shape__input_country" targetElement="_shape__decision_discount">
+        <di:waypoint x="540" y="300"/>
+        <di:waypoint x="340" y="160"/>
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

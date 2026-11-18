@@ -1,0 +1,10 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "ErrorHandlerData",
+  "namespace" : "com.axonivy.portal.components",
+  "fields" : [ {
+    "name" : "exceptions",
+    "type" : "List<com.axonivy.portal.components.ivydata.exception.PortalIvyDataException>",
+    "modifiers" : [ ]
+  } ]
+}

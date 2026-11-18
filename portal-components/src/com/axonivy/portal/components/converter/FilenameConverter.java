@@ -1,0 +1,43 @@
+package com.axonivy.portal.components.converter;
+
+import java.util.Objects;
+
+import jakarta.faces.component.UIComponent;
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.convert.Converter;
+import jakarta.faces.convert.ConverterException;
+import jakarta.faces.convert.FacesConverter;
+
+import org.apache.commons.lang3.StringUtils;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@FacesConverter(value = "filenameConverter", managed = true)
+@ApplicationScoped
+public class FilenameConverter implements Converter<Object> {
+
+  @Override
+  public Object getAsObject(FacesContext context, UIComponent component, String value) throws ConverterException {
+    if (StringUtils.isBlank(value)) {
+      return StringUtils.EMPTY;
+    }
+    return value.strip() + (String) component.getAttributes().get("fileExtension");
+  }
+
+  @Override
+  public String getAsString(FacesContext arg0, UIComponent component, Object value) throws ConverterException {
+    if (Objects.isNull(value)) {
+      return StringUtils.EMPTY;
+    }
+    String filename = value.toString();
+    int lastDot = filename.lastIndexOf(".");
+
+    if (lastDot == -1) {
+      component.getAttributes().put("fileExtension", StringUtils.EMPTY);
+      return filename;
+    }
+
+    component.getAttributes().put("fileExtension", filename.substring(lastDot));
+    return filename.substring(0, lastDot);
+  }
+}
+

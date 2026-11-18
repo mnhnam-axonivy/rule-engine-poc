@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "RuleManagementData",
+  "namespace" : "com.axonivy.utils.rule.engine.portal",
+  "comment" : "The calls of the Portal tab Rule Management, see com.axonivy.utils.rule.engine.portal.RuleManagement",
+  "fields" : [ {
+    "name" : "model",
+    "type" : "String",
+    "comment" : "Name of the model: the name of its .dmn file",
+    "modifiers" : [ ]
+  }, {
+    "name" : "version",
+    "type" : "Integer",
+    "modifiers" : [ ]
+  }, {
+    "name" : "dmn",
+    "type" : "String",
+    "comment" : "The model as DMN XML",
+    "modifiers" : [ ]
+  }, {
+    "name" : "author",
+    "type" : "String",
+    "comment" : "The user of the Portal who makes the change",
+    "modifiers" : [ ]
+  }, {
+    "name" : "description",
+    "type" : "String",
+    "comment" : "What changed",
+    "modifiers" : [ ]
+  }, {
+    "name" : "activate",
+    "type" : "Boolean",
+    "comment" : "true: the new version goes live at once, false: it stays a draft",
+    "modifiers" : [ ]
+  }, {
+    "name" : "result",
+    "type" : "Object",
+    "comment" : "What the call answers, made of JDK types only: String, Integer, Boolean, List, Map",
+    "modifiers" : [ ]
+  }, {
+    "name" : "error",
+    "type" : "Object",
+    "comment" : "null on success, else a Map with code, message and details",
+    "modifiers" : [ ]
+  } ]
+}

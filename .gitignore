@@ -1,0 +1,29 @@
+# general
+Thumbs.db
+.DS_Store
+*~
+*.log
+
+# java
+*.class
+hs_err_pid*
+
+# maven
+target/
+
+# ivy
+classes/
+src_generated/dataclass/
+
+# node
+node_modules/
+
+# IntelliJ (the VS Code settings in .vscode/ are shared on purpose)
+.idea/
+*.iml
+
+# docker compose: local values such as RULE_ENGINE_API_KEY
+.env
+
+# decision runtime: local database of dev mode
+rule-engine-runtime/data/

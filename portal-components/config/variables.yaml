@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://json-schema.axonivy.com/14.0/config/variables.json
+# == Variables ==
+# 
+# You can define here your project Variables.
+# If you want to define/override a Variable for a specific Environment, 
+# please add a 'variables.yaml' in the sub directory '_<environment>'.
+#
+Variables:

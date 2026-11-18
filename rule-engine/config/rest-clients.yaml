@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://json-schema.axonivy.com/14.0/config/rest-clients.json
+RestClients:
+  # Transport to the decision runtime. The URL is taken from the variable RuleEngine.Url at runtime,
+  # this client is the place to configure TLS and other connection properties.
+  ruleEngine:
+    Url: http://localhost:8090

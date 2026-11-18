@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "TestData",
+  "namespace": "com.axonivy.utils.rule.engine.test",
+  "fields": [
+    {
+      "name": "customer",
+      "type": "com.axonivy.utils.rule.engine.test.Customer"
+    },
+    {
+      "name": "amount",
+      "type": "Number"
+    },
+    {
+      "name": "purchaseAmount",
+      "type": "Number"
+    },
+    {
+      "name": "type"
+    },
+    {
+      "name": "quantity",
+      "type": "java.lang.Integer"
+    },
+    {
+      "name": "orderDate",
+      "type": "Date"
+    },
+    {
+      "name": "orderedAt",
+      "type": "DateTime"
+    },
+    {
+      "name": "openingTime",
+      "type": "Time"
+    },
+    {
+      "name": "deliveryTime",
+      "type": "Duration"
+    },
+    {
+      "name": "positions",
+      "type": "List<com.axonivy.utils.rule.engine.test.Address>"
+    },
+    {
+      "name": "discount",
+      "type": "Number"
+    },
+    {
+      "name": "approved",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "name": "nextStep"
+    },
+    {
+      "name": "dueDate",
+      "type": "Date"
+    },
+    {
+      "name": "deliveredAt",
+      "type": "DateTime"
+    },
+    {
+      "name": "upgrade",
+      "type": "com.axonivy.utils.rule.engine.test.Segment"
+    },
+    {
+      "name": "recommendation",
+      "type": "com.axonivy.utils.rule.engine.test.Recommendation"
+    },
+    {
+      "name": "labels",
+      "type": "List<String>"
+    },
+    {
+      "name": "points",
+      "type": "java.lang.Integer"
+    },
+    {
+      "name": "errorCode"
+    },
+    {
+      "name": "errorMessage"
+    }
+  ]
+}

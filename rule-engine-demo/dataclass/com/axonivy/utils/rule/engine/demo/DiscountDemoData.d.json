@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "DiscountDemoData",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "fields": [
+    {
+      "name": "member",
+      "type": "com.axonivy.utils.rule.engine.demo.Member"
+    },
+    {
+      "name": "errorCode"
+    },
+    {
+      "name": "errorMessage"
+    }
+  ]
+}

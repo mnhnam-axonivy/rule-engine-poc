@@ -1,0 +1,26 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "PortalConponentCaseServiceData",
+  "namespace" : "com.axonivy.portal.components.service",
+  "fields" : [ {
+    "name" : "cases",
+    "type" : "java.util.List<ch.ivyteam.ivy.workflow.ICase>",
+    "modifiers" : [ ]
+  }, {
+    "name" : "caseSearchCriteria",
+    "type" : "com.axonivy.portal.components.ivydata.searchcriteria.CaseSearchCriteria",
+    "modifiers" : [ ]
+  }, {
+    "name" : "count",
+    "type" : "Integer",
+    "modifiers" : [ ]
+  }, {
+    "name" : "startIndex",
+    "type" : "Integer",
+    "modifiers" : [ ]
+  }, {
+    "name" : "totalCases",
+    "type" : "Long",
+    "modifiers" : [ ]
+  } ]
+}

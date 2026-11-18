@@ -1,0 +1,1111 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id": "19A8D1C0FFEE00A1",
+  "kind": "CALLABLE_SUB",
+  "config": {
+    "data": "com.axonivy.utils.rule.engine.test.TestData"
+  },
+  "elements": [
+    {
+      "id": "s0",
+      "type": "CallSubStart",
+      "name": "byName(TestData)",
+      "config": {
+        "signature": "byName",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 64
+        }
+      },
+      "connect": [
+        {
+          "id": "c0a",
+          "to": "b0"
+        }
+      ]
+    },
+    {
+      "id": "b0",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "byName"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-discount#discount"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 64
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x0",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 96
+            }
+          },
+          "connect": [
+            {
+              "id": "c0x",
+              "to": "e0",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 120
+                },
+                {
+                  "x": 464,
+                  "y": 120
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c0b",
+          "to": "e0"
+        }
+      ]
+    },
+    {
+      "id": "e0",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 64
+        }
+      }
+    },
+    {
+      "id": "s1",
+      "type": "CallSubStart",
+      "name": "fieldsOfAnExistingDecision(TestData)",
+      "config": {
+        "signature": "fieldsOfAnExistingDecision",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 192
+        }
+      },
+      "connect": [
+        {
+          "id": "c1a",
+          "to": "b1"
+        }
+      ]
+    },
+    {
+      "id": "b1",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "fieldsOfAnExistingDecision"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-explicit#score",
+          "inputs": "total = in.amount, in.customer.name, in.customer.address.city",
+          "outputs": "in.points"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 192
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x1",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 224
+            }
+          },
+          "connect": [
+            {
+              "id": "c1x",
+              "to": "e1",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 248
+                },
+                {
+                  "x": 464,
+                  "y": 248
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c1b",
+          "to": "e1"
+        }
+      ]
+    },
+    {
+      "id": "e1",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 192
+        }
+      }
+    },
+    {
+      "id": "s2",
+      "type": "CallSubStart",
+      "name": "wholeModel(TestData)",
+      "config": {
+        "signature": "wholeModel",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 320
+        }
+      },
+      "connect": [
+        {
+          "id": "c2a",
+          "to": "b2"
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "wholeModel"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-all"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 320
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x2",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 352
+            }
+          },
+          "connect": [
+            {
+              "id": "c2x",
+              "to": "e2",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 376
+                },
+                {
+                  "x": 464,
+                  "y": 376
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c2b",
+          "to": "e2"
+        }
+      ]
+    },
+    {
+      "id": "e2",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "s3",
+      "type": "CallSubStart",
+      "name": "structuredResult(TestData)",
+      "config": {
+        "signature": "structuredResult",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 448
+        }
+      },
+      "connect": [
+        {
+          "id": "c3a",
+          "to": "b3"
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "structuredResult"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-recommend#offer"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 448
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x3",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 480
+            }
+          },
+          "connect": [
+            {
+              "id": "c3x",
+              "to": "e3",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 504
+                },
+                {
+                  "x": 464,
+                  "y": 504
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c3b",
+          "to": "e3"
+        }
+      ]
+    },
+    {
+      "id": "e3",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 448
+        }
+      }
+    },
+    {
+      "id": "s4",
+      "type": "CallSubStart",
+      "name": "timeout(TestData)",
+      "config": {
+        "signature": "timeout",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 576
+        }
+      },
+      "connect": [
+        {
+          "id": "c4a",
+          "to": "b4"
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "timeout"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-slow#slow"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 576
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x4",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 608
+            }
+          },
+          "connect": [
+            {
+              "id": "c4x",
+              "to": "e4",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 632
+                },
+                {
+                  "x": 464,
+                  "y": 632
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c4b",
+          "to": "e4"
+        }
+      ]
+    },
+    {
+      "id": "e4",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 576
+        }
+      }
+    },
+    {
+      "id": "s5",
+      "type": "CallSubStart",
+      "name": "types(TestData)",
+      "config": {
+        "signature": "types",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 704
+        }
+      },
+      "connect": [
+        {
+          "id": "c5a",
+          "to": "b5"
+        }
+      ]
+    },
+    {
+      "id": "b5",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "types"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "mock-types#check"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 704
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x5",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 736
+            }
+          },
+          "connect": [
+            {
+              "id": "c5x",
+              "to": "e5",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 760
+                },
+                {
+                  "x": 464,
+                  "y": 760
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c5b",
+          "to": "e5"
+        }
+      ]
+    },
+    {
+      "id": "e5",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 704
+        }
+      }
+    },
+    {
+      "id": "s6",
+      "type": "CallSubStart",
+      "name": "unconfigured(TestData)",
+      "config": {
+        "signature": "unconfigured",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 832
+        }
+      },
+      "connect": [
+        {
+          "id": "c6a",
+          "to": "b6"
+        }
+      ]
+    },
+    {
+      "id": "b6",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "unconfigured"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {}
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 832
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x6",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 864
+            }
+          },
+          "connect": [
+            {
+              "id": "c6x",
+              "to": "e6",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 888
+                },
+                {
+                  "x": 464,
+                  "y": 888
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c6b",
+          "to": "e6"
+        }
+      ]
+    },
+    {
+      "id": "e6",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 832
+        }
+      }
+    },
+    {
+      "id": "s7",
+      "type": "CallSubStart",
+      "name": "demoDiscount(TestData)",
+      "config": {
+        "signature": "demoDiscount",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 960
+        }
+      },
+      "connect": [
+        {
+          "id": "c7a",
+          "to": "b7"
+        }
+      ]
+    },
+    {
+      "id": "b7",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "demoDiscount"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "discount#discount"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 960
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x7",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 992
+            }
+          },
+          "connect": [
+            {
+              "id": "c7x",
+              "to": "e7",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 1016
+                },
+                {
+                  "x": 464,
+                  "y": 1016
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c7b",
+          "to": "e7"
+        }
+      ]
+    },
+    {
+      "id": "e7",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 960
+        }
+      }
+    },
+    {
+      "id": "s8",
+      "type": "CallSubStart",
+      "name": "create(TestData)",
+      "config": {
+        "signature": "create",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 1088
+        }
+      },
+      "connect": [
+        {
+          "id": "c8a",
+          "to": "b8"
+        }
+      ]
+    },
+    {
+      "id": "b8",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "create"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "#create",
+          "newModel": "test-generated",
+          "inputs": "in.amount, in.customer.segment, in.customer.vip, in.customer.address",
+          "outputs": "in.discount"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 1088
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x8",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 1120
+            }
+          },
+          "connect": [
+            {
+              "id": "c8x",
+              "to": "e8",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 1144
+                },
+                {
+                  "x": 464,
+                  "y": 1144
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c8b",
+          "to": "e8"
+        }
+      ]
+    },
+    {
+      "id": "e8",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 1088
+        }
+      }
+    }
+  ]
+}

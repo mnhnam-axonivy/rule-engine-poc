@@ -1,0 +1,198 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "19A8D1C0FFEE0005",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.demo.OrderApprovalData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "RequestStart",
+      "name" : "order",
+      "config" : {
+        "signature" : "order",
+        "request" : {
+          "name" : "Rule Engine Demo: approve an order",
+          "description" : "Decides with dmn/order-approval.dmn who approves an order, and routes the order with an Alternative."
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 160 }
+      },
+      "connect" : [
+        { "id" : "f1", "to" : "f2" }
+      ]
+    }, {
+      "id" : "f2",
+      "type" : "Script",
+      "name" : "New customer orders for 8000",
+      "config" : {
+        "output" : {
+          "code" : [
+            "in.order.number = \"PO-1042\";",
+            "in.order.customerType = \"NEW\";",
+            "in.order.country = \"CH\";",
+            "in.order.amount = 8000;"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 240, "y" : 160 },
+        "size" : { "width" : 144 }
+      },
+      "connect" : [
+        { "id" : "f3", "to" : "f4" }
+      ]
+    }, {
+      "id" : "f4",
+      "type" : "ProgramInterface",
+      "name" : [
+        "Business Rule Task",
+        "approval route"
+      ],
+      "config" : {
+        "javaClass" : "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig" : {
+          "outputs" : "",
+          "newModel" : "",
+          "decision" : "order-approval#route",
+          "inputs" : ""
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 424, "y" : 160 },
+        "size" : { "width" : 144 }
+      },
+      "boundaries" : [ {
+          "id" : "f8",
+          "type" : "ErrorBoundaryEvent",
+          "name" : "rule:engine",
+          "config" : {
+            "errorCode" : "rule:engine",
+            "output" : {
+              "code" : [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();",
+                "ivy.log.error(\"The approval route cannot be decided: \" + error.getMessage());"
+              ]
+            }
+          },
+          "visual" : {
+            "at" : { "x" : 464, "y" : 192 }
+          },
+          "connect" : [
+            { "id" : "f9", "to" : "f10" }
+          ]
+        } ],
+      "connect" : [
+        { "id" : "f5", "to" : "f12" }
+      ]
+    }, {
+      "id" : "f12",
+      "type" : "Alternative",
+      "name" : "Who approves?",
+      "config" : {
+        "conditions" : {
+          "f13" : "in.route == \"auto\"",
+          "f15" : "in.route == \"director\"",
+          "f14" : ""
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 592, "y" : 160 },
+        "labelOffset" : { "x" : 0, "y" : 40 }
+      },
+      "connect" : [
+        { "id" : "f13", "to" : "f20", "via" : [ { "x" : 592, "y" : 64 } ], "label" : {
+            "name" : "auto"
+          } },
+        { "id" : "f14", "to" : "f22", "label" : {
+            "name" : "manager"
+          } },
+        { "id" : "f15", "to" : "f24", "via" : [ { "x" : 592, "y" : 256 } ], "label" : {
+            "name" : "director"
+          } }
+      ]
+    }, {
+      "id" : "f20",
+      "type" : "Script",
+      "name" : "Approved automatically",
+      "config" : {
+        "output" : {
+          "code" : [
+            "in.approvedBy = \"system\";",
+            "ivy.log.info(\"Order \" + in.order.number + \" is approved automatically\");"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 744, "y" : 64 },
+        "size" : { "width" : 128 }
+      },
+      "connect" : [
+        { "id" : "f21", "to" : "f30", "via" : [ { "x" : 888, "y" : 64 } ] }
+      ]
+    }, {
+      "id" : "f22",
+      "type" : "Script",
+      "name" : "A manager approves",
+      "config" : {
+        "output" : {
+          "code" : [
+            "in.approvedBy = \"manager\";",
+            "ivy.log.info(\"Order \" + in.order.number + \" goes to a manager\");"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 744, "y" : 160 },
+        "size" : { "width" : 128 }
+      },
+      "connect" : [
+        { "id" : "f23", "to" : "f30" }
+      ]
+    }, {
+      "id" : "f24",
+      "type" : "Script",
+      "name" : "The director approves",
+      "config" : {
+        "output" : {
+          "code" : [
+            "in.approvedBy = \"director\";",
+            "ivy.log.info(\"Order \" + in.order.number + \" goes to the director\");"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 744, "y" : 256 },
+        "size" : { "width" : 128 }
+      },
+      "connect" : [
+        { "id" : "f25", "to" : "f30", "via" : [ { "x" : 888, "y" : 256 } ] }
+      ]
+    }, {
+      "id" : "f30",
+      "type" : "TaskEnd",
+      "visual" : {
+        "at" : { "x" : 888, "y" : 160 }
+      }
+    }, {
+      "id" : "f10",
+      "type" : "TaskEnd",
+      "name" : "not decided",
+      "visual" : {
+        "at" : { "x" : 464, "y" : 336 }
+      }
+    }, {
+      "id" : "f40",
+      "type" : "ProcessAnnotation",
+      "name" : [
+        "The Business Rule Task decides the route, the Alternative follows it.",
+        "Change the rule in the Portal (Admin Settings > Rule Management):",
+        "the same order takes another way, without a deployment."
+      ],
+      "visual" : {
+        "at" : { "x" : 744, "y" : 360 },
+        "size" : { "width" : 304, "height" : 76 }
+      }
+    } ]
+}

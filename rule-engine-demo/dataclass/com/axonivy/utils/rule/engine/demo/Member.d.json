@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "Member",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "fields": [
+    {
+      "name": "customerId"
+    },
+    {
+      "name": "type",
+      "comment": "Gold, Silver or Standard"
+    },
+    {
+      "name": "country"
+    },
+    {
+      "name": "purchaseAmount",
+      "type": "Number"
+    },
+    {
+      "name": "discount",
+      "type": "Number",
+      "comment": "Discount in percent, decided by the DMN model discount"
+    }
+  ]
+}

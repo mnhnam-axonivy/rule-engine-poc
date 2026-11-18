@@ -1,0 +1,101 @@
+Dialogs:
+  com:
+    axonivy:
+      portal:
+        components:
+          Common:
+            Cancel: キャンセル
+            CancelContext: "{0}をキャンセル"
+            Categories: カテゴリー
+            ConfirmForDelete: このアイテムを削除してもよろしいですか？
+            Confirmation: 確認
+            Description: 説明
+            More: 詳細
+            Name: 名前
+            'No': いいえ
+            NotAvailable: 利用不可
+            Process:
+              ProcessName: プロセス名
+            RequiredFieldMessage: このフィールドは必須です
+            Save: 保存
+            SaveContext: "{0}を保存"
+            SideStepPrefix: サイドステップ：
+            Task:
+              Activator: 責任者
+            Type: タイプ
+            'Yes': はい
+          DocumentTable:
+            AddDocument: ドキュメントを追加
+            AddDocumentHelpText: ファイルをここにドラッグ＆ドロップしてアップロードするか、
+            BrowseFiles: ファイルを閲覧する
+            Delete: 削除
+            DeleteDocumentNote: '{0}が{1}を削除しました'
+            DeleteSuceed: ファイルが正常に削除されました
+            Download: ダウンロード
+            EmptyFileMessage: ファイルサイズは空にしないでください
+            ErrorFileUploadSize: ファイル サイズは {0} 未満である必要があります
+            FileContainScript: このファイルにはスクリプトが含まれているため、アップロードできません。
+            FileContainVirus: アップロードに失敗しました。ウイルス／感染が検出されました。
+            FileFunction: 機能
+            FileLimitMessage: すでに最大数のファイルがアップロードされています！
+            FilenameEmpty: ファイル名は空にできません。
+            InvalidFileMessage: このファイルの種類は受け入れられません！
+            Name: ファイル名
+            NoFile: ファイルが見つかりません！
+            Preview: プレビュー
+            RenamingDocument: ドキュメントの名前の変更
+            RenamingDocumentNote: '{0}はファイル{1}の名前を{2}に変更しました。'
+            RenamingDocumentSuccess: 名前変更に成功しました。
+            RenamingFailed: ドキュメントの名前変更中にエラーが発生しました。
+            Size: ファイルサイズ
+            SupportFileTypes: アップロード可能なファイル形式：{0}
+            Type: タイプ
+            Upload: 新しいファイルをアップロード
+            UploadDocumentNote: '{0}が{1}をアップロードしました'
+            UploadFailed: このファイルのアップロード中にエラーが発生しました。管理者にお問い合わせください。
+            UploadFileExists: ファイル：{0} は既に存在します
+            UploadSucceed: ファイルのアップロードに成功しました
+          Enums:
+            BasicDocumentType:
+              CONTRACT: 契約
+              DOCUMENTATION: ドキュメント化
+              EMAIL: メール
+              INFORMATION: 情報
+              OTHERS: その他
+          ProcessChain:
+            currentStepIsNotDefined: プロセスチェーンの現在のステップ ({0}) が定義されていません
+          ProcessViewer:
+            CouldNotFindLinkedProcess: リンクされたプロセスが見つかりませんでした。
+            NoPermissionToView: このプロセスを表示するために必要な権限がありません。
+            ProcessCanNotBeLoaded: プロセスをロードできません。
+            ProcessDetails: プロセスの詳細
+            ProcessId: プロセスID
+            ProcessInfo: プロセス情報
+            ProcessInfoIconTooltip: プロセス開始の詳細を見るにはクリック
+            ProcessIsHidden: 現在のプロセスは非表示になっています。
+            ProcessNotFound: 定義されたプロセスが見つかりません。
+            ProcessType:
+              CASE_MAP: ケースマップ
+              EXTERNAL_LINK: 外部リンク
+              IVY_PROCESS: ビジネスプロセス
+            ProcessViewerIFrameTitle: プロセスビューアーフレーム
+          SideStepType:
+            PARALLEL: バックグラウンドタスクを開始する（並列）
+            SWITCH: このタスクを一時停止してプロセスを開始する（スイッチ）
+Labels:
+  Close: 閉じる
+  CloseContext: "{0}を閉じる"
+  DisabledUserPrefix: （無効）
+  Enums:
+    NewFilenameValidation:
+      ALREADY_EXIST: この場所には同じ名前のファイルが既にあります。
+      INVALID_FORMAT: ファイル名には次の文字は使えません:¥/ :*? "<>|
+  NoName: 名前なし
+  NoResults: 結果なし
+  None: なし
+  NotAvailable: 利用不可
+  ParentRole: 親ロール
+  TooltipNoNameFormatted: ＜{0}＞（{1}）
+  TooltipUserNameFormatted: '{0}（{1}）'
+patterns:
+  timePattern: HH:mm

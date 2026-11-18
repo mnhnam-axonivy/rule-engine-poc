@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "ApprovalDemoData",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "fields": [
+    {
+      "name": "invoice",
+      "type": "com.axonivy.utils.rule.engine.demo.Invoice"
+    },
+    {
+      "name": "riskLevel"
+    },
+    {
+      "name": "approval",
+      "type": "com.axonivy.utils.rule.engine.demo.Approval"
+    },
+    {
+      "name": "dueDate",
+      "type": "Date"
+    },
+    {
+      "name": "errorCode"
+    },
+    {
+      "name": "errorMessage"
+    }
+  ]
+}

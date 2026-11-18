@@ -1,0 +1,62 @@
+package com.axonivy.portal.components.publicapi;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
+import org.primefaces.PrimeFaces;
+
+import com.axonivy.portal.components.enums.SessionAttribute;
+import com.axonivy.portal.components.generic.navigation.BaseNavigator;
+
+import ch.ivyteam.ivy.environment.Ivy;
+
+/**
+ * Portal API for navigation in iFrame
+ *
+ */
+public final class PortalNavigatorInFrameAPI extends BaseNavigator {
+  private PortalNavigatorInFrameAPI() {}
+
+  /**
+   * Navigate to target url
+   * 
+   * @param url target url
+   */
+  public static void navigateToUrl(String url) {
+    String decoded = URLDecoder.decode(url, StandardCharsets.UTF_8);
+    String escaped = SanitizeAPI.escapeForJavascript(decoded);
+    String statement =
+        "parent.redirectToUrlCommand([{name: 'url', value: '" + escaped + "'}])";
+    PrimeFaces.current().executeScript(statement);
+  }
+
+  /**
+    * Resets the current task and navigates to target url.
+    * 
+    * @param url target url to navigate to after resetting the task
+    */
+  public static void resetTaskAndNavigateToUrl(String url) {
+    Ivy.session().setAttribute(SessionAttribute.RESET_TASK_UUID.name(), Ivy.wfTask().uuid());
+    String decoded = URLDecoder.decode(url, StandardCharsets.UTF_8);
+    String escaped = SanitizeAPI.escapeForJavascript(decoded);
+    String statement = "parent.resetTaskAndRedirectToUrlCommand([{name: 'url', value: '" + escaped + "'}])";
+    PrimeFaces.current().executeScript(statement);
+  }
+
+  /**
+   * Navigate to portal home
+   */
+  public static void navigateToPortalHome() {
+    navigateToUrl(Ivy.html().appHomeLink().getAbsoluteEncoded());
+  }
+
+  /**
+   * Navigate to PortalEndPage without finishing a task, e.g. clicking on Cancel button then back to previous page: task
+   * list or task details or global search
+   */
+  public static void navigateToPortalEndPage() {
+    String statement = "parent.redirectToEndPageCommand([{name: 'taskId', value: " + Ivy.wfTask().getId() + "}]);";
+    PrimeFaces.current().executeScript(statement);
+  }
+
+}

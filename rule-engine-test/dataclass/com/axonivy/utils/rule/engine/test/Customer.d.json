@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "Customer",
+  "namespace": "com.axonivy.utils.rule.engine.test",
+  "fields": [
+    {
+      "name": "name"
+    },
+    {
+      "name": "segment",
+      "type": "com.axonivy.utils.rule.engine.test.Segment"
+    },
+    {
+      "name": "age",
+      "type": "java.lang.Integer"
+    },
+    {
+      "name": "vip",
+      "type": "java.lang.Boolean"
+    },
+    {
+      "name": "birthday",
+      "type": "Date"
+    },
+    {
+      "name": "lastContact",
+      "type": "DateTime"
+    },
+    {
+      "name": "tags",
+      "type": "List<String>"
+    },
+    {
+      "name": "address",
+      "type": "com.axonivy.utils.rule.engine.test.Address"
+    }
+  ]
+}

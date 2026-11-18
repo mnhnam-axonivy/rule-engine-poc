@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" id="_definitions_invoice_approval" name="invoice-approval" namespace="https://axonivy.com/dmn/invoice-approval" expressionLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" typeLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" exporter="Axon Ivy Rules Engine">
+  <itemDefinition id="_type_tSupplierRating" name="tSupplierRating" isCollection="false">
+    <typeRef>string</typeRef>
+    <allowedValues id="_type_values_tSupplierRating">
+      <text>"A", "B", "C", null</text>
+    </allowedValues>
+  </itemDefinition>
+  <itemDefinition id="_type_tRiskLevel" name="tRiskLevel" isCollection="false">
+    <typeRef>string</typeRef>
+    <allowedValues id="_type_values_tRiskLevel">
+      <text>"Low", "Medium", "High"</text>
+    </allowedValues>
+  </itemDefinition>
+  <itemDefinition id="_type_tApproval" name="tApproval" isCollection="false">
+    <itemComponent id="_type_tApproval_nextStep" name="nextStep" isCollection="false">
+      <typeRef>string</typeRef>
+    </itemComponent>
+    <itemComponent id="_type_tApproval_fourEyes" name="fourEyes" isCollection="false">
+      <typeRef>boolean</typeRef>
+    </itemComponent>
+  </itemDefinition>
+  <inputData id="_input_amount" name="amount">
+    <variable id="_input_var_amount" name="amount" typeRef="number"/>
+  </inputData>
+  <inputData id="_input_supplierRating" name="supplierRating">
+    <variable id="_input_var_supplierRating" name="supplierRating" typeRef="tSupplierRating"/>
+  </inputData>
+  <inputData id="_input_hasPurchaseOrder" name="hasPurchaseOrder">
+    <variable id="_input_var_hasPurchaseOrder" name="hasPurchaseOrder" typeRef="boolean"/>
+  </inputData>
+  <inputData id="_input_invoiceDate" name="invoiceDate">
+    <variable id="_input_var_invoiceDate" name="invoiceDate" typeRef="date"/>
+  </inputData>
+  <decision id="_decision_riskLevel" name="riskLevel">
+    <description>How risky is it to pay this invoice?</description>
+    <variable id="_decision_var_riskLevel" name="riskLevel" typeRef="tRiskLevel"/>
+    <informationRequirement id="_requirement_risk_amount">
+      <requiredInput href="#_input_amount"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_risk_supplierRating">
+      <requiredInput href="#_input_supplierRating"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_risk_hasPurchaseOrder">
+      <requiredInput href="#_input_hasPurchaseOrder"/>
+    </informationRequirement>
+    <decisionTable id="_table_riskLevel" hitPolicy="FIRST">
+      <input id="_table_risk_input_1" label="amount">
+        <inputExpression id="_table_risk_input_expression_1" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <input id="_table_risk_input_2" label="supplierRating">
+        <inputExpression id="_table_risk_input_expression_2" typeRef="tSupplierRating">
+          <text>supplierRating</text>
+        </inputExpression>
+      </input>
+      <input id="_table_risk_input_3" label="hasPurchaseOrder">
+        <inputExpression id="_table_risk_input_expression_3" typeRef="boolean">
+          <text>hasPurchaseOrder</text>
+        </inputExpression>
+      </input>
+      <output id="_table_risk_output" label="riskLevel"/>
+      <annotation name="Description"/>
+      <rule id="_risk_rule_1">
+        <inputEntry id="_risk_rule_1_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_1_input_2">
+          <text>"C"</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_1_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_risk_rule_1_output">
+          <text>"High"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Poorly rated suppliers are always risky</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_risk_rule_2">
+        <inputEntry id="_risk_rule_2_input_1">
+          <text>&gt; 10000</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_2_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_2_input_3">
+          <text>false</text>
+        </inputEntry>
+        <outputEntry id="_risk_rule_2_output">
+          <text>"High"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Large invoice without purchase order</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_risk_rule_3">
+        <inputEntry id="_risk_rule_3_input_1">
+          <text>&gt; 10000</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_3_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_3_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_risk_rule_3_output">
+          <text>"Medium"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Large invoice</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_risk_rule_4">
+        <inputEntry id="_risk_rule_4_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_4_input_2">
+          <text>"B"</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_4_input_3">
+          <text>false</text>
+        </inputEntry>
+        <outputEntry id="_risk_rule_4_output">
+          <text>"Medium"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Average supplier without purchase order</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_risk_rule_5">
+        <inputEntry id="_risk_rule_5_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_5_input_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_risk_rule_5_input_3">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_risk_rule_5_output">
+          <text>"Low"</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Everything else</text>
+        </annotationEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <decision id="_decision_approval" name="approval">
+    <description>Who has to approve the invoice?</description>
+    <variable id="_decision_var_approval" name="approval" typeRef="tApproval"/>
+    <informationRequirement id="_requirement_approval_riskLevel">
+      <requiredDecision href="#_decision_riskLevel"/>
+    </informationRequirement>
+    <informationRequirement id="_requirement_approval_amount">
+      <requiredInput href="#_input_amount"/>
+    </informationRequirement>
+    <decisionTable id="_table_approval" hitPolicy="FIRST">
+      <input id="_table_approval_input_1" label="riskLevel">
+        <inputExpression id="_table_approval_input_expression_1" typeRef="tRiskLevel">
+          <text>riskLevel</text>
+        </inputExpression>
+      </input>
+      <input id="_table_approval_input_2" label="amount">
+        <inputExpression id="_table_approval_input_expression_2" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <output id="_table_approval_output_nextStep" name="nextStep" typeRef="string"/>
+      <output id="_table_approval_output_fourEyes" name="fourEyes" typeRef="boolean"/>
+      <annotation name="Description"/>
+      <rule id="_approval_rule_1">
+        <inputEntry id="_approval_rule_1_input_1">
+          <text>"High"</text>
+        </inputEntry>
+        <inputEntry id="_approval_rule_1_input_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_approval_rule_1_output_1">
+          <text>"Route to CFO"</text>
+        </outputEntry>
+        <outputEntry id="_approval_rule_1_output_2">
+          <text>true</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>High risk needs the CFO and a second pair of eyes</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_approval_rule_2">
+        <inputEntry id="_approval_rule_2_input_1">
+          <text>"Medium"</text>
+        </inputEntry>
+        <inputEntry id="_approval_rule_2_input_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_approval_rule_2_output_1">
+          <text>"Route to Department Head"</text>
+        </outputEntry>
+        <outputEntry id="_approval_rule_2_output_2">
+          <text>true</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Medium risk</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_approval_rule_3">
+        <inputEntry id="_approval_rule_3_input_1">
+          <text>"Low"</text>
+        </inputEntry>
+        <inputEntry id="_approval_rule_3_input_2">
+          <text>&gt;= 1000</text>
+        </inputEntry>
+        <outputEntry id="_approval_rule_3_output_1">
+          <text>"Route to Team Lead"</text>
+        </outputEntry>
+        <outputEntry id="_approval_rule_3_output_2">
+          <text>false</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Low risk, but not a small amount</text>
+        </annotationEntry>
+      </rule>
+      <rule id="_approval_rule_4">
+        <inputEntry id="_approval_rule_4_input_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="_approval_rule_4_input_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="_approval_rule_4_output_1">
+          <text>"Auto-approve"</text>
+        </outputEntry>
+        <outputEntry id="_approval_rule_4_output_2">
+          <text>false</text>
+        </outputEntry>
+        <annotationEntry>
+          <text>Small, low risk invoices are approved automatically</text>
+        </annotationEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <decision id="_decision_dueDate" name="dueDate">
+    <description>Invoices are due 30 days after the invoice date.</description>
+    <variable id="_decision_var_dueDate" name="dueDate" typeRef="date"/>
+    <informationRequirement id="_requirement_dueDate_invoiceDate">
+      <requiredInput href="#_input_invoiceDate"/>
+    </informationRequirement>
+    <literalExpression id="_expression_dueDate">
+      <text>if invoiceDate = null then null else invoiceDate + duration("P30D")</text>
+    </literalExpression>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_diagram_invoice_approval" name="Default DRD" useAlternativeInputDataShape="false">
+      <dmndi:DMNShape id="_shape_approval" dmnElementRef="_decision_approval" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="40" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_riskLevel" dmnElementRef="_decision_riskLevel" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="360" y="200" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_dueDate" dmnElementRef="_decision_dueDate" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="660" y="200" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_amount" dmnElementRef="_input_amount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="60" y="380" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_supplierRating" dmnElementRef="_input_supplierRating" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="260" y="380" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_hasPurchaseOrder" dmnElementRef="_input_hasPurchaseOrder" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="460" y="380" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_invoiceDate" dmnElementRef="_input_invoiceDate" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="660" y="380" width="160" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_risk_amount" dmnElementRef="_requirement_risk_amount" sourceElement="_shape_amount" targetElement="_shape_riskLevel">
+        <di:waypoint x="140" y="380"/>
+        <di:waypoint x="440" y="280"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_risk_supplierRating" dmnElementRef="_requirement_risk_supplierRating" sourceElement="_shape_supplierRating" targetElement="_shape_riskLevel">
+        <di:waypoint x="340" y="380"/>
+        <di:waypoint x="440" y="280"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_risk_hasPurchaseOrder" dmnElementRef="_requirement_risk_hasPurchaseOrder" sourceElement="_shape_hasPurchaseOrder" targetElement="_shape_riskLevel">
+        <di:waypoint x="540" y="380"/>
+        <di:waypoint x="440" y="280"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_approval_riskLevel" dmnElementRef="_requirement_approval_riskLevel" sourceElement="_shape_riskLevel" targetElement="_shape_approval">
+        <di:waypoint x="440" y="200"/>
+        <di:waypoint x="340" y="120"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_approval_amount" dmnElementRef="_requirement_approval_amount" sourceElement="_shape_amount" targetElement="_shape_approval">
+        <di:waypoint x="140" y="380"/>
+        <di:waypoint x="340" y="120"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_dueDate_invoiceDate" dmnElementRef="_requirement_dueDate_invoiceDate" sourceElement="_shape_invoiceDate" targetElement="_shape_dueDate">
+        <di:waypoint x="740" y="380"/>
+        <di:waypoint x="740" y="280"/>
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

@@ -1,0 +1,37 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="jakarta.faces.html"
+  xmlns:cc="jakarta.faces.composite"
+  xmlns:c="jakarta.tags.core" xmlns:p="primefaces"
+  xmlns:jsf="jakarta.faces">
+
+<cc:interface componentType="IvyComponent">
+  <cc:attribute name="componentId" default="task-priority" />
+  <cc:attribute name="priority" required="true" type="ch.ivyteam.ivy.workflow.WorkflowPriority" />
+  <cc:attribute name="priorityStyleClass" />
+  <cc:attribute name="priorityIconStyleClass" />
+  <cc:attribute name="dataModel"/>
+  <cc:attribute name="responsiveStyleClass" />
+  <cc:attribute name="showIconWithText" type="java.lang.Boolean" default="false"/>
+  <cc:attribute name="showEditIcon" type="java.lang.Boolean" default="false"/>
+  <cc:attribute name="alwaysShowPriority" type="java.lang.Boolean" default="false" shortDescription="This is alternative param to show the priority without datamodel"/>
+</cc:interface>
+
+<cc:implementation>
+  <c:set var="priority" value="#{cc.attrs.priority}" />
+  <c:set var="showIconWithText" value="#{cc.attrs.showIconWithText}" />
+  <c:set var="showEditIcon" value="#{cc.attrs.showEditIcon}" />
+  <c:set var="showPriority" value="#{cc.attrs.dataModel.isSelectedColumn('PRIORITY') or showIconWithText or cc.attrs.alwaysShowPriority}" />
+
+  <h:panelGroup id="#{cc.attrs.componentId}" styleClass="priority-cell #{cc.attrs.priorityStyleClass} #{cc.attrs.responsiveStyleClass}"
+    rendered="#{showPriority}" >
+    <span id="task-priority" title="#{showIconWithText ? null : taskBean.getPriority(priority)}" class="#{cc.attrs.priorityIconStyleClass} priority-icon">
+      <i jsf:rendered="#{priority eq 'LOW'}" class="priority ti ti-circle-arrow-down low-priority" aria-hidden="true" />
+      <i jsf:rendered="#{priority eq 'NORMAL'}" class="priority ti ti-circle-arrow-right normal-priority" aria-hidden="true" />
+      <i jsf:rendered="#{priority eq 'HIGH'}" class="priority ti ti-circle-arrow-up high-priority" aria-hidden="true" />
+      <i jsf:rendered="#{priority eq 'EXCEPTION'}" class="priority ti ti-alert-circle exception-priority" aria-hidden="true" />
+      <h:outputText rendered="#{showIconWithText}" styleClass="priority-text" value="#{taskBean.getPriority(priority)}"/>
+      <h:outputText rendered="#{!showIconWithText}" styleClass="ui-helper-hidden-accessible" value="#{taskBean.getPriority(priority)}"/>
+      <i jsf:rendered="#{showEditIcon}" class="ti ti-pencil" aria-hidden="true" />
+    </span>
+  </h:panelGroup>
+</cc:implementation>
+</html>

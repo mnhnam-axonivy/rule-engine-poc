@@ -1,0 +1,42 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:h="jakarta.faces.html"
+  xmlns:cc="jakarta.faces.composite" xmlns:p="primefaces"
+  xmlns:pt="jakarta.faces.passthrough">
+
+<cc:interface shortDescription="Action menu of a row: a trigger button that opens an overlay with the child items. Links with the style class portal-action-menu-item are exposed as menu items and support the keyboard: Arrow Down/Up and Home/End move, Enter/Space run the item, Esc/Tab close the menu and return focus to the trigger.">
+  <cc:attribute name="triggerId" default="action-menu-button"
+    shortDescription="Id of the trigger button. Type: String. Default value: action-menu-button. Required: false." />
+  <cc:attribute name="panelWidgetVar" required="true"
+    shortDescription="Widget variable of the overlay panel. Must be unique on the page, so append the row index when used inside a data table. Type: String. Required: true." />
+  <cc:attribute name="ariaLabel" type="java.lang.String"
+    shortDescription="Accessible name of the trigger button, should name the row it acts on. Type: String. Required: false." />
+  <cc:attribute name="title" type="java.lang.String"
+    shortDescription="Tooltip of the trigger button. Type: String. Required: false." />
+  <cc:attribute name="buttonStyleClass" type="java.lang.String"
+    shortDescription="Extra style classes for the trigger button. Type: String. Required: false." />
+  <cc:attribute name="menuStyleClass" type="java.lang.String"
+    shortDescription="Extra style classes for the overlay panel. Type: String. Required: false." />
+  <cc:attribute name="disabled" type="java.lang.Boolean" default="false"
+    shortDescription="Disables the trigger button and skips rendering the panel. Type: Boolean. Default value: false. Required: false." />
+</cc:interface>
+
+<cc:implementation>
+  <h:outputScript name="action-menu-component.js" library="js" />
+  <h:outputStylesheet library="css" name="portal-components.css" />
+  <h:outputStylesheet library="css" name="action-menu-component.css" />
+
+  <p:commandButton id="#{cc.attrs.triggerId}" type="button" disabled="#{cc.attrs.disabled}"
+    onclick="PF('#{cc.attrs.panelWidgetVar}').toggle(); event.stopPropagation(); return false;" icon="ti ti-dots"
+    ariaLabel="#{cc.attrs.ariaLabel}" title="#{cc.attrs.title}" pt:aria-haspopup="true"
+    styleClass="#{cc.attrs.buttonStyleClass} rounded-button portal-icon-btn portal-icon-btn--sm" />
+
+  <p:overlayPanel id="action-menu-panel" for="#{cc.attrs.triggerId}" rendered="#{!cc.attrs.disabled}"
+    widgetVar="#{cc.attrs.panelWidgetVar}" appendTo="@(body)"
+    styleClass="portal-action-menu options-panel #{cc.attrs.menuStyleClass}"
+    my="right top" at="right bottom" collision="flip"
+    showCloseIcon="false" dismissable="true" dynamic="true" cache="false" showEvent="none" hideEvent="none"
+    onShow="initActionMenuKeyboard(this)"
+    pt:aria-label="#{cc.attrs.ariaLabel}">
+    <cc:insertChildren />
+  </p:overlayPanel>
+</cc:implementation>
+</html>

@@ -1,0 +1,89 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "DocumentTableData",
+  "namespace" : "com.axonivy.portal.components.DocumentTable",
+  "fields" : [ {
+    "name" : "documents",
+    "type" : "java.util.List<com.axonivy.portal.components.ivydata.bo.IvyDocument>",
+    "modifiers" : [ ]
+  }, {
+    "name" : "event",
+    "type" : "org.primefaces.event.FileUploadEvent",
+    "modifiers" : [ ]
+  }, {
+    "name" : "fileLimit",
+    "type" : "Integer",
+    "modifiers" : [ ]
+  }, {
+    "name" : "ivyCase",
+    "type" : "ch.ivyteam.ivy.workflow.ICase",
+    "modifiers" : [ ]
+  }, {
+    "name" : "message",
+    "modifiers" : [ ]
+  }, {
+    "name" : "messageComponentId",
+    "modifiers" : [ ]
+  }, {
+    "name" : "selectedDocument",
+    "type" : "com.axonivy.portal.components.ivydata.bo.IvyDocument",
+    "modifiers" : [ ]
+  }, {
+    "name" : "streamedContent",
+    "type" : "org.primefaces.model.StreamedContent",
+    "modifiers" : [ ]
+  }, {
+    "name" : "typeColumnRendered",
+    "type" : "Boolean",
+    "modifiers" : [ ]
+  }, {
+    "name" : "typeSelection",
+    "type" : "com.axonivy.portal.components.enums.DocumentType",
+    "modifiers" : [ ]
+  }, {
+    "name" : "uploadDocumentCheckStatus",
+    "type" : "com.axonivy.portal.components.enums.UploadDocumentCheckStatus",
+    "modifiers" : [ ]
+  }, {
+    "name" : "uploadedDocument",
+    "type" : "ch.ivyteam.ivy.workflow.document.IDocument",
+    "modifiers" : [ ]
+  }, {
+    "name" : "enableVirusScannerForUploadedDocument",
+    "type" : "Boolean",
+    "modifiers" : [ ]
+  }, {
+    "name" : "enableScriptCheckingForUploadedDocument",
+    "type" : "Boolean",
+    "modifiers" : [ ]
+  }, {
+    "name" : "allowedUploadFileTypes",
+    "modifiers" : [ ]
+  }, {
+    "name" : "uploadedFile",
+    "type" : "org.primefaces.model.file.UploadedFile",
+    "modifiers" : [ ]
+  }, {
+    "name" : "sizeLimit",
+    "type" : "Long",
+    "modifiers" : [ ]
+  }, {
+    "name" : "isImage",
+    "type" : "Boolean",
+    "modifiers" : [ ]
+  }, {
+    "name" : "isRenameDocumentSuccess",
+    "type" : "Boolean",
+    "modifiers" : [ ]
+  }, {
+    "name" : "renameDocumentMessage",
+    "modifiers" : [ ]
+  }, {
+    "name" : "uploadSubFolder",
+    "modifiers" : [ ]
+  }, {
+    "name" : "displaySubFolderList",
+    "type" : "List<String>",
+    "modifiers" : [ ]
+  } ]
+}

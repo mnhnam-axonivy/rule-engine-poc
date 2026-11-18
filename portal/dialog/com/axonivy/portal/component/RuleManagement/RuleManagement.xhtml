@@ -1,0 +1,205 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:f="jakarta.faces.core"
+  xmlns:h="jakarta.faces.html"
+  xmlns:ui="jakarta.faces.facelets"
+  xmlns:cc="jakarta.faces.composite"
+  xmlns:ic="http://ivyteam.ch/jsf/component"
+  xmlns:p="primefaces"
+  xmlns:pt="jakarta.faces.passthrough"
+  xmlns:c="jakarta.tags.core">
+<!--
+  The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine.
+  ruleManagementBean: com.axonivy.portal.bean.RuleManagementBean. It reaches the rule engine through
+  com.axonivy.portal.rule.RuleEngineBridge, the Portal has no dependency on it.
+  The DMN editor of Apache KIE runs in the browser: rule-management.js loads it from the rule engine project.
+-->
+<cc:interface componentType="IvyComponent">
+</cc:interface>
+
+<cc:implementation>
+  <h:outputScript library="js" name="rule-management.js" />
+  <c:set var="cmsPath" value="/ch.ivy.addon.portalkit.ui.jsf/components/RuleManagement/" />
+
+  <p:messages id="rule-management-messages" globalOnly="true" closable="true" styleClass="rule-management-messages" />
+
+  <h:panelGroup id="rule-management" layout="block" styleClass="rule-management"
+    pt:data-editor-script="#{ruleManagementBean.editorScript}"
+    pt:data-model="#{ruleManagementBean.editModel}"
+    pt:data-text-load-failed="#{ivy.cms.co(cmsPath.concat('Messages/EditorNotLoaded'))}"
+    pt:data-text-cannot-open="#{ivy.cms.co(cmsPath.concat('Messages/EditorCannotOpen'))}"
+    pt:data-text-leave="#{ivy.cms.co(cmsPath.concat('LeaveWithUnsavedChanges'))}">
+
+    <!-- THE RULES -->
+    <h:form id="rule-list-form" rendered="#{!ruleManagementBean.editing}">
+      <div class="rule-management-header flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+        <div class="rule-management-intro">
+          <p class="m-0">#{ivy.cms.co(cmsPath.concat('Description'))}</p>
+          <h:panelGroup styleClass="rule-runtime-state ok" rendered="#{ruleManagementBean.reachable}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('RuntimeConnected'), [ruleManagementBean.runtimeUrl])}" />
+          </h:panelGroup>
+          <h:panelGroup styleClass="rule-runtime-state bad" rendered="#{!ruleManagementBean.reachable and ruleManagementBean.notConfigured}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('Messages/NotConfigured'))}" />
+          </h:panelGroup>
+          <h:panelGroup styleClass="rule-runtime-state bad" rendered="#{!ruleManagementBean.reachable and !ruleManagementBean.notConfigured}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('Messages/Unreachable'), [ruleManagementBean.runtimeUrl])}" />
+          </h:panelGroup>
+        </div>
+        <p:commandButton id="refresh-rules" icon="ti ti-refresh" styleClass="ui-button-flat font-medium"
+          value="#{ivy.cms.co(cmsPath.concat('Refresh'))}" ariaLabel="#{ivy.cms.co(cmsPath.concat('Refresh'))}"
+          actionListener="#{ruleManagementBean.refresh}"
+          update="@form :#{cc.clientId}:rule-management-messages" />
+      </div>
+
+      <p:dataTable id="rule-table" cellNavigation="false" widgetVar="ruleTable" styleClass="admin-table rule-table"
+        value="#{ruleManagementBean.models}" var="model" filteredValue="#{ruleManagementBean.filteredModels}"
+        reflow="true" lazy="false" rowKey="#{model.name}"
+        emptyMessage="#{empty ruleManagementBean.loadProblem ? ivy.cms.co(cmsPath.concat('NoRules')) : ruleManagementBean.loadProblem}">
+        <p:column id="rule-name-column" headerText="#{ivy.cms.co(cmsPath.concat('Rule'))}"
+          filterBy="#{model.name}" filterMatchMode="contains" sortBy="#{model.name}" styleClass="rule-name-column">
+          <div class="rule-name font-medium">#{model.name}</div>
+          <h:panelGroup styleClass="rule-file" rendered="#{not empty model.project}">
+            <i class="ti ti-file-code" aria-hidden="true" />
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('FileOfProject'), [model.file, model.project])}" />
+          </h:panelGroup>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Decisions'))}" styleClass="rule-decisions-column">
+          <h:outputText value="#{ruleManagementBean.decisionNames(model)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('ActiveVersion'))}" styleClass="rule-active-column">
+          <h:outputText styleClass="rule-badge rule-badge-active" rendered="#{model.onRuntime and model.activeVersion != null}"
+            value="#{ivy.cms.co(cmsPath.concat('VersionLabel'), [model.activeVersion])}" />
+          <h:outputText styleClass="rule-muted" rendered="#{model.onRuntime and model.activeVersion == null}"
+            value="#{ivy.cms.co(cmsPath.concat('NoActiveVersion'))}" />
+          <h:outputText styleClass="rule-badge rule-badge-new" rendered="#{!model.onRuntime}"
+            value="#{ivy.cms.co(cmsPath.concat('NotOnRuntime'))}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Versions'))}" styleClass="rule-count-column text-center">
+          <h:outputText value="#{model.versionCount}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/action')}" styleClass="rule-actions-column text-center">
+          <p:commandButton id="edit-rule" icon="ti ti-pencil" title="#{ivy.cms.co(cmsPath.concat('Edit'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('Edit'))}" disabled="#{!ruleManagementBean.reachable}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.edit(model)}" process="@this"
+            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
+            oncomplete="if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+          <p:commandButton id="show-versions" icon="ti ti-history" title="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}" disabled="#{!model.onRuntime or !ruleManagementBean.reachable}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.showVersions(model)}" process="@this"
+            update=":#{cc.clientId}:rule-versions-dialog :#{cc.clientId}:rule-management-messages"
+            oncomplete="PF('ruleVersionsDialog').show()" />
+        </p:column>
+      </p:dataTable>
+    </h:form>
+
+    <!-- THE DMN EDITOR -->
+    <h:panelGroup id="rule-editor" layout="block" styleClass="rule-editor" rendered="#{ruleManagementBean.editing}">
+      <h:form id="rule-editor-form">
+        <div class="rule-editor-bar flex flex-wrap align-items-center gap-3">
+          <p:commandLink id="back-to-rules" styleClass="portal-link rule-editor-back" process="@this"
+            onclick="if (!RuleManagement.leave()) { return false; }"
+            actionListener="#{ruleManagementBean.closeEditor}"
+            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages">
+            <i class="ti ti-arrow-left" aria-hidden="true" />
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('BackToRules'))}" />
+          </p:commandLink>
+          <div class="rule-editor-title flex flex-wrap align-items-baseline gap-2">
+            <span class="rule-editor-name">#{ruleManagementBean.editModel}</span>
+            <h:outputText id="rule-editor-state" styleClass="rule-editor-state" value="#{ruleManagementBean.editorState}" />
+            <span class="rule-editor-dirty" hidden="hidden">#{ivy.cms.co(cmsPath.concat('UnsavedChanges'))}</span>
+            <span class="rule-editor-loading">#{ivy.cms.co(cmsPath.concat('EditorLoading'))}</span>
+          </div>
+          <span class="flex-grow-1" />
+          <p:inputText id="rule-description" value="#{ruleManagementBean.description}" styleClass="rule-editor-description"
+            placeholder="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}"
+            pt:aria-label="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}" />
+          <p:commandButton id="check-rule" type="button" icon="ti ti-checks" styleClass="ui-button-outlined rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('Check'))}" title="#{ivy.cms.co(cmsPath.concat('CheckHint'))}"
+            onclick="RuleManagement.validate()" />
+          <p:commandButton id="save-draft" type="button" icon="ti ti-file-pencil" styleClass="ui-button-outlined rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('SaveAsDraft'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAsDraftHint'))}"
+            onclick="RuleManagement.save(false)" />
+          <p:commandButton id="save-activate" type="button" icon="ti ti-device-floppy" styleClass="rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('SaveAndActivate'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAndActivateHint'))}"
+            onclick="RuleManagement.save(true)" />
+        </div>
+
+        <!-- the model as DMN XML: filled when a rule is opened, and by rule-management.js before a save -->
+        <h:inputTextarea id="rule-dmn" value="#{ruleManagementBean.dmn}" styleClass="rule-editor-dmn" style="display:none" />
+        <p:remoteCommand name="ruleManagementSave" actionListener="#{ruleManagementBean.save}"
+          process="@this rule-dmn rule-description"
+          update="rule-editor-state rule-description :#{cc.clientId}:rule-management-messages"
+          oncomplete="RuleManagement.done(xhr, status, args)" />
+        <p:remoteCommand name="ruleManagementValidate" actionListener="#{ruleManagementBean.validate}"
+          process="@this rule-dmn"
+          update=":#{cc.clientId}:rule-management-messages"
+          oncomplete="RuleManagement.done(xhr, status, args)" />
+      </h:form>
+      <!-- the KIE editor puts its frame here; no ajax update touches it -->
+      <div class="rule-editor-container" />
+    </h:panelGroup>
+  </h:panelGroup>
+
+  <!-- THE VERSIONS OF A RULE -->
+  <p:dialog id="rule-versions-dialog" widgetVar="ruleVersionsDialog" modal="true" appendTo="@(body)"
+    header="#{ivy.cms.co(cmsPath.concat('VersionsOf'), [ruleManagementBean.versionsOf.name])}"
+    width="1000" responsive="true" fitViewport="true" closeOnEscape="true" resizable="false"
+    styleClass="rule-versions-dialog dialog-responsive">
+    <h:form id="rule-versions-form">
+      <p:messages id="rule-versions-messages" globalOnly="true" closable="true" />
+      <p:dataTable id="rule-versions-table" cellNavigation="false" value="#{ruleManagementBean.versions}" var="version"
+        rowKey="#{version.version}" styleClass="rule-versions-table" scrollable="true" scrollHeight="420" reflow="true"
+        emptyMessage="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/noRecordsFound')}">
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Version'))}" styleClass="rule-version-column">
+          <span class="font-medium">#{version.version}</span>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('StatusHeader'))}">
+          <h:outputText value="#{ruleManagementBean.status(version.status)}"
+            styleClass="rule-badge rule-badge-#{version.status.toLowerCase()}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('SourceHeader'))}">
+          <h:outputText value="#{ruleManagementBean.source(version.source)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Author'))}">
+          <h:outputText value="#{version.author}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Created'))}">
+          <h:outputText value="#{ruleManagementBean.time(version.createdAt)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Activated'))}">
+          <h:outputText value="#{ruleManagementBean.time(version.activatedAt)}" />
+          <h:panelGroup styleClass="rule-muted block" rendered="#{not empty version.activatedBy}">
+            <h:outputText value="#{version.activatedBy}" />
+          </h:panelGroup>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('ChangeDescription'))}" styleClass="rule-description-column">
+          <h:outputText value="#{version.description}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/action')}" styleClass="rule-actions-column text-center">
+          <p:commandButton id="open-version" icon="ti ti-pencil" title="#{ivy.cms.co(cmsPath.concat('OpenVersion'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('OpenVersion'))}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.editVersion(version)}" process="@this"
+            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
+            oncomplete="PF('ruleVersionsDialog').hide(); if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+          <p:commandButton id="activate-version" icon="ti ti-player-play" title="#{ivy.cms.co(cmsPath.concat('Activate'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('Activate'))}" rendered="#{version.status ne 'ACTIVE'}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.activate(version)}" process="@this"
+            update="@form :#{cc.clientId}:rule-management" />
+        </p:column>
+      </p:dataTable>
+      <div class="flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+        <p:commandButton id="rollback-rule" icon="ti ti-arrow-back-up" styleClass="ui-button-outlined"
+          value="#{ivy.cms.co(cmsPath.concat('RollBack'))}" title="#{ivy.cms.co(cmsPath.concat('RollBackHint'))}"
+          disabled="#{ruleManagementBean.versionsOf.activeVersion == null}"
+          actionListener="#{ruleManagementBean.rollback}" process="@this"
+          update="@form :#{cc.clientId}:rule-management" />
+        <p:commandButton id="close-versions" type="button" styleClass="ui-button-flat"
+          value="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/close')}" onclick="PF('ruleVersionsDialog').hide()" />
+      </div>
+    </h:form>
+  </p:dialog>
+</cc:implementation>
+</html>

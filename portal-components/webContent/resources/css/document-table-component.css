@@ -1,0 +1,156 @@
+.document-table-component .align-center-column {
+  text-align: center;
+}
+
+.document-table-component .margin-top-5 {
+  margin-top: 5px;
+}
+
+.document-table-component .margin-top-10 {
+  margin-top: 10px;
+}
+
+.document-table-component .upload-container {
+  margin-top: 10px;
+  padding-right: 0 !important;
+}
+
+@media screen and (max-width: 40em) {
+  .document-table-component .upload-container {
+    padding-right: 0.5em !important;
+  }
+}
+
+.document-table-component .upload-container > * {
+  float: right;
+}
+
+.document-table-component .upload-container .type-selection, .document-table-component .upload-container .type-selection-label {
+  margin-right: 5px;
+}
+
+.document-table-component .document-action-column {
+  width: 100px;
+} 
+
+.document-table-component .document-size-column {
+  width: 150px;
+}
+
+.document-table-component .document-type-column {
+  width: 200px;
+}
+
+.document-table-component .document-name-column span,
+.document-table-component .document-type-column span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-table-component .document-action-column .ui-commandlink:hover {
+  text-decoration: none;
+}
+
+@media screen and (min-width: 64.063em) and (max-width: 90.062em) {
+  .document-table-component .document-size-column {
+    width: 100px;
+  }
+
+  .document-table-component .document-type-column {
+    width: 150px;
+  }
+}
+
+@media screen and (min-width: 40.063em) and (max-width: 64.062em) {
+  .document-table-component .document-size-column,
+  .document-table-component .document-type-column {
+    width: auto;
+  } 
+}
+
+@media screen and (max-width: 40em) {
+  .document-table-component .document-size-column {
+    display: none;
+  }
+
+  .document-table-component .document-name-column,
+  .document-table-component .document-type-column,
+  .document-table-component .document-action-column {
+    width: 33.4%;
+  }
+}
+
+@media screen and (max-width: 28em) {
+  .document-table-component .document-type-column {
+    width: 145px;
+  }
+}
+
+/*SPECIFIC STYLES FOR THEMES*/
+
+.document-table-component .upload-container .type-selection-label {
+  line-height: 2.5;
+}
+.preview-image{
+  object-fit: contain;
+}
+.ui-dialog-maximized .preview-image {
+  height: auto;
+}
+
+.document-table-component .upload-container .open-upload-dialog-button {
+  margin-left: 10px;
+}
+
+.document-upload-supported-types {
+  display: block;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.document-upload-in-dialog .ui-fileupload-content,
+.document-upload-in-dialog .ui-fileupload-buttonbar {
+  display: none;
+}
+
+.document-upload-dropzone {
+  border: 1px solid var(--surface-border, #dee2e6);
+  background-color: var(--surface-ground, #f8f9fa);
+  border-radius: 10px;
+  height: 20em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-upload-dropzone.ui-state-drag {
+  border-color: var(--primary-color);
+  border-style: dashed;
+  background-color: var(--highlight-bg, rgba(0, 123, 255, 0.04));
+}
+
+.document-upload-dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+i.document-upload-icon {
+  font-size: 3em;
+}
+
+.document-upload-dropzone-link {
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.document-upload-dialog {
+  max-width: 450px;
+}
+
+.document-upload-dialog .ui-messages > div {
+  margin-top: 0;
+}

@@ -1,0 +1,26 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:f="jakarta.faces.core"
+  xmlns:h="jakarta.faces.html" xmlns:ui="jakarta.faces.facelets"
+  xmlns:p="primefaces" xmlns:cc="jakarta.faces.composite">
+
+<cc:interface>
+  <cc:attribute name="securityMember" required="true" />
+  <cc:attribute name="id" />
+  <cc:attribute name="renderedAvatar" type="java.lang.Boolean" default="#{portalComponentAvatarBean.getPortalShowAvatarSettingOrDefault(true)}" />
+  <cc:attribute name="useLowercaseEmail" type="java.lang.Boolean" default="true" shortDescription="Convert the email address to lowercase before looking up the avatar." />
+  <cc:attribute name="representName" />
+  <cc:attribute name="showLabel" type="java.lang.Boolean" default="true" />
+  <cc:attribute name="title" default="" />
+  <cc:attribute name="alt" default="" shortDescription="Alternative text of the avatar image. Defaults to the title; leave both empty when the name is displayed next to the avatar." />
+
+</cc:interface>
+
+<cc:implementation>
+  <h:outputStylesheet library="css" name="portal-components.css" />
+
+  <p:avatar id="#{cc.attrs.id}" rendered="#{cc.attrs.renderedAvatar}" title="#{portalComponentAvatarBean.getAvatarTitle(cc.attrs.title, cc.attrs.showLabel, cc.attrs.representName, cc.attrs.securityMember)}"
+    label="#{cc.attrs.showLabel ? portalComponentAvatarBean.getAvatarLabel(cc.attrs.representName, cc.attrs.securityMember) : ''}" styleClass="gravatar" shape="circle">
+    <p:graphicImage value="#{portalComponentAvatarBean.getGravatarUrl(cc.attrs.representName != null ? cc.attrs.representName : portalComponentAvatarBean.getEmailAddress(cc.attrs.securityMember, cc.attrs.useLowercaseEmail))}"
+      alt="#{empty cc.attrs.alt ? cc.attrs.title : cc.attrs.alt}" />
+  </p:avatar>
+</cc:implementation>
+</html>

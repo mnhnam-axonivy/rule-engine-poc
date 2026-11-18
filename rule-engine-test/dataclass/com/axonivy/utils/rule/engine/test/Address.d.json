@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "Address",
+  "namespace": "com.axonivy.utils.rule.engine.test",
+  "fields": [
+    {
+      "name": "city"
+    },
+    {
+      "name": "country"
+    }
+  ]
+}

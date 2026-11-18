@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://json-schema.axonivy.com/14.0/config/rest-clients.json
+RestClients:
+  # Stand-in for the decision runtime, served by this project: see MockRuntime
+  mockRuntime:
+    Url: '{ivy.app.baseurl}/api/ruleMock'
+  # The DMN editor script that the connector serves to the Portal: see DmnEditorScript
+  dmnEditorScript:
+    Url: '{ivy.app.baseurl}/api/rule-engine/dmn-editor'

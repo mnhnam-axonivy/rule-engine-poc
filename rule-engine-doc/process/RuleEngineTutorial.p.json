@@ -1,0 +1,44 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "19A8D1C0FFEE0003",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.doc.TutorialStartData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "RequestStart",
+      "name" : "Rule Engine Tutorial",
+      "config" : {
+        "signature" : "tutorial",
+        "request" : {
+          "name" : "Rule Engine Tutorial",
+          "description" : "Setup, prerequisites and how to use the Business Rule Task, with interactive walkthroughs."
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f2", "to" : "f3" }
+      ]
+    }, {
+      "id" : "f1",
+      "type" : "TaskEnd",
+      "visual" : {
+        "at" : { "x" : 400, "y" : 64 }
+      }
+    }, {
+      "id" : "f3",
+      "type" : "DialogCall",
+      "name" : "Tutorial",
+      "config" : {
+        "dialog" : "com.axonivy.utils.rule.engine.doc.Tutorial:start()"
+      },
+      "visual" : {
+        "at" : { "x" : 256, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f4", "to" : "f1" }
+      ]
+    } ]
+}

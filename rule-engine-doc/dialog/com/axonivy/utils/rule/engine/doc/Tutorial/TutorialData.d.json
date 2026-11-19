@@ -1,0 +1,11 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "TutorialData",
+  "namespace" : "com.axonivy.utils.rule.engine.doc.Tutorial",
+  "fields" : [ {
+    "name" : "pages",
+    "type" : "java.util.Map<String,String>",
+    "comment" : "The Markdown of every page of the tutorial by its id, e.g. 01",
+    "modifiers" : [ ]
+  } ]
+}

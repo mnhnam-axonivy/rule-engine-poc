@@ -1,0 +1,13 @@
+{
+  "name": "editor-smoke",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser check of the DMN editor page /editor/ of the Axon Ivy Rules Engine decision runtime.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node editor-smoke.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "25.17.0"
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "00D40D25D4584C40",
+  "kind" : "HTML_DIALOG",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.demo.InvoicePricingDialog.InvoicePricingDialogData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "HtmlDialogStart",
+      "name" : "start()",
+      "config" : {
+        "signature" : "start",
+        "input" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.RuleEngineConfig;",
+            "import com.axonivy.utils.rule.engine.demo.InvoiceSamples;",
+            "",
+            "out.invoice = InvoiceSamples.standard();",
+            "out.editorUrl = RuleEngineConfig.editorUrl(RuleEngineConfig.fromVariables().url());"
+          ]
+        },
+        "guid" : "A14F761E4020526D"
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f5", "to" : "f20", "via" : [ { "x" : 352, "y" : 64 } ] }
+      ]
+    }, {
+      "id" : "f10",
+      "type" : "HtmlDialogMethodStart",
+      "name" : "apply()",
+      "config" : {
+        "signature" : "apply",
+        "guid" : "81752B99268A87C9"
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 160 },
+        "labelOffset" : { "x" : -23, "y" : 33 }
+      },
+      "connect" : [
+        { "id" : "f11", "to" : "f20" }
+      ]
+    }, {
+      "id" : "f12",
+      "type" : "HtmlDialogMethodStart",
+      "name" : "reset()",
+      "config" : {
+        "signature" : "reset",
+        "guid" : "82854D88E557593B"
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 256 }
+      },
+      "connect" : [
+        { "id" : "f13", "to" : "f14" }
+      ]
+    }, {
+      "id" : "f14",
+      "type" : "Script",
+      "name" : "Sample invoice",
+      "config" : {
+        "output" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.demo.InvoiceSamples;",
+            "",
+            "in.invoice = InvoiceSamples.standard();",
+            "in.trial = null;"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 232, "y" : 256 }
+      },
+      "connect" : [
+        { "id" : "f15", "to" : "f20", "via" : [ { "x" : 352, "y" : 256 } ] }
+      ]
+    }, {
+      "id" : "f20",
+      "type" : "SubProcessCall",
+      "name" : [
+        "Price the invoice",
+        "InvoicePricing"
+      ],
+      "config" : {
+        "processCall" : "InvoicePricing:price(com.axonivy.utils.rule.engine.demo.SalesInvoice)",
+        "call" : {
+          "map" : {
+            "param.invoice" : "in.invoice"
+          }
+        },
+        "output" : {
+          "map" : {
+            "out" : "in",
+            "out.previous" : "in.pricing",
+            "out.pricing" : "result.pricing"
+          }
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 352, "y" : 160 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f21", "to" : "f22" }
+      ]
+    }, {
+      "id" : "f22",
+      "type" : "Script",
+      "name" : [
+        "Version that decided,",
+        "tax formula"
+      ],
+      "config" : {
+        "output" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.demo.InvoicePricingPage;",
+            "",
+            "InvoicePricingPage.priced(in);"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 544, "y" : 160 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f23", "to" : "f24" }
+      ]
+    }, {
+      "id" : "f24",
+      "type" : "HtmlDialogEnd",
+      "visual" : {
+        "at" : { "x" : 704, "y" : 160 }
+      }
+    }, {
+      "id" : "f30",
+      "type" : "HtmlDialogMethodStart",
+      "name" : "tryFormula()",
+      "config" : {
+        "signature" : "tryFormula",
+        "guid" : "5155C66D8CF0A0F4"
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 352 }
+      },
+      "connect" : [
+        { "id" : "f31", "to" : "f32" }
+      ]
+    }, {
+      "id" : "f32",
+      "type" : "SubProcessCall",
+      "name" : [
+        "Price the invoice",
+        "InvoicePricing"
+      ],
+      "config" : {
+        "processCall" : "InvoicePricing:price(com.axonivy.utils.rule.engine.demo.SalesInvoice)",
+        "call" : {
+          "map" : {
+            "param.invoice" : "in.invoice"
+          }
+        },
+        "output" : {
+          "map" : {
+            "out" : "in",
+            "out.previous" : "in.pricing",
+            "out.pricing" : "result.pricing"
+          }
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 352, "y" : 352 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f33", "to" : "f34" }
+      ]
+    }, {
+      "id" : "f34",
+      "type" : "Script",
+      "name" : [
+        "Try the formula on",
+        "a copy of the model"
+      ],
+      "config" : {
+        "output" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.demo.InvoicePricingPage;",
+            "",
+            "InvoicePricingPage.tried(in);"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 544, "y" : 352 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f35", "to" : "f36" }
+      ]
+    }, {
+      "id" : "f36",
+      "type" : "HtmlDialogEnd",
+      "visual" : {
+        "at" : { "x" : 704, "y" : 352 }
+      }
+    }, {
+      "id" : "f1",
+      "type" : "HtmlDialogEventStart",
+      "name" : "close",
+      "config" : {
+        "guid" : "E21574A7D2BB6018"
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 448 }
+      },
+      "connect" : [
+        { "id" : "f3", "to" : "f2" }
+      ]
+    }, {
+      "id" : "f2",
+      "type" : "HtmlDialogExit",
+      "visual" : {
+        "at" : { "x" : 224, "y" : 448 }
+      }
+    } ]
+}

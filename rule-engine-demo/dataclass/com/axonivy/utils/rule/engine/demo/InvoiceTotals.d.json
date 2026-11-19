@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "InvoiceTotals",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "The decision totals.",
+  "fields": [
+    {
+      "name": "gross",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "lineDiscounts",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "subtotal",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "orderDiscount",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "net",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "vat",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "shippingFee",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "total",
+      "type": "java.math.BigDecimal"
+    }
+  ]
+}

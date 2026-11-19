@@ -1,0 +1,40 @@
+Dialogs:
+  com:
+    axonivy:
+      utils:
+        rule:
+          engine:
+            doc:
+              Tutorial:
+                PageTitle: Rule Engine Tutorial
+                HeroTitle: Axon Ivy Rules Engine Tutorial
+                HeroSubtitle: From what DMN is to business rules in production
+                StepsText: Work through the steps in order, from easy to hard. Read a page, or play its walkthrough. A walkthrough plays in a simulated Designer, explains what happens, and leaves you a simulator to try things yourself.
+                LevelBasics: Basics
+                LevelFirstSteps: First steps
+                LevelChanging: Changing rules
+                LevelProduction: Production
+                LevelExpert: Expert
+                LevelQuestions: Questions and answers
+                Page01Title: What is DMN?
+                Page01Desc: Decision tables, inputs and outputs, which rule wins, and how conditions are written. No process needed.
+                Page02Title: How the rule engine works
+                Page02Desc: The Axon Ivy Engine, the decision runtime next to it, and the way a decision takes between them.
+                Page03Title: Set up and run your first decision
+                Page03Desc: Start the decision runtime, run the demo process and look at what the runtime holds.
+                Page04Title: Use an existing DMN decision
+                Page04Desc: Select a decision of a .dmn file of your project. Inputs and results are found by name, and a Script before the element prepares the values.
+                Page05Title: Create a new DMN from scratch
+                Page05Desc: No .dmn file yet? Start from your process data. The element generates the decision table, you name it and fill in the rules.
+                Page06Title: Change rules without deployment
+                Page06Desc: Edit a rule and see it live with the next run. Versions, which version decided, and rollback.
+                Page07Title: Edit rules in the Portal
+                Page07Desc: A rule owner makes a simple rule complex in the Portal. The same process takes another way, and the rule owner keeps the last word.
+                Page08Title: Handle errors
+                Page08Desc: What happens when the runtime is down, slow or does not know a model, and how the process reacts.
+                Page09Title: Run it in production
+                Page09Desc: An API key, a volume for the versions, who loads the models, several applications on one runtime, and a checklist.
+                Page10Title: Several decisions and the Java API
+                Page10Desc: Models whose decisions build on each other, results with several values, and the rules from Java.
+                Page11Title: Frequently asked questions
+                Page11Desc: Short answers on the setup, the mapping, rules that change and errors.

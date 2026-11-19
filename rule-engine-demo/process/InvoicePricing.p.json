@@ -1,0 +1,142 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "FAE97A22A36BA382",
+  "kind" : "CALLABLE_SUB",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.demo.InvoicePricingData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "CallSubStart",
+      "name" : "price(SalesInvoice)",
+      "config" : {
+        "signature" : "price",
+        "input" : {
+          "params" : [
+            { "name" : "invoice", "type" : "com.axonivy.utils.rule.engine.demo.SalesInvoice", "desc" : "The invoice with its lines" }
+          ],
+          "map" : {
+            "out.invoice" : "param.invoice"
+          }
+        },
+        "result" : {
+          "params" : [
+            { "name" : "pricing", "type" : "com.axonivy.utils.rule.engine.demo.PricingResult", "desc" : "What the rules decided, or errorCode and errorMessage" }
+          ],
+          "map" : {
+            "result.pricing" : "in.pricing"
+          }
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 64 },
+        "labelOffset" : { "x" : 13, "y" : 37 }
+      },
+      "connect" : [
+        { "id" : "f1", "to" : "f2" }
+      ]
+    }, {
+      "id" : "f2",
+      "type" : "Script",
+      "name" : "Prepare the promo code",
+      "config" : {
+        "output" : {
+          "code" : [
+            "if (in.invoice.promoCode != null) {",
+            "  in.invoice.promoCode = in.invoice.promoCode.trim().toUpperCase();",
+            "}"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 240, "y" : 64 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f3", "to" : "f4" }
+      ]
+    }, {
+      "id" : "f4",
+      "type" : "ProgramInterface",
+      "name" : [
+        "Business Rule Task",
+        "invoice-pricing"
+      ],
+      "config" : {
+        "javaClass" : "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig" : {
+          "decision" : "invoice-pricing"
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 432, "y" : 64 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "boundaries" : [ {
+          "id" : "f8",
+          "type" : "ErrorBoundaryEvent",
+          "name" : "rule:engine",
+          "config" : {
+            "errorCode" : "rule:engine",
+            "output" : {
+              "code" : [
+                "in.pricing.errorCode = error.getErrorCode();",
+                "in.pricing.errorMessage = error.getMessage();",
+                "ivy.log.error(\"The invoice cannot be priced: \" + error.getMessage());"
+              ]
+            }
+          },
+          "visual" : {
+            "at" : { "x" : 472, "y" : 96 }
+          },
+          "connect" : [
+            { "id" : "f9", "to" : "f10", "via" : [ { "x" : 472, "y" : 168 } ] }
+          ]
+        } ],
+      "connect" : [
+        { "id" : "f5", "to" : "f6" }
+      ]
+    }, {
+      "id" : "f6",
+      "type" : "Script",
+      "name" : "Log the result",
+      "config" : {
+        "output" : {
+          "code" : [
+            "ivy.log.info(\"Invoice \" + in.invoice.number + \": total \" + in.pricing.totals.total + \", \" + in.pricing.approval.route);"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 616, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f7", "to" : "f11" }
+      ]
+    }, {
+      "id" : "f11",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : { "x" : 752, "y" : 64 }
+      }
+    }, {
+      "id" : "f10",
+      "type" : "CallSubEnd",
+      "name" : "not priced",
+      "visual" : {
+        "at" : { "x" : 616, "y" : 168 }
+      }
+    }, {
+      "id" : "f30",
+      "type" : "ProcessAnnotation",
+      "name" : [
+        "The whole model is evaluated. Its inputs are read by name from in.invoice,",
+        "each decision is written to the field of its name in in.pricing:",
+        "pricedLines, orderDiscounts, orderDiscountPercent, shipping, totals, approval."
+      ],
+      "visual" : {
+        "at" : { "x" : 432, "y" : 248 },
+        "size" : { "width" : 448, "height" : 60 }
+      }
+    } ]
+}

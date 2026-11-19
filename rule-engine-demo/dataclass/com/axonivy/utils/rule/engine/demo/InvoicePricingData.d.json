@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "InvoicePricingData",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "Data of the callable InvoicePricing: the inputs of the decisions are read from the invoice by name, the results are written to pricing by name.",
+  "fields": [
+    {
+      "name": "invoice",
+      "type": "com.axonivy.utils.rule.engine.demo.SalesInvoice"
+    },
+    {
+      "name": "pricing",
+      "type": "com.axonivy.utils.rule.engine.demo.PricingResult"
+    }
+  ]
+}

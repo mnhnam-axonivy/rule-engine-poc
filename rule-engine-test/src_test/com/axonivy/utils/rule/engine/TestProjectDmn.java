@@ -96,7 +96,9 @@ class TestProjectDmn {
   @Test
   void dmnFilesOfTheProjectAndItsRequiredProjects_areFound() {
     var files = ProjectDmnFiles.list(Project.current());
-    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval");
+    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval", "invoice-pricing");
+    assertThat(ProjectDmnFiles.find(Project.current(), "invoice-pricing").orElseThrow().project())
+        .as("a file of the required project rule-engine-demo").startsWith("rule-engine-demo");
 
     var discount = ProjectDmnFiles.load(ProjectDmnFiles.find(Project.current(), "discount").orElseThrow());
     assertThat(discount.parseError()).isNull();
@@ -152,6 +154,27 @@ class TestProjectDmn {
         .containsExactlyInAnyOrder("amount", "supplierRating", "hasPurchaseOrder");
     assertThat(info.decision("dueDate").orElseThrow().requiredInputs()).containsExactly("invoiceDate");
     assertThat(info.decision("dueDate").orElseThrow().typeRef()).isEqualTo("date");
+  }
+
+  /** The model of the demo: functions (business knowledge models) and decisions that build on each other. */
+  @Test
+  void modelWithFunctionsAndAChainOfDecisions() {
+    var file = ProjectDmnFiles.find(Project.current(), "invoice-pricing").orElseThrow();
+    DmnModelInfo info = ProjectDmnFiles.load(file).info();
+
+    assertThat(info.decisions()).extracting(DmnModelInfo.Decision::name).as("the functions are not decisions")
+        .containsExactly("orderDiscounts", "orderDiscountPercent", "pricedLines", "shipping", "totals",
+            "approvalFlags", "approval");
+    assertThat(info.inputTypes()).containsEntry("lines", "list of structure").containsEntry("invoiceDate", "date")
+        .containsEntry("customerTier", "string").containsEntry("expressDelivery", "boolean");
+    assertThat(info.decision("orderDiscounts").orElseThrow().requiredInputs())
+        .containsExactlyInAnyOrder("customerTier", "paymentTerms", "promoCode", "invoiceDate");
+    assertThat(info.decision("approval").orElseThrow().requiredInputs())
+        .as("through approvalFlags, totals, shipping, pricedLines and orderDiscounts: every input")
+        .containsExactlyInAnyOrder("customerTier", "country", "paymentTerms", "promoCode", "expressDelivery",
+            "invoiceDate", "lines");
+    assertThat(DmnModelInfo.describeOutputs(info.decision("shipping").orElseThrow()))
+        .isEqualTo("fee (number), reason (string)");
   }
 
   @Test
@@ -270,7 +293,7 @@ class TestProjectDmn {
         .hasMessage("'New DMN name' is empty. Name the new DMN, e.g. member-discount.");
     assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "discount",
         FieldSelection.parse("in.amount"), FieldSelection.parse("in.discount")))
-        .as("dmn/discount.dmn of the demo project was not generated from these fields")
+        .as("dmn/discount.dmn of this project was not generated from these fields")
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("A DMN named 'discount' exists already (discount.dmn)");
     var noName = Map.of(Conf.DECISION, Conf.CREATE_NEW, Conf.NEW_MODEL, "", Conf.INPUTS, "in.amount",

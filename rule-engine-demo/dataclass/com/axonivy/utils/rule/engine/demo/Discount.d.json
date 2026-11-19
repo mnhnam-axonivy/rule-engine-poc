@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "Discount",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "A discount in percent and why it applies.",
+  "fields": [
+    {
+      "name": "percent",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "reason"
+    }
+  ]
+}

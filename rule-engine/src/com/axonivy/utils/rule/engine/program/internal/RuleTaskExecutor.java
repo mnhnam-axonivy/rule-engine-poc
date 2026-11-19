@@ -139,9 +139,11 @@ public class RuleTaskExecutor {
       }
     }
     if (!unmapped.isEmpty()) {
-      throw RuleErrors.mapping("No process data field found for the input(s) " + unmapped + " of the decision '"
-          + selection.decision() + "' in model '" + selection.model() + "'. The process data needs a field named "
-          + "like each input, e.g. in." + unmapped.get(0) + ", set before the Business Rule Task.");
+      String of = selection.decision() == null
+          ? "of the model '" + selection.model() + "'"
+          : "of the decision '" + selection.decision() + "' in model '" + selection.model() + "'";
+      throw RuleErrors.mapping("No process data field found for the input(s) " + unmapped + " " + of + ". The process "
+          + "data needs a field named like each input, e.g. in." + unmapped.get(0) + ", set before the Business Rule Task.");
     }
     return input;
   }

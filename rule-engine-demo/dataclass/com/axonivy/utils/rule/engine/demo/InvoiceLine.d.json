@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "InvoiceLine",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "A line of a sales invoice, the DMN type tLine.",
+  "fields": [
+    {
+      "name": "product"
+    },
+    {
+      "name": "category",
+      "comment": "Hardware, Software, Services, Consumables or Books"
+    },
+    {
+      "name": "quantity",
+      "type": "java.lang.Integer"
+    },
+    {
+      "name": "unitPrice",
+      "type": "java.math.BigDecimal"
+    }
+  ]
+}

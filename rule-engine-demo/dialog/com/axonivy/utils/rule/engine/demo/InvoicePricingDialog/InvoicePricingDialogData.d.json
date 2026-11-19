@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "InvoicePricingDialogData",
+  "namespace": "com.axonivy.utils.rule.engine.demo.InvoicePricingDialog",
+  "fields": [
+    {
+      "name": "invoice",
+      "type": "com.axonivy.utils.rule.engine.demo.SalesInvoice",
+      "comment": "What the user edits"
+    },
+    {
+      "name": "pricing",
+      "type": "com.axonivy.utils.rule.engine.demo.PricingResult",
+      "comment": "What the rules decided at the last Apply"
+    },
+    {
+      "name": "previous",
+      "type": "com.axonivy.utils.rule.engine.demo.PricingResult",
+      "comment": "What the rules decided at the Apply before"
+    },
+    {
+      "name": "taxFormula",
+      "comment": "The FEEL text of taxFormula in the version that decided"
+    },
+    {
+      "name": "taxSteps",
+      "type": "List<com.axonivy.utils.rule.engine.demo.TaxStep>"
+    },
+    {
+      "name": "trialFormula",
+      "comment": "The tax formula a developer tries"
+    },
+    {
+      "name": "trial",
+      "type": "com.axonivy.utils.rule.engine.demo.TaxTrial"
+    },
+    {
+      "name": "editorUrl",
+      "comment": "The DMN editor of the decision runtime"
+    }
+  ]
+}

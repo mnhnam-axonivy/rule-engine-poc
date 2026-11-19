@@ -1,0 +1,44 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "8531ACB2F4A8CCF6",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.demo.InvoicePricingData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "RequestStart",
+      "name" : "start",
+      "config" : {
+        "signature" : "start",
+        "request" : {
+          "name" : "Rule Engine Demo: invoice pricing",
+          "description" : "An invoice with five lines, priced by dmn/invoice-pricing.dmn: line discounts, VAT, order discounts, shipping and who approves it. Change the invoice or the rules and apply them again."
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f1", "to" : "f2" }
+      ]
+    }, {
+      "id" : "f2",
+      "type" : "DialogCall",
+      "name" : "Invoice pricing",
+      "config" : {
+        "dialog" : "com.axonivy.utils.rule.engine.demo.InvoicePricingDialog:start()"
+      },
+      "visual" : {
+        "at" : { "x" : 240, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f3", "to" : "f4" }
+      ]
+    }, {
+      "id" : "f4",
+      "type" : "TaskEnd",
+      "visual" : {
+        "at" : { "x" : 384, "y" : 64 }
+      }
+    } ]
+}

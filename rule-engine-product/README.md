@@ -16,14 +16,25 @@ The Axon Ivy Rules Engine is based on Kogito and Drools from the open source pro
 
 ## Demo
 
-The demo project has its models in the folder `dmn` and a process for each.
+Start `InvoicePricingDemo/start.ivp`: a sales invoice with five lines, priced by the rules of
+`dmn/invoice-pricing.dmn`. Change the invoice, click **Apply rules**, and see what every rule decided.
 
-| Process start | What it shows |
+| Part | What it shows |
 | --- | --- |
-| `RuleEngineDemo/discount.ivp` | Decision `discount` of `dmn/discount.dmn`. `purchaseAmount`, `type` and `country` are read from `in.member`, the result is written to `in.member.discount`. The version of the model that decided is stored on the case as custom field `ruleVersion_discount`. |
-| `InvoiceApprovalDemo/approval.ivp` | All decisions of `dmn/invoice-approval.dmn`: a risk level, an approval route as structure and a due date. Each result goes to the field with its name. |
-| `OrderApprovalDemo/order.ivp` | Decision `route` of `dmn/order-approval.dmn` decides who approves an order; an Alternative follows it. The rule looks at the amount only. Change it in the Portal (Rule Management), e.g. with the inputs `customerType` and `country`: the same order takes another way, without a deployment. |
-| `RuleEngineDemo/createDmn.ivp` | "New DMN...": the element generates `dmn/member-discount.dmn` from three input fields and one output field. |
+| Dialog `InvoicePricingDialog` | The header of the invoice (customer tier, country, payment terms, promo code, express delivery, date) and its five lines. **Apply rules** prices it: a discount with its reason and the VAT for every line, the order discounts, shipping, the totals, who approves the invoice and why, and the version of the model that decided. |
+| Callable `InvoicePricing`, `price(SalesInvoice)` | The Business Rule Task evaluates all decisions of the model at once. Its inputs are read by name from `in.invoice`, the list `lines` included; every result goes to the field of its name in `in.pricing`, the list `pricedLines` included. An error comes back in `errorCode` and `errorMessage`. |
+| `dmn/invoice-pricing.dmn` | Decision tables with the hit policies FIRST, UNIQUE and COLLECT, ranges, lists and dates in conditions, functions (business knowledge models) called once per line, FEEL formulas and decisions that build on each other. |
+| Tax formula | The page shows `taxFormula(net, rate)` of the version that decided, with the values of every line. A developer types another FEEL formula and tries it: it runs on a copy of the model that is deleted right after, the live rules do not change. |
+
+Try this on the page:
+
+1. Country **DE** instead of CH: VAT of 19 % and 7 %, no discount on books (fixed book price), and the total is above
+   20,000: the Finance director approves.
+2. **50** laptops instead of 10: the volume discount of 12 %.
+3. Tier **Platinum**, **Prepaid** and the promo code **WINTER26**: the order discounts add up to 11 % and are capped at 10 %.
+4. In the Portal (Rule Management) or the DMN editor, raise "Hardware: 10 units or more" from 6 to 8 %, save and activate,
+   then **Apply rules** again: the same invoice gets another price, without a deployment. Roll back and it is as before.
+5. Try the tax formula `round half up(net * rate / 100 * 20, 0) / 20`, Swiss rounding to 5 centimes.
 
 Edit the `.dmn` files in the browser with the DMN editor of the decision runtime, `http://localhost:8090/editor/`
 (see [Edit rules in the browser](#edit-rules-in-the-browser)), or in VS Code with the
@@ -68,17 +79,17 @@ TLS: terminate it at a reverse proxy in front of the runtime, or give the runtim
 
 That is all: the process data needs fields that are named like the inputs and results of the decision.
 Set the inputs before the element, for example in a Script; a value that has to be calculated, or a field
-with another name, is prepared there too (`in.member.purchaseAmount = in.order.total;`).
+with another name, is prepared there too (`in.invoice.promoCode = in.invoice.promoCode.trim().toUpperCase();`).
 
 | Group | Field | Meaning |
 | --- | --- | --- |
 | Decision | DMN decision | The decision to evaluate: `model › decision`, `model › all decisions`, or *New DMN...*. Each entry lists the inputs and results of its decision, with their types. |
 | New DMN | New DMN name | Only for *New DMN...*: the file name, required. The name of another `.dmn` file is an error. |
-| New DMN | Input fields | Only for *New DMN...*: the fields the new decision reads, like `in.member.purchaseAmount, in.member.type`. Each becomes an input named like its field. |
-| New DMN | Output fields | Only for *New DMN...*: the fields the new decision fills, like `in.member.discount`. Each becomes an output named like its field. |
+| New DMN | Input fields | Only for *New DMN...*: the fields the new decision reads, like `in.invoice.country, in.invoice.expressDelivery`. Each becomes an input named like its field. |
+| New DMN | Output fields | Only for *New DMN...*: the fields the new decision fills, like `in.deliveryDays`. Each becomes an output named like its field. |
 
-**Mapping by name.** An input `purchaseAmount` is read from the field `purchaseAmount` of the process data.
-Fields of nested data classes are found too (`in.member.purchaseAmount`); the field closest to the root wins.
+**Mapping by name.** An input `customerTier` is read from the field `customerTier` of the process data.
+Fields of nested data classes are found too (`in.invoice.customerTier`); the field closest to the root wins.
 A result is written to the field with the name of the decision. A structured result fills a data class,
 or, if there is no field for the decision, each entry goes to the field with its name.
 Names of hand-written models may differ in case and blanks: `Risk Level` finds `riskLevel`.
@@ -89,7 +100,7 @@ A field that is not set is sent as `null`.
 
 **Traceability.** The Business Rule Task always evaluates the active version of the model. The version that
 decided is stored on the case as custom field `ruleVersion_<model>`; read it in a script with
-`ivy.case.customFields().stringField("ruleVersion_discount").getOrNull()`.
+`ivy.case.customFields().stringField("ruleVersion_invoice-pricing").getOrNull()`.
 
 **Errors.** Catch them with an Error Boundary Event or an Error Start Event. The error code `rule:engine`
 catches all of them.
@@ -177,12 +188,12 @@ Set `RuleEngine.AutoDeploy` to `false` if models should only be loaded through t
 **Java API for a Rules UI.**
 
 ```java
-ModelVersion draft = RuleEngine.register("discount", dmnXml, "rule.editor", "Gold discount raised");
-RuleEngine.approve("discount", draft.version());
-RuleEngine.activate("discount", draft.version(), "rule.approver");            // live at once
-RuleEngine.activate("discount", draft.version(), "rule.approver", effective);  // live at a date
-RuleEngine.rollback("discount", "rule.approver");                              // back to the previous version
-List<ModelVersion> versions = RuleEngine.versions("discount");
+ModelVersion draft = RuleEngine.register("invoice-pricing", dmnXml, "rule.editor", "Hardware discount raised");
+RuleEngine.approve("invoice-pricing", draft.version());
+RuleEngine.activate("invoice-pricing", draft.version(), "rule.approver");            // live at once
+RuleEngine.activate("invoice-pricing", draft.version(), "rule.approver", effective);  // live at a date
+RuleEngine.rollback("invoice-pricing", "rule.approver");                              // back to the previous version
+List<ModelVersion> versions = RuleEngine.versions("invoice-pricing");
 ```
 
 ## Migrate decision tables from XLS

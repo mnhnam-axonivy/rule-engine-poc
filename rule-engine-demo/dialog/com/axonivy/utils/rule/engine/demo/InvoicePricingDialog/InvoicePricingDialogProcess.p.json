@@ -13,11 +13,9 @@
         "signature" : "start",
         "input" : {
           "code" : [
-            "import com.axonivy.utils.rule.engine.RuleEngineConfig;",
             "import com.axonivy.utils.rule.engine.demo.InvoiceSamples;",
             "",
-            "out.invoice = InvoiceSamples.standard();",
-            "out.editorUrl = RuleEngineConfig.editorUrl(RuleEngineConfig.fromVariables().url());"
+            "out.invoice = InvoiceSamples.standard();"
           ]
         },
         "guid" : "A14F761E4020526D"

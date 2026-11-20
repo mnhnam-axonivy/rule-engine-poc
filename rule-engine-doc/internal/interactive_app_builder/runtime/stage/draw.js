@@ -4,6 +4,7 @@
  * Every painter expects the context to be scaled so that one unit is one process pixel.
  */
 import { theme } from '../theme.js';
+import { RULE_TILE, subEventPath } from '../glyphs.js';
 import { layoutElement, labelFont } from './layout.js';
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -96,30 +97,32 @@ function scriptIcon(ctx, icon) {
   ctx.fillText('{ }', cx, cy + 2.5);
 }
 
-/** Business Rule Task: a small decision table, as BPMN draws the rule marker. */
+/** Business Rule Task: its icon of the Designer, a blue tile with a table, on a mint box. */
 function ruleIcon(ctx, icon) {
-  iconBox(ctx, icon, theme.ruleIconBg);
-  const w = Math.min(20, icon.size - 6);
-  const h = Math.min(15, icon.size - 9);
-  const x = icon.x + (icon.size - w) / 2;
-  const y = icon.y + (icon.size - h) / 2;
-  const header = Math.round(h / 3);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = theme.ruleIcon;
-  ctx.fillRect(x, y, w, header);
-  ctx.strokeStyle = theme.ruleIconDark;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.beginPath();
-  // one line under the header, one between the two rule rows, one after the condition column
-  ctx.moveTo(x, y + header + 0.5);
-  ctx.lineTo(x + w, y + header + 0.5);
-  ctx.moveTo(x, y + header + Math.round((h - header) / 2) + 0.5);
-  ctx.lineTo(x + w, y + header + Math.round((h - header) / 2) + 0.5);
-  ctx.moveTo(x + Math.round(w * 0.4) + 0.5, y);
-  ctx.lineTo(x + Math.round(w * 0.4) + 0.5, y + h);
-  ctx.stroke();
+  iconBox(ctx, icon, RULE_TILE.background);
+  const t = RULE_TILE;
+  const size = icon.size * 0.7;
+  const scale = size / t.size;
+  ctx.save();
+  ctx.translate(icon.x + (icon.size - size) / 2, icon.y + (icon.size - size) / 2);
+  ctx.scale(scale, scale);
+  roundRect(ctx, 0, 0, t.size, t.size, t.radius);
+  ctx.fillStyle = t.tile;
+  ctx.fill();
+  ctx.fillStyle = t.header.color;
+  ctx.fillRect(t.header.x, t.header.y, t.header.w, t.header.h);
+  ctx.fillStyle = t.cells.color;
+  t.cells.rows.forEach(([y, h]) => t.cells.xs.forEach(x => ctx.fillRect(x, y, t.cells.w, h)));
+  ctx.restore();
+}
+
+/** The arrows of a callable start and end, as Path2D, made once. */
+const SUB_EVENT_ICONS = new Map();
+function subEventIcon(type) {
+  const path = subEventPath(type);
+  if (!path || typeof Path2D === 'undefined') return null;
+  if (!SUB_EVENT_ICONS.has(type)) SUB_EVENT_ICONS.set(type, new Path2D(path));
+  return SUB_EVENT_ICONS.get(type);
 }
 
 function genericIcon(ctx, icon) {
@@ -235,6 +238,16 @@ function drawEvent(ctx, el, layout, state) {
   ctx.stroke();
   ctx.restore();
 
+  const arrow = subEventIcon(el.type);
+  if (arrow) {
+    // a callable sub process: the arrow in and the arrow out, 20 × 20 drawn at 16 × 16 like in the Designer
+    ctx.save();
+    ctx.translate(-8, -8);
+    ctx.scale(0.8, 0.8);
+    ctx.fillStyle = color;
+    ctx.fill(arrow);
+    ctx.restore();
+  }
   if (el.kind === 'task') {
     ctx.lineWidth = 1.1;
     ctx.strokeStyle = color;

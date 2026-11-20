@@ -1,7 +1,10 @@
 /**
  * Line icons, drawn for this simulation (16×16, stroke = currentColor). They echo the kind
- * of icon the Designer uses in each place without copying its artwork.
+ * of icon the Designer uses in each place. The icons of the callable start and end and of the Business Rule Task are
+ * the Designer's own, in glyphs.js.
  */
+import { ruleTileSvg, subEventPath } from '../glyphs.js';
+
 const PATHS = {
   // editor tabs
   process: '<circle cx="3.5" cy="4" r="1.6"/><circle cx="12.5" cy="4" r="1.6"/><circle cx="8" cy="12" r="1.6"/><path d="M5.1 4h5.8M4.4 5.3L7.2 10.6M11.6 5.3L8.8 10.6"/>',
@@ -78,7 +81,9 @@ export function icon(name, size) {
 export function elementGlyph(element) {
   const span = document.createElement('span');
   span.className = 'glyph glyph-' + (element.isRule ? 'rule' : element.kind);
-  if (element.isRule) span.textContent = 'BR';
+  const arrow = subEventPath(element.type);
+  if (element.isRule) span.innerHTML = ruleTileSvg(15);
+  else if (arrow) span.innerHTML = '<svg class="icon" viewBox="0 0 20 20" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="' + arrow + '"/></svg>';
   else if (element.kind === 'script') span.innerHTML = svg('braces', 12);
   else if (element.kind === 'task') span.innerHTML = svg('list', 12);
   else if (element.shape === 'event') span.innerHTML = svg('event', 12);

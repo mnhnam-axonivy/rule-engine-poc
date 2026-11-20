@@ -24,9 +24,7 @@ export const theme = {
 
   scriptIconBg: '#d0e0fd',
   scriptIcon: '#4c82f5',
-  ruleIconBg: '#fde9c8',
-  ruleIconDark: '#8a5a12',
-  ruleIcon: '#e8a23c',
+  // the icon of the Business Rule Task: RULE_TILE in glyphs.js
 
   card: '#252526',
   cardBorder: '#4a4a4a',

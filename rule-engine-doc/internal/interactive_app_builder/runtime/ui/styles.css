@@ -113,7 +113,7 @@ code { font-family: var(--mono); font-size: 0.95em; }
   color: #dcdcdc;
   font: 700 10px Arial, sans-serif;
 }
-.glyph-rule { background: #fde9c8; color: #8a5a12; font-size: 9px; }
+.glyph-rule { background: #c3eddf; }
 .glyph-script { background: #d0e0fd; color: #4c82f5; }
 
 /* ── Editor tabs ── */

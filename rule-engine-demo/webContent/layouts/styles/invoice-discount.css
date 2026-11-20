@@ -33,9 +33,6 @@
   border-radius: 8px;
   min-width: 220px;
 }
-.ip-link { color: var(--ip-primary); text-decoration: none; }
-.ip-link:hover { text-decoration: underline; }
-
 .ip-card { margin-bottom: 16px; }
 .ip-card h2 { margin: 0; font-size: 1.15rem; font-weight: 600; }
 .ip-card-head {

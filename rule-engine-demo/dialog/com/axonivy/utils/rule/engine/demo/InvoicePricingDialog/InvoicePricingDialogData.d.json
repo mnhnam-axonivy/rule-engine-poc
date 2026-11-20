@@ -44,10 +44,6 @@
     {
       "name": "rules",
       "type": "List<com.axonivy.utils.rule.engine.demo.RuleRow>"
-    },
-    {
-      "name": "editorUrl",
-      "comment": "The DMN editor of the decision runtime"
     }
   ]
 }

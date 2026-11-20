@@ -17,7 +17,6 @@
             <span class="ip-muted">Decided by</span>
             <strong>invoice-discount<h:outputText value=" · version #{data.ruleVersion}"
                 rendered="#{data.ruleVersion gt 0}" /></strong>
-            <h:outputLink id="editor" value="#{data.editorUrl}" target="_blank" styleClass="ip-link">Edit the rules ↗</h:outputLink>
           </div>
         </header>
 
@@ -130,9 +129,9 @@
                   </tbody>
                 </table>
               </div>
-              <p class="ip-muted ip-try">Try: Gold or Platinum as customer tier · 5 laptops, for an order of 10,000 or more ·
-                <h:outputLink value="#{data.editorUrl}" target="_blank" styleClass="ip-link">in the editor</h:outputLink>, change
-                the 2 of "Silver customer" to 3, <strong>Save and activate</strong>, then Apply rules again: no deployment.</p>
+              <p class="ip-muted ip-try">Try: Gold or Platinum as customer tier · 5 laptops, for an order of 10,000 or more.
+                A rule owner changes these rules in the Portal, under Admin Settings › Rule Management: the next Apply rules
+                uses the new version, without a deployment.</p>
             </section>
           </h:panelGroup>
         </div>

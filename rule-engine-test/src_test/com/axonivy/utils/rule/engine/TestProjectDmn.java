@@ -96,8 +96,8 @@ class TestProjectDmn {
   @Test
   void dmnFilesOfTheProjectAndItsRequiredProjects_areFound() {
     var files = ProjectDmnFiles.list(Project.current());
-    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval", "invoice-pricing");
-    assertThat(ProjectDmnFiles.find(Project.current(), "invoice-pricing").orElseThrow().project())
+    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval", "invoice-discount");
+    assertThat(ProjectDmnFiles.find(Project.current(), "invoice-discount").orElseThrow().project())
         .as("a file of the required project rule-engine-demo").startsWith("rule-engine-demo");
 
     var discount = ProjectDmnFiles.load(ProjectDmnFiles.find(Project.current(), "discount").orElseThrow());
@@ -156,25 +156,18 @@ class TestProjectDmn {
     assertThat(info.decision("dueDate").orElseThrow().typeRef()).isEqualTo("date");
   }
 
-  /** The model of the demo: functions (business knowledge models) and decisions that build on each other. */
+  /** The model of the demo: one decision table with two outputs. */
   @Test
-  void modelWithFunctionsAndAChainOfDecisions() {
-    var file = ProjectDmnFiles.find(Project.current(), "invoice-pricing").orElseThrow();
+  void modelOfTheDemo() {
+    var file = ProjectDmnFiles.find(Project.current(), "invoice-discount").orElseThrow();
     DmnModelInfo info = ProjectDmnFiles.load(file).info();
 
-    assertThat(info.decisions()).extracting(DmnModelInfo.Decision::name).as("the functions are not decisions")
-        .containsExactly("orderDiscounts", "orderDiscountPercent", "pricedLines", "shipping", "totals",
-            "approvalFlags", "approval");
-    assertThat(info.inputTypes()).containsEntry("lines", "list of structure").containsEntry("invoiceDate", "date")
-        .containsEntry("customerTier", "string").containsEntry("expressDelivery", "boolean");
-    assertThat(info.decision("orderDiscounts").orElseThrow().requiredInputs())
-        .containsExactlyInAnyOrder("customerTier", "paymentTerms", "promoCode", "invoiceDate");
-    assertThat(info.decision("approval").orElseThrow().requiredInputs())
-        .as("through approvalFlags, totals, shipping, pricedLines and orderDiscounts: every input")
-        .containsExactlyInAnyOrder("customerTier", "country", "paymentTerms", "promoCode", "expressDelivery",
-            "invoiceDate", "lines");
-    assertThat(DmnModelInfo.describeOutputs(info.decision("shipping").orElseThrow()))
-        .isEqualTo("fee (number), reason (string)");
+    assertThat(info.decisions()).extracting(DmnModelInfo.Decision::name).containsExactly("discount");
+    assertThat(info.inputTypes()).containsEntry("customerTier", "string").containsEntry("orderAmount", "number");
+    assertThat(info.decision("discount").orElseThrow().requiredInputs())
+        .containsExactlyInAnyOrder("customerTier", "orderAmount");
+    assertThat(DmnModelInfo.describeOutputs(info.decision("discount").orElseThrow()))
+        .isEqualTo("discountPercent (number), discountReason (string)");
   }
 
   @Test

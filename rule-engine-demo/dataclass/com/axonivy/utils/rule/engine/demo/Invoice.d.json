@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "Invoice",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "An invoice with its lines. The Business Rule Task reads customerTier and orderAmount by name, and writes discountPercent and discountReason back.",
+  "fields": [
+    {
+      "name": "number"
+    },
+    {
+      "name": "customer",
+      "comment": "The rules do not read it: a rule owner may add it as an input in the Portal."
+    },
+    {
+      "name": "customerTier",
+      "comment": "Standard, Silver, Gold or Platinum. An input of the rules."
+    },
+    {
+      "name": "lines",
+      "type": "List<com.axonivy.utils.rule.engine.demo.InvoiceLine>"
+    },
+    {
+      "name": "orderAmount",
+      "type": "java.math.BigDecimal",
+      "comment": "The sum of the lines. An input of the rules."
+    },
+    {
+      "name": "discountPercent",
+      "type": "java.math.BigDecimal",
+      "comment": "Decided by the rules"
+    },
+    {
+      "name": "discountReason",
+      "comment": "Decided by the rules: which rule gave the discount"
+    },
+    {
+      "name": "discountAmount",
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "name": "total",
+      "type": "java.math.BigDecimal",
+      "comment": "The order amount less the discount"
+    }
+  ]
+}

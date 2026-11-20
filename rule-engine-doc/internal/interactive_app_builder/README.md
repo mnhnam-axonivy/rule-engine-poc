@@ -73,14 +73,13 @@ A lesson is a folder in `features/` with three files:
 
 Every lesson simulates the demo project, `features/shared/project.js`. It imports the real files of
 `rule-engine-demo` at build time: the callable sub process `InvoicePricing.p.json`, its data classes and
-`dmn/invoice-pricing.dmn`. A callable gets its data from its caller: the definition says what the page of the demo
-passes (`params`, the sample invoice of `features/shared/invoice.js`, which is `InvoiceSamples.standard()` dated the
-19th of November 2026). `tryTable` names the table of "Try it", `portalTable` the table a new input of the Portal goes
-into. Lessons 07 and 11-3 have the tab Portal (`portalProject`, `portal: true`); the key account rule the rule owner
+`dmn/invoice-discount.dmn`. A callable gets its data from its caller: the definition says what the page of the demo
+passes (`params`, the sample invoice of `features/shared/invoice.js`, which is `InvoiceSamples.standard()`).
+`tryTable` names the table of "Try it", `portalTable` the table a new input of the Portal goes into. Lessons 07 and 11-3 have the tab Portal (`portalProject`, `portal: true`); the key account rule the rule owner
 makes (`shared/portal-rules.js`) and the chapter "Who has the last word" (`shared/portal-chapters.js`) are shared by
 both, and the same version is decided by the real runtime in `RuleEngineContainerTest`. Lesson 05 simulates the
-callable extended by a second Business Rule Task with New DMN... (`shared/delivery.js`, built from the real files).
-`features/shared/invoice.js` and `delivery.js` are plain JavaScript, so the unit tests use them as the lessons do. Their
+callable extended by a second Business Rule Task with New DMN... (`shared/approver.js`, built from the real files).
+`features/shared/invoice.js` and `approver.js` are plain JavaScript, so the unit tests use them as the lessons do. Their
 runs play at the normal speed, without `fast`: the runs are what the answers show. A change to the demo
 process shows up in the walkthroughs with the next build, and the element ids in `ELEMENTS` have to follow it.
 
@@ -106,17 +105,17 @@ async function unreachable(d) {
 | show a note next to something | `d.note(key, { target, quote })` |
 | run the process | `d.run({ fast, start, on })`, hooks `enter:<id>`, `after:<id>`, `rule:<phase>` |
 | open an inscription mask, a tab, a panel | `d.open(id, tab)`, `d.close()`, `d.tab(name)`, `d.panel('log' \| 'runtime' \| 'data' \| null)` |
-| type into a field, a table cell, a formula or `variables.yaml` | `d.edit('f2.code', fn)`, `d.edit('dmn:invoice-pricing:lineDiscountTable.r6.o1', '8')`, `d.edit('dmn:invoice-pricing:taxFormula.expr', text)`, `d.edit('vars', fn)` |
+| type into a field, a table cell, a formula or `variables.yaml` | `d.edit('f2.code', fn)`, `d.edit('dmn:invoice-discount:discount.r6.o1', '3')`, `d.edit('dmn:<model>:<function>.expr', text)`, `d.edit('vars', fn)` |
 | act on the runtime | `d.runtime('running' \| 'slow' \| 'stopped')`, `d.activate(model, version)`, `d.rollback(model)`, `d.owner(model)`, `d.ownerActivate()` |
 | light the architecture | `d.tab('arch')`, then `d.arch({ lit: ['connector', 'api'], flow: ['http>'], label: { http: 'POST …' } })`; `d.arch(null)` ends it |
-| use the Portal | `d.tab('portal')`, `d.click('portal@edit:invoice-pricing')`, `d.portalInput('customer', 'string')`, `d.click('portal@orderDiscounts/addRule')`, `d.edit('portal:orderDiscounts.r7.i5', '"Bluebird Architects"')`, `d.edit('portal:description', text)`, `d.click('portal@check')`, `d.click('portal@activate')`, `d.click('portal@versions:invoice-pricing')`, `d.click('portal@rollback')` |
+| use the Portal | `d.tab('portal')`, `d.click('portal@edit:invoice-discount')`, `d.portalInput('customer', 'string')`, `d.click('portal@discount/above1')` (or `/addRule`), `d.edit('portal:discount.r1.i3', '"Bluebird Architects"')`, `d.edit('portal:description', text)`, `d.click('portal@check')`, `d.click('portal@activate')`, `d.click('portal@versions:invoice-discount')`, `d.click('portal@rollback')` |
 
 Targets of a note: `el:<id>` an element, `field:<id>.<key>` a field of a mask, `dmn:<model>@<table>/rule6` or
 `@<table>/r6.o1` a rule or a cell of a table of the model (a decision or a function; `/head` its head, `/policy` its hit
 policy, `/expr` a formula), `dmn:<model>@inputs`, `@try`, `@tryResult`, `@side` the parts of the editor,
 `runtime:<call|matched|versions|v2|state|rollback|owner>` a part of the runtime panel, `vars@<text>` a line of
 `variables.yaml`, `log:last`, `data:<field>`, `arch:<block or link>` a part of the architecture, `portal@<part>` a
-part of the Portal tab (`orderDiscounts/rule7`, `orderDiscounts/r7.i5` for its tables).
+part of the Portal tab (`discount/rule1`, `discount/r1.i3`, `discount/above1` for its tables).
 
 Every chapter starts from the project as the tutorial ships it, so a learner can jump to any chapter.
 
@@ -134,8 +133,12 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 The diagram is live. It reads the simulation: the state of the container, the versions in the database, the
 `.dmn` files of the project, `RuleEngine.Url`, and the last call of a Business Rule Task. That is why the tab
 has no bottom panel (log, decision runtime, process data): it is hidden while the tab is open, so a walkthrough
-cannot show `d.panel(...)` there. A walkthrough lights blocks with `d.arch`; its notes go below the diagram,
-so that they cover no block. The texts are the keys `arch.*` in `runtime/i18n.js`.
+cannot show `d.panel(...)` there. A walkthrough lights blocks with `d.arch`. While a note points at a block
+(`arch:<id>`), the camera of the diagram (`frame()` in `architecture.js`) scales and moves it so that the block
+and what is lit with it stand in the middle of one side of the tab, zoomed in up to 1.2 or out down to 0.5, and
+the note stands on the other side, beside all of it. That way the walkthrough also works in a small frame, such
+as the tutorial inside the Axon Ivy Portal. `d.arch(null)`, which ends every chapter on the tab, shows the
+whole diagram again. The texts are the keys `arch.*` in `runtime/i18n.js`.
 
 A learner selects a block, outside of a walkthrough, to read what is in it: the details open in a drawer on the
 right. Selecting another block changes them. The close button, Escape, or a click beside the blocks closes them.
@@ -163,10 +166,10 @@ The simulation has no engine and no container. It implements what a learner can 
 
 | Part | In `runtime/model/` | Mirrors |
 | --- | --- | --- |
-| Process run | `runner.js`, `process.js`, `ivyscript.js` | The demo process: the start of a callable sub process with its parameters, scripts, the Business Rule Task, the Error Boundary Event. A subset of IvyScript; like IvyScript it gives a field it reads a default value. |
+| Process run | `runner.js`, `process.js`, `ivyscript.js` | The demo process: the start of a callable sub process with its parameters, scripts, the Business Rule Task, the Error Boundary Event. A subset of IvyScript, with loops over a list and BigDecimal arithmetic for the Scripts of the demo; like IvyScript it gives a field it reads a default value. |
 | Business Rule Task | `runner.js`, `mapping.js` | `RuleTaskExecutor` of the connector: mapping by name, field lists, result and version mapping, the BPMN errors `rule:engine:*`, and the inputs of a version from the Portal that the file does not have. |
 | Decision runtime | `decision-runtime.js` | `VersionStore` of the runtime: versions, status, source, the source of truth rule, rollback. It can be running, slow or stopped. |
-| DMN | `dmn.js`, `feel.js`, `decision-runtime.js` | Decision tables with the conditions the tutorial uses: `-`, literals, comparisons, ranges of numbers and dates, lists, `not()`; hit policies FIRST, UNIQUE (two matches are an error), ANY, PRIORITY, COLLECT with or without an aggregation, RULE ORDER. Literal expressions in a subset of FEEL: arithmetic rounded as with decimals, `if`, `for`, contexts, paths over lists, filters and the functions the demo uses (`sum`, `min`, `round half up`, `decimal`, `list contains`, `date`, …). Business knowledge models as functions, called once per line. The inputs are checked against their types, allowed values and `null` included, as the DMN engine does with `rule.engine.type-check`. For the demo model the simulation answers exactly what the real runtime answers (`test/model.test.mjs`, `RuleEngineContainerTest`). |
+| DMN | `dmn.js`, `feel.js`, `decision-runtime.js` | Decision tables with the conditions the tutorial uses: `-`, literals, comparisons, ranges of numbers and dates, lists, `not()`; hit policies FIRST, UNIQUE (two matches are an error), ANY, PRIORITY, COLLECT with or without an aggregation, RULE ORDER. Literal expressions in a subset of FEEL: arithmetic rounded as with decimals, `if`, `for`, contexts, paths over lists, filters and functions such as `sum`, `min`, `round half up`, `decimal`, `list contains`, `date`. Business knowledge models as functions, called once per element of a list. The inputs are checked against their types, allowed values and `null` included, as the DMN engine does with `rule.engine.type-check`. For the demo model the simulation answers exactly what the real runtime answers (`test/runner.test.mjs`, `RuleEngineContainerTest`); the features the demo does not use are tested on a model with functions and every hit policy, `test/fixtures/invoice-pricing.dmn`. |
 | New DMN... | `dmn-generator.js` | `DmnGenerator` of `rule-engine-core`: one input per field, one table, a placeholder rule. |
 
 Not simulated: the API key, effective dates, boxed expressions other than tables and literal expressions, and FEEL

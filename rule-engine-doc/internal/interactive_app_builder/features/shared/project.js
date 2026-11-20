@@ -1,21 +1,15 @@
 /**
  * What every lesson simulates: the demo project as it is. The callable sub process InvoicePricing, its data
- * classes and dmn/invoice-pricing.dmn are imported from rule-engine-demo at build time, so the simulation
+ * classes and dmn/invoice-discount.dmn are imported from rule-engine-demo at build time, so the simulation
  * shows the real files. The page of the demo calls the process with an invoice; the simulation passes the
- * sample invoice of the demo (InvoiceSamples.standard), dated the 19th of November 2026.
+ * sample invoice of the demo (InvoiceSamples.standard).
  */
 import process from '../../../../../rule-engine-demo/process/InvoicePricing.p.json';
 import dataClass from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/InvoicePricingData.d.json';
-import salesInvoice from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/SalesInvoice.d.json';
+import invoice from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/Invoice.d.json';
 import invoiceLine from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/InvoiceLine.d.json';
-import pricingResult from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/PricingResult.d.json';
-import pricedLine from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/PricedLine.d.json';
-import discount from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/Discount.d.json';
-import shipping from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/Shipping.d.json';
-import totals from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/InvoiceTotals.d.json';
-import approval from '../../../../../rule-engine-demo/dataclass/com/axonivy/utils/rule/engine/demo/Approval.d.json';
-import pricing from '../../../../../rule-engine-demo/dmn/invoice-pricing.dmn';
-import { MODEL, SAMPLE_INVOICE } from './invoice.js';
+import discount from '../../../../../rule-engine-demo/dmn/invoice-discount.dmn';
+import { MODEL, DECISION, SAMPLE_INVOICE } from './invoice.js';
 
 export * from './invoice.js';
 
@@ -38,16 +32,16 @@ export const project = {
   project: 'rule-engine-demo',
   process,
   dataClass,
-  classes: [salesInvoice, invoiceLine, pricingResult, pricedLine, discount, shipping, totals, approval],
-  dmn: [{ model: MODEL, file: 'dmn/invoice-pricing.dmn', text: pricing }],
+  classes: [invoice, invoiceLine],
+  dmn: [{ model: MODEL, file: 'dmn/invoice-discount.dmn', text: discount }],
   variables: VARIABLES,
   variablesPath: 'config/variables.yaml',
   // the caller of the callable sub process: the page of the demo, with the sample invoice
   params: { invoice: SAMPLE_INVOICE },
   // "Try it" in the editor of the .dmn file works on this table
-  tryTable: 'lineDiscountTable',
+  tryTable: DECISION,
   // a new input in the Portal goes into this table
-  portalTable: 'orderDiscounts'
+  portalTable: DECISION
 };
 
 /** The project with the tab Portal: Admin Settings › Rule Management, see runtime/ui/portal.js. */

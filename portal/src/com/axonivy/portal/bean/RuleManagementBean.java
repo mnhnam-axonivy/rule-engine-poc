@@ -249,7 +249,7 @@ public class RuleManagementBean implements Serializable {
     }
   }
 
-  /** @return what is open in the editor, e.g. "Version 3 · Active" or "dmn/invoice-pricing.dmn of rule-engine-demo" */
+  /** @return what is open in the editor, e.g. "Version 3 · Active" or "dmn/invoice-discount.dmn of rule-engine-demo" */
   public String getEditorState() {
     if (editVersion == null) {
       return cms("ProjectFile", StringUtils.defaultString(editProject));

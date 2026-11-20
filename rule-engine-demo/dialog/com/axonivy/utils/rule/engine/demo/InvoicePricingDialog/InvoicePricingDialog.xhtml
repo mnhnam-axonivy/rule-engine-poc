@@ -2,52 +2,46 @@
   xmlns:h="jakarta.faces.html" xmlns:ui="jakarta.faces.facelets" xmlns:p="primefaces">
 <h:body>
   <ui:composition template="/layouts/demo-10.xhtml">
-    <ui:define name="title">Invoice pricing · Rule Engine Demo</ui:define>
+    <ui:define name="title">Invoice discount · Rule Engine Demo</ui:define>
     <ui:define name="content">
       <h:form id="form">
 
         <header class="ip-header">
           <div>
-            <h1 class="ip-title">Invoice pricing</h1>
-            <p class="ip-lead">Change the invoice and click <strong>Apply rules</strong>. The dialog calls the callable
-              <code>InvoicePricing</code>. Its Business Rule Task sends the invoice to the decision runtime, which evaluates
-              every decision of <code>dmn/invoice-pricing.dmn</code> and answers in one call.</p>
+            <h1 class="ip-title">Invoice discount</h1>
+            <p class="ip-lead">Change the customer tier or a quantity and click <strong>Apply rules</strong>. The dialog
+              calls the callable <code>InvoicePricing</code>: it sums the lines, its Business Rule Task asks the decision
+              runtime for the discount of <code>dmn/invoice-discount.dmn</code>, and it applies the discount.</p>
           </div>
           <div class="ip-version">
             <span class="ip-muted">Decided by</span>
-            <strong>invoice-pricing<h:outputText value=" · version #{data.pricing.ruleVersion}"
-                rendered="#{data.pricing.ruleVersion gt 0}" /></strong>
+            <strong>invoice-discount<h:outputText value=" · version #{data.ruleVersion}"
+                rendered="#{data.ruleVersion gt 0}" /></strong>
             <h:outputLink id="editor" value="#{data.editorUrl}" target="_blank" styleClass="ip-link">Edit the rules ↗</h:outputLink>
           </div>
         </header>
 
         <p:messages id="messages" closable="true" />
-        <h:panelGroup id="error" layout="block" styleClass="ip-error" rendered="#{not empty data.pricing.errorMessage}">
-          <strong>The rules could not price the invoice</strong> <code>#{data.pricing.errorCode}</code>
-          <div>#{data.pricing.errorMessage}</div>
+        <h:panelGroup id="error" layout="block" styleClass="ip-error" rendered="#{not empty data.errorMessage}">
+          <strong>The rules could not decide</strong> <code>#{data.errorCode}</code>
+          <div>#{data.errorMessage}</div>
         </h:panelGroup>
 
-        <!-- The invoice: the inputs of the model -->
         <section class="card ip-card">
           <div class="ip-card-head">
             <h2>Invoice</h2>
-            <span class="ip-muted">Every field but customer and number is an input of the model.</span>
+            <span class="ip-muted">The rules read the customer tier and the order amount.</span>
           </div>
           <div class="formgrid grid">
-            <div class="field col-12 md:col-6 lg:col-3">
+            <div class="field col-12 md:col-4">
               <p:outputLabel for="customer" value="Customer" />
               <p:inputText id="customer" value="#{data.invoice.customer}" styleClass="w-full" />
             </div>
-            <div class="field col-12 md:col-6 lg:col-3">
+            <div class="field col-12 md:col-4">
               <p:outputLabel for="number" value="Invoice number" />
               <p:inputText id="number" value="#{data.invoice.number}" styleClass="w-full" />
             </div>
-            <div class="field col-12 md:col-6 lg:col-3">
-              <p:outputLabel for="invoiceDate" value="Invoice date" />
-              <p:datePicker id="invoiceDate" value="#{data.invoice.invoiceDate}" pattern="yyyy-MM-dd"
-                styleClass="w-full" inputStyleClass="w-full" />
-            </div>
-            <div class="field col-12 md:col-6 lg:col-3">
+            <div class="field col-12 md:col-4">
               <p:outputLabel for="customerTier" value="Customer tier" />
               <p:selectOneMenu id="customerTier" value="#{data.invoice.customerTier}" styleClass="w-full">
                 <f:selectItem itemValue="Standard" itemLabel="Standard" />
@@ -56,54 +50,12 @@
                 <f:selectItem itemValue="Platinum" itemLabel="Platinum" />
               </p:selectOneMenu>
             </div>
-            <div class="field col-12 md:col-6 lg:col-3">
-              <p:outputLabel for="country" value="Country" />
-              <p:selectOneMenu id="country" value="#{data.invoice.country}" styleClass="w-full">
-                <f:selectItem itemValue="CH" itemLabel="CH · Switzerland" />
-                <f:selectItem itemValue="DE" itemLabel="DE · Germany" />
-                <f:selectItem itemValue="FR" itemLabel="FR · France" />
-                <f:selectItem itemValue="AT" itemLabel="AT · Austria" />
-              </p:selectOneMenu>
-            </div>
-            <div class="field col-12 md:col-6 lg:col-3">
-              <p:outputLabel for="paymentTerms" value="Payment terms" />
-              <p:selectOneMenu id="paymentTerms" value="#{data.invoice.paymentTerms}" styleClass="w-full">
-                <f:selectItem itemValue="Prepaid" itemLabel="Prepaid" />
-                <f:selectItem itemValue="Net 30" itemLabel="Net 30" />
-                <f:selectItem itemValue="Net 60" itemLabel="Net 60" />
-              </p:selectOneMenu>
-            </div>
-            <div class="field col-12 md:col-6 lg:col-3">
-              <p:outputLabel for="promoCode" value="Promo code" />
-              <p:inputText id="promoCode" value="#{data.invoice.promoCode}" placeholder="e.g. WINTER26" styleClass="w-full" />
-            </div>
-            <div class="field col-12 md:col-6 lg:col-3">
-              <p:outputLabel for="expressDelivery" value="Express delivery" />
-              <div><p:toggleSwitch id="expressDelivery" value="#{data.invoice.expressDelivery}" /></div>
-            </div>
           </div>
-        </section>
 
-        <!-- The lines: input on the left, what the rules decided on the right -->
-        <section class="card ip-card">
-          <div class="ip-card-head">
-            <h2>Lines</h2>
-            <span class="ip-muted">Each line goes through <code>lineDiscountTable</code>, <code>vatRateTable</code> and
-              <code>taxFormula</code>: one table, called once per line.</span>
-          </div>
           <p:dataTable id="lines" value="#{data.invoice.lines}" var="line" rowIndexVar="row" styleClass="ip-lines">
             <p:column headerText="#" styleClass="ip-col-no">#{row + 1}</p:column>
             <p:column headerText="Product">
               <p:inputText id="product" value="#{line.product}" styleClass="w-full" />
-            </p:column>
-            <p:column headerText="Category" styleClass="ip-col-category">
-              <p:selectOneMenu id="category" value="#{line.category}" styleClass="w-full">
-                <f:selectItem itemValue="Hardware" itemLabel="Hardware" />
-                <f:selectItem itemValue="Software" itemLabel="Software" />
-                <f:selectItem itemValue="Services" itemLabel="Services" />
-                <f:selectItem itemValue="Consumables" itemLabel="Consumables" />
-                <f:selectItem itemValue="Books" itemLabel="Books" />
-              </p:selectOneMenu>
             </p:column>
             <p:column headerText="Qty" styleClass="ip-col-qty">
               <p:inputNumber id="quantity" value="#{line.quantity}" decimalPlaces="0" minValue="0" maxValue="100000"
@@ -113,237 +65,77 @@
               <p:inputNumber id="unitPrice" value="#{line.unitPrice}" decimalPlaces="2" minValue="0"
                 required="true" requiredMessage="Line #{row + 1}: enter a unit price" inputStyleClass="w-full ip-num" />
             </p:column>
-            <p:column headerText="Line discount" styleClass="ip-col-result ip-col-discount" rendered="#{not empty data.pricing.pricedLines}">
-              <div class="ip-strong">
-                <h:outputText value="#{data.pricing.pricedLines[row].discountPercent}">
-                  <f:convertNumber maxFractionDigits="2" />
-                </h:outputText> %
-              </div>
-              <div class="ip-reason">#{data.pricing.pricedLines[row].discountReason}</div>
-            </p:column>
-            <p:column headerText="Net" styleClass="ip-col-result" rendered="#{not empty data.pricing.pricedLines}">
-              <div class="ip-num">
-                <h:outputText value="#{data.pricing.pricedLines[row].net}">
-                  <f:convertNumber minFractionDigits="2" maxFractionDigits="2" />
-                </h:outputText>
-              </div>
-              <h:panelGroup layout="block" styleClass="ip-reason ip-num" rendered="#{data.pricing.pricedLines[row].orderDiscount gt 0}">
-                order −<h:outputText value="#{data.pricing.pricedLines[row].orderDiscount}">
-                  <f:convertNumber minFractionDigits="2" maxFractionDigits="2" />
-                </h:outputText>
-              </h:panelGroup>
-            </p:column>
-            <p:column headerText="VAT" styleClass="ip-col-result" rendered="#{not empty data.pricing.pricedLines}">
-              <div class="ip-num">
-                <h:outputText value="#{data.pricing.pricedLines[row].vat}">
-                  <f:convertNumber minFractionDigits="2" maxFractionDigits="2" />
-                </h:outputText>
-              </div>
-              <div class="ip-reason ip-num">
-                <h:outputText value="#{data.pricing.pricedLines[row].vatRate}">
-                  <f:convertNumber maxFractionDigits="2" />
-                </h:outputText> %
-              </div>
-            </p:column>
-            <p:column headerText="Total" styleClass="ip-col-result" rendered="#{not empty data.pricing.pricedLines}">
-              <div class="ip-num ip-strong">
-                <h:outputText value="#{data.pricing.pricedLines[row].total}">
-                  <f:convertNumber minFractionDigits="2" maxFractionDigits="2" />
-                </h:outputText>
-              </div>
+            <p:column headerText="Amount" styleClass="ip-col-result">
+              <h:outputText styleClass="ip-num" value="#{line.amount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
             </p:column>
           </p:dataTable>
+
           <div class="ip-actions">
             <p:commandButton id="apply" value="Apply rules" icon="pi pi-play" actionListener="#{logic.apply}" update="@form" />
             <p:commandButton id="reset" value="Reset the sample" icon="pi pi-refresh" actionListener="#{logic.reset}"
               process="@this" update="@form" styleClass="ui-button-secondary ui-button-outlined" />
-            <span class="ip-muted">Try: country DE · 50 laptops · tier Platinum, Prepaid and promo code WINTER26 ·
-              Standard with Net 60.</span>
           </div>
         </section>
 
-        <!-- What the rules decided for the whole invoice -->
-        <h:panelGroup layout="block" styleClass="grid ip-results" rendered="#{not empty data.pricing.totals}">
-          <div class="col-12 lg:col-4">
+        <div class="grid">
+          <h:panelGroup layout="block" styleClass="col-12 lg:col-4" rendered="#{empty data.errorMessage}">
             <section class="card ip-card ip-fill">
               <div class="ip-card-head">
-                <h2>Totals</h2>
-                <span class="ip-tag">totals · FEEL context</span>
+                <h2>Result</h2>
               </div>
-              <div class="ip-row"><span>Gross</span>
-                <h:outputText styleClass="ip-num" value="#{data.pricing.totals.gross}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
-              <div class="ip-row"><span>Line discounts</span>
-                <span class="ip-num">−<h:outputText value="#{data.pricing.totals.lineDiscounts}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></span></div>
-              <div class="ip-row"><span>Order discount
-                  <h:outputText value="#{data.pricing.orderDiscountPercent}"><f:convertNumber maxFractionDigits="2" /></h:outputText> %</span>
-                <span class="ip-num">−<h:outputText value="#{data.pricing.totals.orderDiscount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></span></div>
-              <div class="ip-row ip-sum"><span>Net</span>
-                <h:outputText styleClass="ip-num" value="#{data.pricing.totals.net}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
-              <div class="ip-row"><span>VAT</span>
-                <h:outputText styleClass="ip-num" value="#{data.pricing.totals.vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
-              <div class="ip-row"><span>Shipping<span class="ip-reason">#{data.pricing.shipping.reason}</span></span>
-                <h:outputText styleClass="ip-num" value="#{data.pricing.totals.shippingFee}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
-              <div class="ip-row ip-total"><span>Total #{data.invoice.country eq 'CH' ? 'CHF' : 'EUR'}</span>
-                <h:outputText styleClass="ip-num" value="#{data.pricing.totals.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
-              <h:panelGroup layout="block" styleClass="ip-delta"
-                rendered="#{not empty data.previous.totals and (data.previous.totals.total gt data.pricing.totals.total or data.previous.totals.total lt data.pricing.totals.total)}">
+              <div class="ip-row"><span>Order amount</span>
+                <h:outputText id="orderAmount" styleClass="ip-num" value="#{data.invoice.orderAmount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
+              <div class="ip-row"><span>Discount
+                  <h:outputText id="discountPercent" value="#{data.invoice.discountPercent}"><f:convertNumber maxFractionDigits="2" /></h:outputText> %
+                  <span id="discountReason" class="ip-reason">#{data.invoice.discountReason}</span></span>
+                <span class="ip-num">−<h:outputText id="discountAmount" value="#{data.invoice.discountAmount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></span></div>
+              <div class="ip-row ip-total"><span>Total CHF</span>
+                <h:outputText id="total" styleClass="ip-num" value="#{data.invoice.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
+              <h:panelGroup id="delta" layout="block" styleClass="ip-delta"
+                rendered="#{not empty data.previousTotal and (data.previousTotal gt data.invoice.total or data.previousTotal lt data.invoice.total)}">
                 Before this Apply:
-                <h:outputText value="#{data.previous.totals.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>,
-                change <h:outputText value="#{data.pricing.totals.total - data.previous.totals.total}"><f:convertNumber pattern="+#,##0.00;−#,##0.00" /></h:outputText>
+                <h:outputText value="#{data.previousTotal}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>,
+                change <h:outputText value="#{data.invoice.total - data.previousTotal}"><f:convertNumber pattern="+#,##0.00;−#,##0.00" /></h:outputText>
               </h:panelGroup>
             </section>
-          </div>
-          <div class="col-12 lg:col-4">
+          </h:panelGroup>
+
+          <h:panelGroup layout="block" styleClass="col-12 #{empty data.errorMessage ? 'lg:col-8' : ''}" rendered="#{not empty data.rules}">
             <section class="card ip-card ip-fill">
               <div class="ip-card-head">
-                <h2>Order discounts</h2>
-                <span class="ip-tag">orderDiscounts · COLLECT</span>
+                <h2>The rules</h2>
+                <span class="ip-tag">discount · hit policy #{data.hitPolicy}</span>
               </div>
-              <p class="ip-muted">Every rule that matches counts. The discounts add up, to at most 10 %.</p>
-              <ui:repeat value="#{data.pricing.orderDiscounts}" var="discount">
-                <div class="ip-row"><span>#{discount.reason}</span>
-                  <span class="ip-num"><h:outputText value="#{discount.percent}"><f:convertNumber maxFractionDigits="2" /></h:outputText> %</span></div>
-              </ui:repeat>
-              <h:panelGroup layout="block" styleClass="ip-row ip-muted" rendered="#{empty data.pricing.orderDiscounts}">
-                No rule matches the invoice.
-              </h:panelGroup>
-              <div class="ip-row ip-sum"><span>Applied</span>
-                <span class="ip-num"><h:outputText value="#{data.pricing.orderDiscountPercent}"><f:convertNumber maxFractionDigits="2" /></h:outputText> %</span></div>
+              <p class="ip-muted">
+                <h:outputText value="Version #{data.ruleVersion} on the decision runtime." rendered="#{data.ruleVersion gt 0}" />
+                <h:outputText value="The file dmn/invoice-discount.dmn of the project." rendered="#{not (data.ruleVersion gt 0)}" />
+                The rules are read from top to bottom: the first one that matches decides.</p>
+              <div class="ip-scroll">
+                <table id="rules" class="ip-dmn">
+                  <thead>
+                    <tr>
+                      <th class="ip-dmn-no" title="hit policy #{data.hitPolicy}">#{data.hitPolicy.substring(0, 1)}</th>
+                      <ui:repeat value="#{data.ruleInputs}" var="input"><th class="ip-dmn-in">#{input}</th></ui:repeat>
+                      <ui:repeat value="#{data.ruleOutputs}" var="output" varStatus="status"><th class="ip-dmn-out #{status.first ? 'ip-dmn-split' : ''}">#{output}</th></ui:repeat>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <ui:repeat value="#{data.rules}" var="rule">
+                      <tr class="#{rule.matched ? 'ip-dmn-matched' : ''}">
+                        <td class="ip-dmn-no">#{rule.number}</td>
+                        <ui:repeat value="#{rule.inputs}" var="cell"><td><code>#{cell}</code></td></ui:repeat>
+                        <ui:repeat value="#{rule.outputs}" var="cell" varStatus="status"><td class="#{status.first ? 'ip-dmn-split' : ''}"><code>#{cell}</code></td></ui:repeat>
+                      </tr>
+                    </ui:repeat>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ip-muted ip-try">Try: Gold or Platinum as customer tier · 5 laptops, for an order of 10,000 or more ·
+                <h:outputLink value="#{data.editorUrl}" target="_blank" styleClass="ip-link">in the editor</h:outputLink>, change
+                the 2 of "Silver customer" to 3, <strong>Save and activate</strong>, then Apply rules again: no deployment.</p>
             </section>
-          </div>
-          <div class="col-12 lg:col-4">
-            <section class="card ip-card ip-fill">
-              <div class="ip-card-head">
-                <h2>Approval</h2>
-                <span class="ip-tag">approvalFlags · COLLECT</span>
-              </div>
-              <div class="ip-route ip-route-#{data.pricing.approval.route eq 'Finance director' ? 'director' : (data.pricing.approval.route eq 'Sales manager' ? 'manager' : 'auto')}">
-                #{data.pricing.approval.route}
-              </div>
-              <ul class="ip-reasons">
-                <ui:repeat value="#{data.pricing.approval.reasons}" var="reason">
-                  <li>#{reason}</li>
-                </ui:repeat>
-              </ul>
-              <h:panelGroup layout="block" styleClass="ip-muted" rendered="#{empty data.pricing.approval.reasons}">
-                No rule asks for an approval.
-              </h:panelGroup>
-            </section>
-          </div>
-        </h:panelGroup>
-
-        <!-- The tax formula: shown line by line, and a playground to try another one -->
-        <section class="card ip-card" id="tax">
-          <div class="ip-card-head">
-            <h2>Tax formula</h2>
-            <span class="ip-tag">taxFormula · FEEL literal expression</span>
-          </div>
-          <div class="grid">
-            <div class="col-12 xl:col-6">
-              <h3>How the VAT of a line is calculated</h3>
-              <pre class="ip-feel">vat  = taxFormula(net, rate)
-rate = vatRateTable(country, category)
-net  = the line after its discount and its share of the order discount
-
-taxFormula(net, rate) = <strong>#{data.taxFormula}</strong></pre>
-              <p class="ip-muted">The formula is read from
-                <h:outputText value="version #{data.pricing.ruleVersion} on the decision runtime" rendered="#{data.pricing.ruleVersion gt 0}" />
-                <h:outputText value="the file dmn/invoice-pricing.dmn" rendered="#{not (data.pricing.ruleVersion gt 0)}" />.
-                Change it in the Portal or the DMN editor, click Apply rules, and it shows here.</p>
-              <p:dataTable id="taxSteps" value="#{data.taxSteps}" var="step" styleClass="ip-steps"
-                rendered="#{not empty data.taxSteps}">
-                <p:column headerText="Line">#{step.product}</p:column>
-                <p:column headerText="taxFormula with the values of the line">
-                  <code class="ip-code">#{step.formula}</code>
-                </p:column>
-                <p:column headerText="net × rate / 100" styleClass="ip-col-result">
-                  <h:outputText styleClass="ip-num ip-muted" value="#{step.exact}"><f:convertNumber maxFractionDigits="6" /></h:outputText>
-                </p:column>
-                <p:column headerText="VAT" styleClass="ip-col-result">
-                  <h:outputText styleClass="ip-num ip-strong" value="#{step.vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
-                </p:column>
-              </p:dataTable>
-            </div>
-            <div class="col-12 xl:col-6">
-              <h3>Try your own formula</h3>
-              <p class="ip-muted">A FEEL expression with <code>net</code> and <code>rate</code>. It runs on a copy of the
-                model on the decision runtime that is deleted right after. The live rules do not change.</p>
-              <p:inputTextarea id="trialFormula" value="#{data.trialFormula}" rows="2" autoResize="false"
-                styleClass="w-full ip-code" />
-              <div class="ip-examples">
-                <span class="ip-muted">Examples:</span>
-                <p:commandLink id="exampleHalfUp" value="half up" process="@this" update="trialFormula">
-                  <f:setPropertyActionListener target="#{data.trialFormula}" value="round half up(net * rate / 100, 2)" />
-                </p:commandLink>
-                <p:commandLink id="exampleBankers" value="banker's rounding" process="@this" update="trialFormula">
-                  <f:setPropertyActionListener target="#{data.trialFormula}" value="decimal(net * rate / 100, 2)" />
-                </p:commandLink>
-                <p:commandLink id="exampleDown" value="round down" process="@this" update="trialFormula">
-                  <f:setPropertyActionListener target="#{data.trialFormula}" value="round down(net * rate / 100, 2)" />
-                </p:commandLink>
-                <p:commandLink id="exampleSwiss" value="Swiss 5 centimes" process="@this" update="trialFormula">
-                  <f:setPropertyActionListener target="#{data.trialFormula}" value="round half up(net * rate / 100 * 20, 0) / 20" />
-                </p:commandLink>
-                <p:commandLink id="exampleInclusive" value="prices include VAT" process="@this" update="trialFormula">
-                  <f:setPropertyActionListener target="#{data.trialFormula}" value="round half up(net - net / (1 + rate / 100), 2)" />
-                </p:commandLink>
-              </div>
-              <p:commandButton id="tryFormula" value="Try formula" icon="pi pi-bolt" actionListener="#{logic.tryFormula}"
-                update="@form" />
-
-              <h:panelGroup id="trial" layout="block" styleClass="ip-trial" rendered="#{not empty data.trial.formula}">
-                <h:panelGroup layout="block" styleClass="ip-error" rendered="#{not empty data.trial.errorMessage}">
-                  <strong>The formula was not used</strong>
-                  <div>#{data.trial.errorMessage}</div>
-                </h:panelGroup>
-                <h:panelGroup layout="block" rendered="#{empty data.trial.errorMessage}">
-                  <p:dataTable id="trialLines" value="#{data.trial.pricedLines}" var="tried" rowIndexVar="r" styleClass="ip-steps">
-                    <p:column headerText="Line">#{tried.product}</p:column>
-                    <p:column headerText="VAT now" styleClass="ip-col-result">
-                      <h:outputText styleClass="ip-num" value="#{data.pricing.pricedLines[r].vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
-                    </p:column>
-                    <p:column headerText="With your formula" styleClass="ip-col-result">
-                      <h:outputText styleClass="ip-num ip-strong" value="#{tried.vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="4" /></h:outputText>
-                    </p:column>
-                    <p:column headerText="Difference" styleClass="ip-col-result">
-                      <h:outputText styleClass="ip-num" value="#{tried.vat - data.pricing.pricedLines[r].vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="4" /></h:outputText>
-                    </p:column>
-                  </p:dataTable>
-                  <div class="ip-row ip-sum"><span>VAT of the invoice</span>
-                    <span class="ip-num"><h:outputText value="#{data.pricing.totals.vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
-                      → <h:outputText value="#{data.trial.totals.vat}"><f:convertNumber minFractionDigits="2" maxFractionDigits="4" /></h:outputText></span></div>
-                  <div class="ip-row ip-sum"><span>Total of the invoice</span>
-                    <span class="ip-num"><h:outputText value="#{data.pricing.totals.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
-                      → <h:outputText value="#{data.trial.totals.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="4" /></h:outputText></span></div>
-                </h:panelGroup>
-              </h:panelGroup>
-            </div>
-          </div>
-        </section>
-
-        <!-- What each part of the model is -->
-        <section class="card ip-card">
-          <div class="ip-card-head">
-            <h2>What decides what</h2>
-            <span class="ip-muted">One model, one call: the decisions build on each other (a decision requirements graph).</span>
-          </div>
-          <table class="ip-legend">
-            <thead>
-              <tr><th>Part of dmn/invoice-pricing.dmn</th><th>Kind</th><th>What it shows</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><code>lineDiscountTable</code></td><td>Decision table, hit policy FIRST</td><td>Ranges and lists in conditions; the first rule that matches wins. A function: called for every line.</td></tr>
-              <tr><td><code>vatRateTable</code></td><td>Decision table, hit policy UNIQUE</td><td>Exactly one rule matches; two matching rules are an error.</td></tr>
-              <tr><td><code>taxFormula</code></td><td>FEEL literal expression</td><td>A formula that a developer can read, change and try above.</td></tr>
-              <tr><td><code>pricedLines</code></td><td>FEEL <code>for line in lines return {…}</code></td><td>Iterates over the lines and calls the three functions above.</td></tr>
-              <tr><td><code>orderDiscounts</code></td><td>Decision table, hit policy COLLECT</td><td>Every rule that matches counts: discounts stack. A promotion valid between two dates.</td></tr>
-              <tr><td><code>orderDiscountPercent</code></td><td>FEEL <code>min(10, sum(…))</code></td><td>The stacked discounts, capped.</td></tr>
-              <tr><td><code>shipping</code></td><td>Decision table, hit policy FIRST</td><td>Reads a sum over the priced lines as its input.</td></tr>
-              <tr><td><code>totals</code></td><td>FEEL context</td><td>Sums of the priced lines plus shipping.</td></tr>
-              <tr><td><code>approvalFlags</code> · <code>approval</code></td><td>Decision table, COLLECT · FEEL context</td><td>Every reason for an approval, and the highest approver they ask for.</td></tr>
-            </tbody>
-          </table>
-        </section>
+          </h:panelGroup>
+        </div>
 
       </h:form>
     </ui:define>

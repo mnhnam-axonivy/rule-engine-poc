@@ -14,11 +14,15 @@
  *   try { ... } catch (NumberFormatException e) { ... }
  *   new DecisionMaker(in.aiMemoryId).resolve(result.answer)  objects the surroundings provide
  *   error.getAttribute("decision") as tutorial.HumanFeedback  a cast is read and ignored
+ *   for (InvoiceLine line : in.invoice.lines) { ... }       a loop over a list, fields of its elements
+ *   line.unitPrice.multiply(BigDecimal.valueOf(2))           BigDecimal arithmetic, RoundingMode.HALF_UP
  *
  * Anything outside that subset raises an IvyScriptError of kind "unsupported" with a message
  * the UI can show as-is, so learners are told what the simulation cannot do instead of
  * getting a silent wrong answer.
  */
+
+import { clean, roundTo } from './feel.js';
 
 export class IvyScriptError extends Error {
   constructor(message, { pos = 0, kind = 'syntax' } = {}) {
@@ -33,7 +37,7 @@ const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 const KEYWORDS = new Set(['if', 'else', 'for', 'while', 'do', 'return', 'new', 'import', 'try', 'catch', 'finally', 'throw', 'switch', 'function', 'var']);
 const LITERALS = new Set(['true', 'false', 'null']);
 const PUNCTUATION = ['==', '!=', '&&', '||', '<=', '>=', '.', ',', ';', '(', ')', '+', '-', '*', '/', '=', '<', '>', '!', '[', ']', '{', '}', '?', ':', '%'];
-const SUPPORTED_HINT = 'This simulation understands assignments, if/else, try/catch, comparisons, text joined with +, and ivy.log calls.';
+const SUPPORTED_HINT = 'This simulation understands assignments, if/else, for (Type item : list), try/catch, comparisons, text joined with +, and ivy.log calls.';
 // binary operators, loosest first
 const LEVELS = [['||'], ['&&'], ['==', '!='], ['<', '>', '<=', '>='], ['+', '-'], ['*', '/', '%']];
 
@@ -167,6 +171,20 @@ class Parser {
       let otherwise = null;
       if (this.is('id', 'else')) { this.next(); otherwise = this.statement(); }
       return { type: 'if', test, then, otherwise, pos: start.pos };
+    }
+    if (this.is('id', 'for')) {
+      // for (Type item : list) statement
+      this.next();
+      this.expectPunct('(');
+      const varType = this.dottedName();
+      const name = this.next();
+      if (name.t !== 'id' || !this.is('p', ':')) {
+        throw new IvyScriptError('Only loops over a list, for (Type item : list), are part of this simulation', { pos: start.pos, kind: 'unsupported' });
+      }
+      this.next();
+      const iterable = this.expression();
+      this.expectPunct(')');
+      return { type: 'forEach', varType, name: name.v, iterable, body: this.statement(), pos: start.pos };
     }
     if (this.is('id', 'import')) {
       // import a.b.C; — the class is then known by its short name
@@ -431,8 +449,23 @@ const STATIC_METHODS = {
   'Double.valueOf': (args, ctx, pos) => parseJavaNumber(args[0], JAVA_NUMBER, pos),
   'Integer.parseInt': (args, ctx, pos) => parseJavaNumber(args[0], JAVA_INTEGER, pos),
   'Integer.valueOf': (args, ctx, pos) => parseJavaNumber(args[0], JAVA_INTEGER, pos),
-  'String.valueOf': args => text(args[0])
+  'String.valueOf': args => text(args[0]),
+  'BigDecimal.valueOf': (args, ctx, pos) => number(args[0], pos)
 };
+
+/** Static Java fields the tutorial processes read, by class and field: BigDecimal.ZERO. */
+const STATIC_FIELDS = {
+  'BigDecimal.ZERO': 0,
+  'BigDecimal.ONE': 1,
+  'BigDecimal.TEN': 10,
+  'RoundingMode.HALF_UP': 'half up',
+  'RoundingMode.HALF_DOWN': 'half down',
+  'RoundingMode.HALF_EVEN': 'half even',
+  'RoundingMode.UP': 'up',
+  'RoundingMode.DOWN': 'down'
+};
+const staticField = path => (path && path.length > 1 ? STATIC_FIELDS[path.slice(-2).join('.')] : undefined);
+const staticMethod = path => (path ? STATIC_METHODS[path.join('.')] || STATIC_METHODS[path.slice(-2).join('.')] : undefined);
 
 /** Which thrown Java exception a catch clause takes. */
 function catches(declared, thrown) {
@@ -440,7 +473,7 @@ function catches(declared, thrown) {
   return declared === 'IllegalArgumentException' && thrown === 'NumberFormatException';
 }
 
-const NUMERIC_LOCAL = /^(double|float|int|long|short|Double|Float|Integer|Long|Short|Number)$/;
+const NUMERIC_LOCAL = /^(double|float|int|long|short|Double|Float|Integer|Long|Short|Number|BigDecimal)$/;
 
 function text(value) {
   if (value == null) return '';
@@ -475,6 +508,38 @@ const STRING_METHODS = {
   replace: (s, a, b) => s.split(text(a)).join(text(b)),
   substring: (s, a, b) => s.substring(Number(a) || 0, b === undefined ? undefined : Number(b))
 };
+
+/**
+ * Methods of a number, as BigDecimal has them: (number, arguments, position). Numbers are JavaScript numbers here,
+ * tidied to 15 digits.
+ */
+const NUMBER_METHODS = {
+  toString: n => String(n),
+  add: (n, [a], pos) => clean(n + operand(a, pos)),
+  subtract: (n, [a], pos) => clean(n - operand(a, pos)),
+  multiply: (n, [a], pos) => clean(n * operand(a, pos)),
+  divide: (n, [a], pos) => clean(n / operand(a, pos)),
+  negate: n => -n,
+  abs: n => Math.abs(n),
+  movePointLeft: (n, [k], pos) => clean(n / 10 ** operand(k, pos)),
+  movePointRight: (n, [k], pos) => clean(n * 10 ** operand(k, pos)),
+  setScale: (n, [scale, mode], pos) => {
+    const rounded = roundTo(n, operand(scale, pos), mode || 'half up');
+    if (!mode && rounded !== n) throw javaError('ArithmeticException', 'Rounding necessary', pos);
+    return rounded;
+  },
+  intValue: n => Math.trunc(n),
+  longValue: n => Math.trunc(n),
+  doubleValue: n => n,
+  compareTo: (n, [a], pos) => Math.sign(n - operand(a, pos)),
+  signum: n => Math.sign(n)
+};
+
+/** The argument of a number method: Java throws on null. */
+function operand(value, pos) {
+  if (value === null || value === undefined) throw javaError('NullPointerException', 'the argument is null', pos);
+  return number(value, pos);
+}
 
 const isNumeric = value => typeof value === 'number' || (typeof value === 'string' && /^\s*-?\d+(\.\d+)?\s*$/.test(value));
 
@@ -572,9 +637,20 @@ function evaluateReference(node, ctx) {
       return value;
     }
     if (ctx.locals && ctx.locals.has(root)) {
-      if (path.length > 1) throw new IvyScriptError("Cannot read '" + path.slice(1).join('.') + "' of " + root, { pos: node.pos, kind: 'unsupported' });
-      return ctx.locals.get(root);
+      // a local and the fields of its object, e.g. line.unitPrice in a loop over the lines
+      let value = ctx.locals.get(root);
+      for (let i = 1; i < path.length; i++) {
+        if (value === null || value === undefined) return null;
+        if (!isTyped(value)) throw new IvyScriptError("Cannot read '" + path.slice(i).join('.') + "' of " + path.slice(0, i).join('.'), { pos: node.pos, kind: 'unsupported' });
+        const cls = classOf(ctx, value.__type);
+        if (cls && !cls.fields.some(f => f.name === path[i])) {
+          throw new IvyScriptError("'" + path.slice(0, i + 1).join('.') + "' cannot be read: " + value.__type.split('.').pop() + ' has no field ' + path[i], { pos: node.pos, kind: 'field' });
+        }
+        value = value[path[i]];
+      }
+      return value === undefined ? null : value;
     }
+    if (staticField(path) !== undefined) return staticField(path);
     if (ctx.vars && Object.prototype.hasOwnProperty.call(ctx.vars, root)) {
       // e.g. param.amount in the mapping of a sub-process start
       let value = ctx.vars[root];
@@ -599,7 +675,8 @@ function evaluateReference(node, ctx) {
 
 function evaluateCall(node, ctx) {
   const path = dottedName(node.callee);
-  if (path && STATIC_METHODS[path.join('.')]) return STATIC_METHODS[path.join('.')](node.args.map(a => evaluate(a, ctx)), ctx, node.pos);
+  const isLocal = path && ctx.locals && ctx.locals.has(path[0]);
+  if (!isLocal && staticMethod(path)) return staticMethod(path)(node.args.map(a => evaluate(a, ctx)), ctx, node.pos);
   // static methods the surroundings provide, e.g. CircuitBreakerSignal.stopAll()
   if (path && ctx.statics && ctx.statics[path.join('.')]) return ctx.statics[path.join('.')](node.args.map(a => evaluate(a, ctx)));
   if (path && path[0] === 'ivy') {
@@ -619,7 +696,7 @@ function evaluateCall(node, ctx) {
     const args = node.args.map(a => evaluate(a, ctx));
     if (target === null || target === undefined) return null; // a call on nothing yields nothing, as in IvyScript
     if (typeof target === 'string' && STRING_METHODS[method]) return STRING_METHODS[method](target, ...args);
-    if (typeof target === 'number' && method === 'toString') return String(target);
+    if (typeof target === 'number' && NUMBER_METHODS[method]) return NUMBER_METHODS[method](target, args, node.callee.pos);
     if (typeof target === 'boolean' && method === 'toString') return String(target);
     if (target instanceof IvyScriptError && method === 'getMessage') return target.javaMessage || target.message;
     if (target && target.__class && method === 'toString') return text(target);
@@ -678,6 +755,20 @@ function assign(targetNode, value, ctx) {
     ctx.locals.set(path[0], value);
     return;
   }
+  if (path && ctx.locals && ctx.locals.has(path[0])) {
+    // a field of the object of a local, e.g. line.amount in a loop over the lines
+    let container = ctx.locals.get(path[0]);
+    for (let i = 1; i < path.length - 1; i++) container = isTyped(container) ? container[path[i]] : null;
+    if (!isTyped(container)) {
+      throw new IvyScriptError("'" + path.slice(0, -1).join('.') + "' is not set, so " + path[path.length - 1] + ' cannot be assigned', { pos: targetNode.pos, kind: 'runtime' });
+    }
+    const name = path[path.length - 1];
+    const cls = classOf(ctx, container.__type);
+    const field = cls ? cls.fields.find(f => f.name === name) : null;
+    if (cls && !field) throw new IvyScriptError(container.__type.split('.').pop() + ' has no field ' + name, { pos: targetNode.pos, kind: 'field' });
+    container[name] = field ? coerce(field, value, targetNode.pos) : value;
+    return;
+  }
   if (!path || !isDataRoot(path[0]) || path.length < 2) {
     throw new IvyScriptError('Only process data fields such as in.summary can be assigned', { pos: targetNode.pos, kind: path ? 'field' : 'unsupported' });
   }
@@ -718,6 +809,11 @@ function check(node, ctx) {
     case 'new': constructorOf(node, ctx); node.args.forEach(a => check(a, ctx)); return;
     case 'block': node.body.forEach(s => check(s, ctx)); return;
     case 'if': check(node.test, ctx); check(node.then, ctx); check(node.otherwise, ctx); return;
+    case 'forEach':
+      check(node.iterable, ctx);
+      if (ctx.localNames) ctx.localNames.add(node.name);
+      check(node.body, ctx);
+      return;
     case 'try':
       check(node.body, ctx);
       node.handlers.forEach(handler => {
@@ -733,7 +829,7 @@ function check(node, ctx) {
     case 'cond': check(node.test, ctx); check(node.yes, ctx); check(node.no, ctx); return;
     case 'assign': {
       const path = dottedName(node.target);
-      if (path && path.length === 1 && ctx.localNames && ctx.localNames.has(path[0])) {
+      if (path && ctx.localNames && ctx.localNames.has(path[0])) {
         check(node.value, ctx);
         return;
       }
@@ -750,7 +846,7 @@ function check(node, ctx) {
     case 'binary': check(node.left, ctx); check(node.right, ctx); return;
     case 'call': {
       const path = dottedName(node.callee);
-      if (path && (STATIC_METHODS[path.join('.')] || (ctx.statics && ctx.statics[path.join('.')]))) {
+      if (path && !(ctx.localNames && ctx.localNames.has(path[0])) && (staticMethod(path) || (ctx.statics && ctx.statics[path.join('.')]))) {
         node.args.forEach(a => check(a, ctx));
         return;
       }
@@ -776,6 +872,7 @@ function check(node, ctx) {
       if (ctx.localNames && ctx.localNames.has(path[0])) return;
       if (ctx.vars && Object.prototype.hasOwnProperty.call(ctx.vars, path[0])) return;
       if (path[0] === 'ivy') return;
+      if (staticField(path) !== undefined) return;
       if (path.length > 1 && path[path.length - 1] === 'class') return;
       throw new IvyScriptError("Unknown variable '" + path[0] + "'. Process data is available as in. or out.", { pos: node.pos, kind: 'field' });
     }
@@ -822,6 +919,20 @@ function execute(stmt, ctx) {
       if (truth(evaluate(stmt.test, ctx), stmt.test.pos)) execute(stmt.then, ctx);
       else if (stmt.otherwise) execute(stmt.otherwise, ctx);
       return;
+    case 'forEach': {
+      const list = evaluate(stmt.iterable, ctx);
+      if (list === null || list === undefined) return; // a list that is not set has no elements
+      if (!Array.isArray(list)) throw new IvyScriptError("'" + text(list) + "' is not a list", { pos: stmt.iterable.pos, kind: 'runtime' });
+      const had = ctx.locals.has(stmt.name);
+      const before = ctx.locals.get(stmt.name);
+      list.forEach(item => {
+        ctx.locals.set(stmt.name, item);
+        execute(stmt.body, ctx);
+      });
+      if (had) ctx.locals.set(stmt.name, before);
+      else ctx.locals.delete(stmt.name);
+      return;
+    }
     case 'try':
       try {
         execute(stmt.body, ctx);

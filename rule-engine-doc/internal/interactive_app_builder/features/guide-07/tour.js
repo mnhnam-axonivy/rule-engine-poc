@@ -3,20 +3,20 @@
  * the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do, and
  * runtime/ui/portal.js for the parts of the Portal tab.
  */
-import { ELEMENTS, MODEL, inputsText, discountsText } from '../shared/project.js';
+import { ELEMENTS, MODEL, inputsText, discountText, invoiceText } from '../shared/project.js';
 import { TABLE, NEW_INPUT, NEW_RULE, WHAT_CHANGED } from '../shared/portal-rules.js';
 import { seedProjectVersion, seedPortalVersion, lastWord } from '../shared/portal-chapters.js';
 
-const { RULE_TASK } = ELEMENTS;
+const { RULE_TASK, APPLY } = ELEMENTS;
 const DMN = 'dmn:' + MODEL;
-/** The rule the rule owner adds: COLLECT puts it after the six rules of the table. */
-const RULE = 7;
+/** The rule the rule owner adds: FIRST needs it at the top, above "Silver customer". */
+const RULE = 1;
 
-const key = column => TABLE + '.r' + RULE + '.' + column; // column: 'i5', 'o1' or 'n'
+const key = column => TABLE + '.r' + RULE + '.' + column; // column: 'i3', 'o1' or 'n'
 
 /** 1 — the rules of the project, which do not read the customer of the invoice. */
 async function before(d) {
-  await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('noKeyAccount', { target: 'el:' + RULE_TASK, quote: discountsText(call) }) } });
+  await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('noKeyAccount', { target: 'el:' + RULE_TASK, quote: discountText(call) }) } });
   await d.tab(DMN);
   await d.note('table', { target: DMN + '@' + TABLE + '/head' });
   await d.tab('process');
@@ -47,14 +47,14 @@ async function edit(d) {
   await d.note('goal', { target: 'portal@kie' });
   await d.portalInput(NEW_INPUT[0], NEW_INPUT[1]);
   await d.note('inputs', { target: 'portal@inputs', extra: 600 });
-  await d.click('portal@' + TABLE + '/addRule');
+  await d.click('portal@' + TABLE + '/above1');
   await d.note('newRule', { target: 'portal@' + TABLE + '/rule' + RULE });
-  await d.edit('portal:' + key('i5'), NEW_RULE[0][4]);
+  await d.edit('portal:' + key('i3'), NEW_RULE[0][2]);
   await d.edit('portal:' + key('o1'), NEW_RULE[1][0]);
   await d.edit('portal:' + key('o2'), NEW_RULE[1][1]);
   await d.edit('portal:' + key('n'), NEW_RULE[2]);
   await d.note('keyAccount', { target: 'portal@' + TABLE + '/rule' + RULE, extra: 600 });
-  await d.note('collect', { target: 'portal@' + TABLE + '/policy' });
+  await d.note('first', { target: 'portal@' + TABLE + '/policy' });
   await d.click('portal@check');
   await d.note('checked', { target: 'portal@message' });
   await d.edit('portal:description', WHAT_CHANGED);
@@ -70,7 +70,8 @@ async function after(d) {
     fast: true,
     on: {
       'rule:request': ({ call }) => d.note('moreInputs', { target: 'el:' + RULE_TASK, quote: inputsText(call) }),
-      'rule:mapped': ({ call }) => d.note('applied', { target: 'el:' + RULE_TASK, quote: discountsText(call) })
+      'rule:mapped': ({ call }) => d.note('applied', { target: 'el:' + RULE_TASK, quote: discountText(call) }),
+      ['after:' + APPLY]: () => d.note('lower', { target: 'el:' + APPLY, quote: invoiceText(d.app.data.invoice) })
     }
   });
   await d.tab(DMN);
@@ -88,7 +89,7 @@ async function versions(d) {
   await d.note('rolledBack', { target: 'portal@v1' });
   await d.click('portal@close');
   await d.tab('process');
-  await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('backAgain', { target: 'el:' + RULE_TASK, quote: discountsText(call) }) } });
+  await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('backAgain', { target: 'el:' + RULE_TASK, quote: discountText(call) }) } });
 }
 
 export const tour = {

@@ -1,6 +1,6 @@
 # Set up and run your first decision
 
-This page gets you from nothing to your first decision: start the decision runtime, check the connection, price the invoice of the demo and look at what the runtime holds. It takes about ten minutes.
+This page gets you from nothing to your first decision: start the decision runtime, check the connection, let the rules decide the discount of the demo invoice and look at what the runtime holds. It takes about ten minutes.
 
 > **Walkthrough:** the button next to the title plays steps 3 and 4 in a simulated Designer, and a runtime that does not answer. Steps 1 and 2 happen on your own machine.
 
@@ -74,31 +74,29 @@ To change a value, set it in `config/variables.yaml` of your own project, or in 
 ## Step 3: Run your first decision
 
 1. In the Designer, open the list of process starts.
-2. Start **Rule Engine Demo: invoice pricing** (`InvoicePricingDemo/start.ivp`).
-3. A page opens with an invoice of five lines, already priced:
+2. Start **Rule Engine Demo: invoice discount** (`InvoicePricingDemo/start.ivp`).
+3. A page opens with an invoice of five lines for the customer Bluebird Architects, tier **Silver**, already decided:
 
-| Line | Category | Qty × price | Line discount | Reason | VAT |
-| --- | --- | --- | --- | --- | --- |
-| Laptop 14" | Hardware | 10 × 1,200 | 6 % | Hardware: 10 units or more | 8.1 % |
-| Office suite licence | Software | 25 × 120 | 15 % | Volume licence: 20 seats or more | 8.1 % |
-| Installation and setup | Services | 8 × 150 | 0 % | Services are not discounted | 8.1 % |
-| A4 paper | Consumables | 60 × 25 | 8 % | Consumables: 50 or more | 8.1 % |
-| Project management handbook | Books | 12 × 45 | 5 % | Books: 10 copies or more | 2.6 % |
+| | |
+| --- | --- |
+| Order amount | 9,200.00 |
+| Discount | 2 %, "Silver customer" |
+| Total | CHF 9,016.00 |
 
-The total is CHF 18,265.55, and a Sales manager approves the invoice, because one line has a discount of 15 percent. In the **Runtime Log** you find this line:
+Below it, the page shows the table `discount` of [What is DMN?], with rule 6 marked: the rule that decided. In the **Runtime Log** you find this line:
 
 ```text
-Invoice INV-2026-0042: total 18265.55, Sales manager
+Invoice INV-2026-0042: 2% (Silver customer), total 9016.00
 ```
 
 That is all it takes. Here is what happened:
 
-1. The page called the callable sub process `InvoicePricing` with the invoice. A Script trimmed the promo code and wrote it in capitals.
-2. The Business Rule Task found that the runtime did not know the model `invoice-pricing` yet, and sent it `dmn/invoice-pricing.dmn` of the project. The runtime stored it as **version 1**.
-3. The element sent the seven inputs of the model, the list of lines among them, and got back the results of every decision in one answer. Each line was decided by a rule of the table on [What is DMN?].
-4. Each result was written to the field with the name of its decision, in `in.pricing`. The page shows them, and the version that decided.
+1. The page called the callable sub process `InvoicePricing` with the invoice. A Script worked out the amount of each line and their sum, `orderAmount`.
+2. The Business Rule Task found that the runtime did not know the model `invoice-discount` yet, and sent it `dmn/invoice-discount.dmn` of the project. The runtime stored it as **version 1**.
+3. The element sent the two inputs of the decision, `customerTier` and `orderAmount`, and got back its two outputs. Rule 6 decided.
+4. The outputs were written to the fields with their names, `in.invoice.discountPercent` and `in.invoice.discountReason`. A last Script applied the discount. The page shows the result, and the version that decided.
 
-Now change the invoice and click **Apply rules**: country **DE**, **50** laptops, or tier **Platinum** with **Prepaid** and the promo code **WINTER26**. Every Apply asks the runtime again.
+Now change the invoice and click **Apply rules**: tier **Gold**, then **5** laptops instead of 4, for an order of 10,400. Every Apply asks the runtime again.
 
 How the element is configured, and how it finds its inputs, is on the page [Use an existing DMN decision].
 
@@ -109,27 +107,23 @@ How the element is configured, and how it finds its inputs, is on the page [Use 
 The runtime has a REST API. Ask it for the versions of the model:
 
 ```bash
-curl http://localhost:8090/api/models/invoice-pricing/versions
+curl http://localhost:8090/api/models/invoice-discount/versions
 ```
 
 ```json
-[ { "model": "invoice-pricing", "version": 1, "status": "ACTIVE", "source": "PROJECT", "author": "com.axonivy.utils.ruleengine:rule-engine-demo:14.0.1-SNAPSHOT" } ]
+[ { "model": "invoice-discount", "version": 1, "status": "ACTIVE", "source": "PROJECT", "author": "com.axonivy.utils.ruleengine:rule-engine-demo:14.0.1-SNAPSHOT" } ]
 ```
 
-You can also evaluate a decision without Axon Ivy. The order discounts need four inputs:
+You can also evaluate a decision without Axon Ivy:
 
 ```bash
-curl -X POST -H "Content-Type: application/json" \
-     -d '{"decision":"orderDiscounts","input":{"customerTier":"Gold","paymentTerms":"Prepaid","promoCode":"WINTER26","invoiceDate":"2026-11-19"}}' \
-     http://localhost:8090/api/models/invoice-pricing/evaluate
+curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}'      http://localhost:8090/api/models/invoice-discount/evaluate
 ```
 
 ```json
-{ "decision": "orderDiscounts", "model": "invoice-pricing", "version": 1,
-  "result": [ { "percent": 2, "reason": "Gold customer bonus" },
-              { "percent": 2, "reason": "Early payment: prepaid" },
-              { "percent": 5, "reason": "Promotion WINTER26" } ],
-  "results": { "orderDiscounts": [ … ], "pricedLines": null, … } }
+{ "decision": "discount", "model": "invoice-discount", "version": 1,
+  "result": { "discountPercent": 8, "discountReason": "Gold, order of 10,000 or more" },
+  "results": { "discount": { "discountPercent": 8, "discountReason": "Gold, order of 10,000 or more" } } }
 ```
 
 Every input a decision needs must be in `input`, `null` if it has no value. The whole API is documented at `http://localhost:8090/q/swagger-ui`.

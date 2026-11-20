@@ -2,13 +2,13 @@
  * Starting points and a chapter that two lessons on the Portal share: the page Edit rules in the Portal (guide-07)
  * and the questions about rules that change (guide-11-3).
  */
-import { ELEMENTS, MODEL, laptopText, discountsText } from './project.js';
+import { ELEMENTS, MODEL, DECISION, discountText } from './project.js';
 import { WHAT_CHANGED, withKeyAccount } from './portal-rules.js';
 
 const { RULE_TASK } = ELEMENTS;
 const DMN = 'dmn:' + MODEL;
-/** The discount of rule 6 of lineDiscountTable in the project file: "Hardware: 10 units or more". */
-export const HARDWARE_RULE = DMN + ':lineDiscountTable.r6.o1';
+/** The discount of rule 6 of the table in the project file: "Silver customer". */
+export const SILVER_RULE = DMN + ':' + DECISION + '.r6.o1';
 
 /** The first run of the process: the file of the project is version 1 on the runtime. */
 export function seedProjectVersion(app) {
@@ -27,13 +27,13 @@ export function seedPortalVersion(app) {
   app.refreshRuntimeViews();
 }
 
-/** A developer raises the discount for 10 laptops or more in the file of the project, from 6 to 8 percent. */
-export async function raiseHardware(d, note) {
+/** A developer raises the discount of Silver customers in the file of the project, from 2 to 3 percent. */
+export async function raiseSilver(d, note) {
   await d.tab(DMN);
-  d.focus(DMN + '@lineDiscountTable/r6.o1');
+  d.focus(DMN + '@' + DECISION + '/r6.o1');
   await d.wait(400);
-  await d.edit(HARDWARE_RULE, '8');
-  await d.note(note, { target: DMN + '@lineDiscountTable/rule6', wait: 1800 });
+  await d.edit(SILVER_RULE, '3');
+  await d.note(note, { target: DMN + '@' + DECISION + '/rule6', wait: 1800 });
   await d.tab('process');
 }
 
@@ -46,11 +46,11 @@ export async function lastWord(d) {
   await d.panel('runtime');
   await d.note('portalActive', { target: 'runtime:versions', extra: 600 });
   await d.panel(null);
-  await raiseHardware(d, 'fileChanged');
+  await raiseSilver(d, 'fileChanged');
   await d.run({
     on: {
       'rule:registered': () => d.note('asDraft'),
-      'rule:mapped': ({ call }) => d.note('stillPortal', { target: 'el:' + RULE_TASK, quote: laptopText(call) + '\n' + discountsText(call) })
+      'rule:mapped': ({ call }) => d.note('stillPortal', { target: 'el:' + RULE_TASK, quote: discountText(call) })
     }
   });
   await d.panel('runtime');
@@ -63,11 +63,11 @@ export const LAST_WORD_STRINGS = {
   'tour.portalActive.title': 'Active: the version of the Portal',
   'tour.portalActive.text': 'Version 2 came from the Portal and is active: it has the key account rule. Version 1 is the file of the project.',
   'tour.fileChanged.title': 'The file changes',
-  'tour.fileChanged.text': 'A developer raises the discount for 10 laptops or more in the project file, from 6 to 8 percent.',
+  'tour.fileChanged.text': 'A developer raises the discount of Silver customers in the project file, from 2 to 3 percent.',
   'tour.asDraft.title': 'Stored as a draft',
   'tour.asDraft.text': 'The changed file is registered, but as a draft. A version activated by a rule owner is never replaced by a project.',
   'tour.stillPortal.title': 'The rule owner keeps the last word',
-  'tour.stillPortal.text': 'Version 2 of the Portal still decides: the laptops get 6 percent, and the key account discount stays.',
+  'tour.stillPortal.text': 'Version 2 of the Portal still decides: the key account discount stays, 10 percent.',
   'tour.draftBeside.title': 'Your file, as version 3',
   'tour.draftBeside.text': 'It waits beside the active version. To make it live, activate it on purpose, in the Portal or in the editor of the runtime.'
 };

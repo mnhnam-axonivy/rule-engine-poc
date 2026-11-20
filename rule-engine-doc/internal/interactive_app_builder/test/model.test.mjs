@@ -19,13 +19,20 @@ const text = name => readFileSync(demo(name), 'utf8');
 const json = name => JSON.parse(text(name));
 const DATA = 'dataclass/com/axonivy/utils/rule/engine/demo/';
 
-const CLASSES = ['SalesInvoice', 'InvoiceLine', 'PricingResult', 'PricedLine', 'Discount', 'Shipping', 'InvoiceTotals', 'Approval'];
-const pricing = () => parseDmn(text('dmn/invoice-pricing.dmn'), { model: 'invoice-pricing', file: 'dmn/invoice-pricing.dmn' });
+const fixture = name => readFileSync(fileURLToPath(new URL('./fixtures/' + name, import.meta.url)), 'utf8');
+const CLASSES = ['Invoice', 'InvoiceLine'];
+/**
+ * A model with functions, a chain of decisions and the hit policies FIRST, UNIQUE and COLLECT: the invoice pricing
+ * of an earlier demo, kept as a fixture to test the DMN engine of the simulation.
+ */
+const pricing = () => parseDmn(fixture('invoice-pricing.dmn'), { model: 'invoice-pricing', file: 'dmn/invoice-pricing.dmn' });
+/** The model of the demo: one decision table. */
+const demoModel = () => parseDmn(text('dmn/invoice-discount.dmn'), { model: 'invoice-discount', file: 'dmn/invoice-discount.dmn' });
 const processModel = () => loadProcess(json('process/InvoicePricing.p.json'), json(DATA + 'InvoicePricingData.d.json'),
   { file: 'InvoicePricing.p.json', project: 'rule-engine-demo', classes: CLASSES.map(name => json(DATA + name + '.d.json')) });
 const NS = 'com.axonivy.utils.rule.engine.demo.';
 const lines = value => (Array.isArray(value) ? value.join('\n') : String(value || ''));
-/** The inputs the page of the demo sends for its sample invoice. */
+/** The inputs of the pricing model for its sample invoice. */
 const SAMPLE = {
   customerTier: 'Silver', country: 'CH', paymentTerms: 'Net 30', promoCode: '', expressDelivery: false, invoiceDate: '2026-11-19',
   lines: [
@@ -54,7 +61,7 @@ test('xml: what is not well-formed is reported', () => {
   assert.throws(() => parseXml('just text'), XmlError);
 });
 
-test('dmn: the demo model is read with its inputs, functions, decisions and rules', () => {
+test('dmn: a model is read with its inputs, functions, decisions and rules', () => {
   const dmn = pricing();
   assert.equal(dmn.name, 'invoice-pricing');
   assert.deepEqual(dmn.inputs.map(i => [i.name, i.type]), [['customerTier', 'tCustomerTier'], ['country', 'tCountry'], ['paymentTerms', 'tPaymentTerms'],
@@ -107,6 +114,26 @@ test('dmn: only what decides makes a new version', () => {
 test('dmn: a file that is not DMN is refused', () => {
   assert.throws(() => parseDmn('<rules/>'), DmnError);
   assert.throws(() => parseDmn('<definitions>'), DmnError);
+});
+
+test('dmn: the demo model is one decision table, decided from the top', () => {
+  const dmn = demoModel();
+  assert.equal(dmn.name, 'invoice-discount');
+  assert.deepEqual(dmn.inputs.map(i => [i.name, i.type]), [['customerTier', 'string'], ['orderAmount', 'number']]);
+  assert.deepEqual(dmn.decisions.map(d => [d.name, d.kind]), [['discount', 'table']]);
+  assert.equal(describeOutputs(dmn, decisionOf(dmn, 'discount')), 'discountPercent (number), discountReason (string)');
+  const table = decisionOf(dmn, 'discount').table;
+  assert.equal(table.hitPolicy, 'FIRST');
+  assert.equal(table.rules.length, 7);
+  assert.deepEqual(table.rules[5], { inputs: ['"Silver"', '-'], outputs: ['2', '"Silver customer"'], annotation: '' });
+  const decide = (customerTier, orderAmount) => evaluateTable(table, { customerTier, orderAmount });
+  assert.deepEqual(decide('Silver', 9200), { result: { discountPercent: 2, discountReason: 'Silver customer' }, matched: [5] });
+  assert.deepEqual(decide('Gold', 9200).matched, [3]);
+  assert.deepEqual(decide('Gold', 10400).matched, [2]);
+  assert.deepEqual(decide('Silver', 12000).matched, [4], 'first match wins: rule 5 stands above rules 6 and 7');
+  assert.deepEqual([decide('Silver', 9999).matched, decide('Silver', 10000).matched], [[5], [4]], '>= includes the number');
+  assert.deepEqual(decide('Standard', 12000).matched, [6]);
+  assert.deepEqual(decide(null, 9200), { result: { discountPercent: 0, discountReason: 'No discount' }, matched: [6] }, 'only - matches null');
 });
 
 // ── FEEL ─────────────────────────────────────────────────────────────────────
@@ -179,7 +206,7 @@ test('feel: expressions of a formula, a context and a list', () => {
   assert.equal(validateExpression('round half up(net * rate / 100, 2)'), null);
 });
 
-test('feel: the demo table decides as its rules say', () => {
+test('feel: a table that is a function decides as its rules say', () => {
   const table = functionOf(pricing(), 'lineDiscountTable').table;
   const decide = (category, quantity, customerTier, country) => evaluateTable(table, { category, quantity, customerTier, country });
   assert.deepEqual(decide('Hardware', 10, 'Silver', 'CH'), { result: { percent: 6, reason: 'Hardware: 10 units or more' }, matched: [5] });
@@ -305,12 +332,12 @@ test('mapping: selected fields get their DMN names', () => {
 test('mapping: a field is found by name, the one closest to the root first', () => {
   const model = processModel();
   assert.deepEqual(findField(model, 'customerTier'), { expression: 'in.invoice.customerTier', type: 'String' });
+  assert.deepEqual(findField(model, 'orderAmount'), { expression: 'in.invoice.orderAmount', type: 'java.math.BigDecimal' });
   assert.deepEqual(findField(model, 'lines'), { expression: 'in.invoice.lines', type: 'List<' + NS + 'InvoiceLine>' }, 'a list field by its own name');
-  assert.deepEqual(findField(model, 'pricedLines'), { expression: 'in.pricing.pricedLines', type: 'List<' + NS + 'PricedLine>' });
   assert.deepEqual(findField(model, 'Customer Tier'), { expression: 'in.invoice.customerTier', type: 'String' }, 'case and blanks do not matter');
-  assert.equal(findField(model, 'approvalFlags'), null);
+  assert.equal(findField(model, 'discount'), null, 'no field of the name: a structured result is unfolded');
   assert.equal(findField(model, 'product'), null, 'a list is not searched inside');
-  assert.equal(typeOfPath(model, 'in.pricing.totals.total'), 'java.math.BigDecimal');
+  assert.equal(typeOfPath(model, 'in.invoice.total'), 'java.math.BigDecimal');
   assert.equal(typeOfPath(model, 'in.invoice.unknown'), null);
 });
 
@@ -324,45 +351,49 @@ test('mapping: values are read without creating nested objects and converted bot
   assert.equal(fromJson(7, 'String', model.classes), '7');
   assert.equal(fromJson(null, 'Number', model.classes), null);
   assert.throws(() => fromJson('a lot', 'Number', model.classes), e => e instanceof MappingError && /a lot/.test(e.message));
-  assert.deepEqual(fromJson({ fee: 0, reason: 'Free' }, NS + 'Shipping', model.classes), { __type: NS + 'Shipping', fee: 0, reason: 'Free' });
-  assert.deepEqual(fromJson([{ percent: 3, reason: 'Key account' }], 'List<' + NS + 'Discount>', model.classes),
-    [{ __type: NS + 'Discount', percent: 3, reason: 'Key account' }], 'a list of structures: a list of data classes');
-  assert.deepEqual(fromJson({ route: 'Sales manager', reasons: ['a'] }, NS + 'Approval', model.classes), { __type: NS + 'Approval', route: 'Sales manager', reasons: ['a'] });
+  const laptop = { product: 'Laptop', quantity: 4, unitPrice: 1200, amount: 4800 };
+  assert.deepEqual(fromJson(laptop, NS + 'InvoiceLine', model.classes), { __type: NS + 'InvoiceLine', ...laptop });
+  assert.deepEqual(fromJson([laptop], 'List<' + NS + 'InvoiceLine>', model.classes), [{ __type: NS + 'InvoiceLine', ...laptop }],
+    'a list of structures: a list of data classes');
 });
 
 test('generator: a table from selected fields, named so that it maps by name', () => {
   const model = processModel();
   const dmn = generateDmn({
-    modelName: 'delivery-days',
-    inputs: parseFieldSelection('in.invoice.country, in.invoice.expressDelivery'),
-    outputs: parseFieldSelection('in.pricing.orderDiscountPercent')
+    modelName: 'invoice-approver',
+    inputs: parseFieldSelection('in.invoice.total, in.invoice.discountPercent'),
+    outputs: parseFieldSelection('in.invoice.discountAmount')
   }, model);
-  assert.equal(dmn.file, 'dmn/delivery-days.dmn');
-  assert.deepEqual(dmn.inputs.map(i => [i.name, i.type]), [['country', 'string'], ['expressDelivery', 'boolean']]);
+  assert.equal(dmn.file, 'dmn/invoice-approver.dmn');
+  assert.deepEqual(dmn.inputs.map(i => [i.name, i.type]), [['total', 'number'], ['discountPercent', 'number']]);
   const decision = dmn.decisions[0];
-  assert.equal(decision.name, 'orderDiscountPercent');
-  assert.equal(dmn.description, 'Generated by a Business Rule Task. Inputs: in.invoice.country, in.invoice.expressDelivery. Outputs: in.pricing.orderDiscountPercent.');
+  assert.equal(decision.name, 'discountAmount');
+  assert.equal(dmn.description, 'Generated by a Business Rule Task. Inputs: in.invoice.total, in.invoice.discountPercent. Outputs: in.invoice.discountAmount.');
   assert.equal(decision.table.hitPolicy, 'FIRST');
   assert.deepEqual(decision.table.rules, [{ inputs: ['-', '-'], outputs: ['0'], annotation: 'Placeholder: matches everything. Add your rules above this one.' }]);
-  assert.deepEqual(requiredInputs(dmn, 'orderDiscountPercent'), ['country', 'expressDelivery']);
-  assert.deepEqual(evaluateTable(decision.table, { country: 'CH', expressDelivery: true }), { result: 0, matched: [0] });
+  assert.deepEqual(requiredInputs(dmn, 'discountAmount'), ['total', 'discountPercent']);
+  assert.deepEqual(evaluateTable(decision.table, { total: 9016, discountPercent: 2 }), { result: 0, matched: [0] });
 
   // a nested data class is unfolded into columns
-  const whole = generateDmn({ modelName: 'Shipping.dmn', inputs: parseFieldSelection('in.pricing.shipping'), outputs: parseFieldSelection('in.pricing.errorCode') }, model);
+  const nested = {
+    dataClass: { name: 'Data', simpleName: 'Data', fields: [{ name: 'shipping', type: 'Shipping' }, { name: 'errorCode' }] },
+    classes: { Shipping: { name: 'Shipping', fields: [{ name: 'fee', type: 'Number' }, { name: 'reason' }] } }
+  };
+  const whole = generateDmn({ modelName: 'Shipping.dmn', inputs: parseFieldSelection('in.shipping'), outputs: parseFieldSelection('in.errorCode') }, nested);
   assert.deepEqual(whole.decisions[0].table.inputs.map(c => c.expression), ['shipping.fee', 'shipping.reason']);
-  assert.equal(modelNameFor('delivery days.dmn'), 'delivery-days');
+  assert.equal(modelNameFor('invoice approver.dmn'), 'invoice-approver');
   assert.throws(() => modelNameFor('  '), e => e instanceof MappingError && e.message === "'New DMN name' is empty. Name the new DMN, e.g. member-discount.");
-  assert.throws(() => generateDmn({ modelName: 'x', inputs: parseFieldSelection('in.invoice.unknown'), outputs: parseFieldSelection('in.pricing.errorCode') }, model),
+  assert.throws(() => generateDmn({ modelName: 'x', inputs: parseFieldSelection('in.invoice.unknown'), outputs: parseFieldSelection('in.errorCode') }, model),
     e => e instanceof MappingError && /in\.invoice\.unknown/.test(e.message));
   assert.throws(() => generateDmn({ modelName: 'x', inputs: [], outputs: [] }, model), MappingError);
-  assert.throws(() => generateDmn({ modelName: 'x', inputs: parseFieldSelection('tier = in.invoice.customerTier'), outputs: parseFieldSelection('in.pricing.errorCode') }, model),
+  assert.throws(() => generateDmn({ modelName: 'x', inputs: parseFieldSelection('tier = in.invoice.customerTier'), outputs: parseFieldSelection('in.errorCode') }, model),
     e => e instanceof MappingError && /is no field\. List fields with their path/.test(e.message), 'an input is named like its field: there is nothing to rename');
 });
 
 test('generator: a selection that the mapping by name would not find again is refused', () => {
   const model = processModel();
-  assert.doesNotThrow(() => readableByName(parseFieldSelection('in.invoice.country, in.invoice.expressDelivery'), parseFieldSelection('in.pricing.errorCode'), model));
-  assert.throws(() => readableByName(parseFieldSelection('in.pricing.errorCode'), parseFieldSelection('in.pricing.errorCode'), model),
+  assert.doesNotThrow(() => readableByName(parseFieldSelection('in.invoice.total, in.invoice.discountPercent'), parseFieldSelection('in.errorCode'), model));
+  assert.throws(() => readableByName(parseFieldSelection('in.errorCode'), parseFieldSelection('in.errorCode'), model),
     /'errorCode' is selected as input and as output/);
 
   // the same name in two data classes: in.order.type comes first
@@ -381,15 +412,41 @@ test('generator: a selection that the mapping by name would not find again is re
 test('ivyscript: fields of nested data classes are assigned, the objects on the way are created', () => {
   const model = processModel();
   const ctx = { data: {}, fields: model.dataClass.fields, dataClassName: model.dataClass.name, classes: model.classes };
-  runScript('in.invoice.customerTier = "Gold";\nin.invoice.promoCode = " winter26 ";', ctx);
-  assert.deepEqual(ctx.data.invoice, { __type: NS + 'SalesInvoice', customerTier: 'Gold', promoCode: ' winter26 ' });
-  runScript(lines(json('process/InvoicePricing.p.json').elements.find(e => e.id === 'f2').config.output.code), ctx);
-  assert.equal(ctx.data.invoice.promoCode, 'WINTER26', 'the Script of the demo prepares the promo code');
-  assignTo('in.pricing.errorCode', 'none', ctx);
-  assignTo('in.pricing.pricedLines', [{ __type: NS + 'PricedLine', net: 1 }], ctx);
-  assert.deepEqual([ctx.data.pricing.errorCode, ctx.data.pricing.pricedLines.length], ['none', 1]);
+  runScript('in.invoice.customerTier = "Gold";\nin.invoice.number = "INV-1";', ctx);
+  assert.deepEqual(ctx.data.invoice, { __type: NS + 'Invoice', customerTier: 'Gold', number: 'INV-1' });
+  assignTo('in.errorCode', 'none', ctx);
+  assignTo('in.invoice.lines', [{ __type: NS + 'InvoiceLine', product: 'X' }], ctx);
+  assert.deepEqual([ctx.data.errorCode, ctx.data.invoice.lines.length], ['none', 1]);
   assert.throws(() => runScript('in.invoice.unknown = 1;', ctx), e => e instanceof IvyScriptError && e.kind === 'field');
-  assert.throws(() => assignTo('in.pricing.pricedLines', 'text', ctx), e => e instanceof IvyScriptError);
+  assert.throws(() => assignTo('in.invoice.lines', 'text', ctx), e => e instanceof IvyScriptError);
+});
+
+test('ivyscript: the Scripts of the demo sum the lines and apply the discount, as BigDecimal does', () => {
+  const model = processModel();
+  const process = json('process/InvoicePricing.p.json');
+  const code = id => lines(process.elements.find(e => e.id === id).config.output.code);
+  const logs = [];
+  const ctx = { data: {}, fields: model.dataClass.fields, dataClassName: model.dataClass.name, classes: model.classes, log: (level, message) => logs.push(message) };
+  const line = (quantity, unitPrice) => ({ __type: NS + 'InvoiceLine', quantity, unitPrice });
+  ctx.data.invoice = { __type: NS + 'Invoice', number: 'INV-1', lines: [line(4, 1200), line(1, 0.3)] };
+  assert.equal(validateScript(code('f2'), ctx), null);
+  assert.equal(validateScript(code('f6'), ctx), null);
+
+  runScript(code('f2'), ctx);
+  assert.deepEqual(ctx.data.invoice.lines.map(l => l.amount), [4800, 0.3], 'a loop over the lines sets a field of each');
+  assert.equal(ctx.data.invoice.orderAmount, 4800.3, 'no float noise');
+  Object.assign(ctx.data.invoice, { discountPercent: 2.5, discountReason: 'Odd' });
+  runScript(code('f6'), ctx);
+  assert.deepEqual([ctx.data.invoice.discountAmount, ctx.data.invoice.total], [120.01, 4680.29], '120.0075 rounded half up');
+  assert.deepEqual(logs, ['Invoice INV-1: 2.5% (Odd), total 4680.29']);
+
+  ctx.data.invoice.discountPercent = null;
+  assert.throws(() => runScript(code('f6'), ctx), e => e.javaType === 'NullPointerException', 'Java does not multiply by null');
+  ctx.data.invoice.lines = null;
+  runScript(code('f2'), ctx);
+  assert.equal(ctx.data.invoice.orderAmount, 0, 'a list that is not set has no elements');
+  assert.throws(() => runScript('BigDecimal x = BigDecimal.ONE.movePointLeft(3).setScale(2);', ctx), e => e.javaType === 'ArithmeticException');
+  assert.equal(validateScript('for (int i = 0; i < 3; i++) { }', ctx).kind, 'unsupported');
 });
 
 test('settings: what the connector reads from variables.yaml, with its defaults', () => {
@@ -404,17 +461,17 @@ test('settings: what the connector reads from variables.yaml, with its defaults'
 test('ivyscript: the check of a script accepts a field of a nested data class, as a run does', () => {
   const model = processModel();
   const ctx = { data: {}, fields: model.dataClass.fields, dataClassName: model.dataClass.name, classes: model.classes };
-  assert.equal(validateScript('in.invoice.customerTier = "Gold";\nin.invoice.promoCode = in.invoice.promoCode.trim();', ctx), null);
+  assert.equal(validateScript('in.invoice.customerTier = "Gold";\nin.invoice.customer = in.invoice.customer.trim();', ctx), null);
   assert.match(validateScript('in.invoice.unknown = 1;', ctx).message, /in\.invoice\.unknown' cannot be read: invoice has no field unknown/);
   assert.match(validateScript('invoice = 1;', ctx).message, /Only process data fields/);
 });
 
 test('generator: a file says which fields generated it, so it is told apart from another file of the same name', () => {
   const model = processModel();
-  const inputs = parseFieldSelection('in.invoice.country, in.invoice.expressDelivery');
-  const outputs = parseFieldSelection('in.pricing.orderDiscountPercent');
-  const generated = generateDmn({ modelName: 'delivery-days', inputs, outputs }, model);
+  const inputs = parseFieldSelection('in.invoice.total, in.invoice.discountPercent');
+  const outputs = parseFieldSelection('in.invoice.discountAmount');
+  const generated = generateDmn({ modelName: 'invoice-approver', inputs, outputs }, model);
   assert.ok(generatedFrom(generated, inputs, outputs), 'the file its element generated');
-  assert.ok(!generatedFrom(generated, inputs, parseFieldSelection('in.pricing.errorCode')), 'other fields: another file');
-  assert.ok(!generatedFrom(pricing(), inputs, outputs), 'dmn/invoice-pricing.dmn was written by hand');
+  assert.ok(!generatedFrom(generated, inputs, parseFieldSelection('in.errorCode')), 'other fields: another file');
+  assert.ok(!generatedFrom(demoModel(), inputs, outputs), 'dmn/invoice-discount.dmn was written by hand');
 });

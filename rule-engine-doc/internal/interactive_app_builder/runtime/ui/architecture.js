@@ -27,6 +27,15 @@ const SVG = 'http://www.w3.org/2000/svg';
 const IMAGE = 'axonivy/rule-engine-runtime';
 /** From this width of the tab on, the details stand beside the diagram (and leave it 840 px). */
 const DETAILS_BESIDE = 1180;
+/** How far the camera of a walkthrough zooms in and out. */
+const ZOOM = { max: 1.2, min: 0.5 };
+/** Room around what the camera frames, and between it and the note. */
+const FRAME_PAD = 20;
+
+/** A result in a few words: a structure by its values, e.g. 2 · Silver customer. */
+const compact = value => (value !== null && typeof value === 'object' && !Array.isArray(value)
+  ? Object.keys(value).map(key => (value[key] !== null && typeof value[key] === 'object' ? '…' : String(value[key]))).join(' · ')
+  : brief(value));
 
 /**
  * from → to; `both`: a second line carries the answer back; `plain`: no direction; `side`: runs along the left
@@ -94,6 +103,8 @@ export class ArchitectureView {
     this.live = {}; // the line of a block that shows the current state
     this.paths = {}; // link id → { out, back, label }
     this.focus = null; // what a walkthrough lights: { lit, flow, label }
+    this.camera = null; // what a note of a walkthrough is about: { ids, note }, see frame()
+    this.frameKey = '';
     this.selection = null;
     this.call = null; // the last call of a Business Rule Task
     this.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.layout()) : null;
@@ -177,9 +188,10 @@ export class ArchitectureView {
 
     // the details of the selected block: a drawer on the right, beside the diagram
     this.detailsEl = h('aside.arch-details', { hidden: true, 'aria-label': t('arch.details.label') });
+    // the stage clips the diagram while the camera moves it, so that it never slides over the title
     this.scrollEl = h('div.arch-scroll', null,
       h('div.arch-title', null, h('strong', null, t('arch.title')), h('span', null, t('arch.hint'))),
-      this.diagram);
+      h('div.arch-stage', null, this.diagram));
     this.mainEl = h('div.arch-main', null, this.scrollEl, this.detailsEl);
     clear(this.host).append(this.mainEl);
     if (this.observer) {
@@ -189,6 +201,7 @@ export class ArchitectureView {
     this.update();
     this.applyFocus();
     this.renderDetails();
+    this.frameKey = '';
     this.layout();
   }
 
@@ -197,9 +210,121 @@ export class ArchitectureView {
     return this.nodes[id] || null;
   }
 
-  /** Where the diagram ends on screen: notes of the walkthrough go below it. */
+  /** Where the diagram ends on screen: notes of the walkthrough go below it, unless the camera frames a part of it. */
   bottom() {
-    return this.diagram ? this.diagram.getBoundingClientRect().bottom : 0;
+    return this.diagram && !this.camera ? this.diagram.getBoundingClientRect().bottom : 0;
+  }
+
+  /**
+   * Where a block or a link label lies in the diagram, as laid out: not moved by the camera.
+   * @returns {{left:number, top:number, right:number, bottom:number, width:number, height:number}|null}
+   */
+  boxOf(id) {
+    const node = this.nodes[id];
+    if (!node || node.hidden || !node.offsetWidth) return null;
+    let left = 0;
+    let top = 0;
+    let el = node;
+    while (el && el !== this.diagram) {
+      left += el.offsetLeft;
+      top += el.offsetTop;
+      el = el.offsetParent;
+    }
+    if (el !== this.diagram) return null;
+    const width = node.offsetWidth;
+    const height = node.offsetHeight;
+    // a link label stands centred on its point
+    if (node.classList.contains('arch-link-label') && !node.classList.contains('inline')) {
+      left -= width / 2;
+      top -= height / 2;
+    }
+    return { left, top, right: left + width, bottom: top + height, width, height };
+  }
+
+  // ── the camera of a walkthrough ─────────────────────────────────────────────
+
+  /**
+   * While a note of a walkthrough is about a part of the diagram, the camera scales and moves the diagram so
+   * that the part, with what is lit beside it, stands in the middle of one side of the tab, and the note has
+   * the other side. A small tab, such as the tutorial inside the Portal, zooms out; a large one zooms in a bit.
+   * Called for every frame the note is shown: it only moves when something changed.
+   * @param {string|null} id  the block or link the note is about; null lets go
+   * @param {{width:number, height:number}} [note]  the size of the note
+   */
+  frame(id, note = null) {
+    if (!this.diagram) return;
+    const ids = id && this.nodes[id] ? [...new Set([id, ...this.focusIds()])] : [];
+    const view = this.scrollEl;
+    const key = ids.length ? [ids.join(), note ? note.width + 'x' + note.height : '', view.clientWidth + 'x' + view.clientHeight].join('|') : '';
+    if (key === this.frameKey) return;
+    this.frameKey = key;
+    this.camera = ids.length ? { ids, note } : null;
+    this.applyCamera();
+  }
+
+  /**
+   * What the camera frames, where it is on screen now (it follows the camera while it moves), and the side it
+   * keeps free for the note.
+   * @returns {{side: 'left'|'right', rect: {left:number, top:number, right:number, bottom:number}}|null}
+   */
+  framed() {
+    const camera = this.camera;
+    if (!camera || !camera.side) return null;
+    const rects = camera.ids.map(id => this.nodes[id]).filter(node => node && !node.hidden).map(node => node.getBoundingClientRect());
+    if (!rects.length) return null;
+    return {
+      side: camera.side,
+      rect: {
+        left: Math.min(...rects.map(r => r.left)), top: Math.min(...rects.map(r => r.top)),
+        right: Math.max(...rects.map(r => r.right)), bottom: Math.max(...rects.map(r => r.bottom))
+      }
+    };
+  }
+
+  /** What the walkthrough lights: blocks, and both ends of a link that flows. */
+  focusIds() {
+    const focus = this.focus || {};
+    const ids = [...(focus.lit || [])];
+    (focus.flow || []).forEach(entry => {
+      const link = LINKS.find(candidate => candidate.id === entry.replace(/[<>]$/, ''));
+      if (link) ids.push(link.from, link.to);
+    });
+    return ids.filter(id => this.nodes[id]);
+  }
+
+  applyCamera() {
+    if (!this.diagram) return;
+    const camera = this.camera;
+    const view = this.scrollEl;
+    view.classList.toggle('framed', Boolean(camera));
+    const boxes = camera ? camera.ids.map(id => this.boxOf(id)).filter(Boolean) : [];
+    if (!boxes.length || !view.clientWidth) {
+      this.diagram.style.transform = '';
+      return;
+    }
+    view.scrollTop = 0;
+    view.scrollLeft = 0;
+    const box = {
+      left: Math.min(...boxes.map(b => b.left)), top: Math.min(...boxes.map(b => b.top)),
+      right: Math.max(...boxes.map(b => b.right)), bottom: Math.max(...boxes.map(b => b.bottom))
+    };
+    const width = box.right - box.left;
+    const height = box.bottom - box.top;
+    // the diagram as laid out, in the coordinates of the scroll area; the title above it stays
+    const originX = this.diagram.offsetLeft - view.offsetLeft;
+    const originY = this.diagram.offsetTop - view.offsetTop;
+    const noteWidth = camera.note ? camera.note.width + FRAME_PAD : 0;
+    const areaWidth = Math.max(120, view.clientWidth - noteWidth - FRAME_PAD * 2);
+    const areaHeight = Math.max(120, view.clientHeight - originY - FRAME_PAD * 2);
+    const scale = Math.max(ZOOM.min, Math.min(ZOOM.max, areaWidth / width, areaHeight / height));
+    // a part on the right of the diagram stays on the right, and the note goes to its left
+    const onRight = box.left + width / 2 > this.diagram.offsetWidth / 2;
+    camera.side = onRight ? 'left' : 'right';
+    const areaLeft = onRight ? view.clientWidth - FRAME_PAD - areaWidth : FRAME_PAD;
+    // the middle of the part goes to the middle of its area; the area starts below the title
+    const x = areaLeft + areaWidth / 2 - originX - scale * (box.left + width / 2);
+    const y = FRAME_PAD + areaHeight / 2 - scale * (box.top + height / 2);
+    this.diagram.style.transform = 'translate(' + Math.round(x) + 'px, ' + Math.round(y) + 'px) scale(' + scale.toFixed(3) + ')';
   }
 
   // ── links ───────────────────────────────────────────────────────────────────
@@ -220,15 +345,12 @@ export class ArchitectureView {
       const holder = this.nodes[outside].parentNode;
       holder.style.marginTop = '';
       if (mode !== 'wide') return;
-      const top = this.diagram.getBoundingClientRect().top;
-      const p = this.nodes[partner].getBoundingClientRect();
-      holder.style.marginTop = Math.round(p.top - top + (p.height - this.nodes[outside].offsetHeight) / 2) + 'px';
+      const p = this.boxOf(partner);
+      if (p) holder.style.marginTop = Math.round(p.top + (p.height - this.nodes[outside].offsetHeight) / 2) + 'px';
     });
-    const base = this.diagram.getBoundingClientRect();
-    const rectOf = id => {
-      const r = this.nodes[id].getBoundingClientRect();
-      return { left: r.left - base.left, top: r.top - base.top, right: r.right - base.left, bottom: r.bottom - base.top, width: r.width, height: r.height };
-    };
+    // as laid out, whatever the camera does with the diagram
+    const base = { width: this.diagram.offsetWidth, height: this.diagram.offsetHeight };
+    const rectOf = id => this.boxOf(id) || { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
     this.linksEl.setAttribute('viewBox', '0 0 ' + Math.round(base.width) + ' ' + Math.round(base.height));
     while (this.linksEl.firstChild) this.linksEl.removeChild(this.linksEl.firstChild);
     this.paths = {};
@@ -280,6 +402,7 @@ export class ArchitectureView {
     });
     this.applyFocus();
     this.applyState();
+    this.applyCamera();
   }
 
   // ── what a walkthrough shows ────────────────────────────────────────────────
@@ -293,6 +416,8 @@ export class ArchitectureView {
   setFocus(focus) {
     this.focus = focus && (focus.lit || focus.flow) ? focus : null;
     this.applyFocus();
+    // the end of a chapter, a reset: the whole diagram again
+    if (!this.focus) this.frame(null);
   }
 
   applyFocus() {
@@ -370,7 +495,7 @@ export class ArchitectureView {
     } else if (call && call.results !== undefined) {
       const names = Object.keys(call.results);
       // one or two results by their value; a whole model by the number of its results, so that the block stays small
-      const result = names.length <= 2 ? names.map(name => name + ' = ' + brief(call.results[name])).join(', ') : t('arch.live.results', { count: names.length });
+      const result = names.length <= 2 ? names.map(name => name + ' = ' + compact(call.results[name])).join(', ') : t('arch.live.results', { count: names.length });
       last = t('arch.live.call.ok', { result, version: call.version });
     }
     this.live.api.textContent = last;

@@ -5,13 +5,13 @@
  * selected, the new DMN gets a name of its own, the file is generated, and a first rule is written into the
  * generated table.
  */
-import { deliveryProject } from '../shared/delivery-project.js';
+import { approverProject } from '../shared/approver-project.js';
 import { strings } from './text.js';
 import { tour } from './tour.js';
 
 export default {
   id: 'guide-05',
-  ...deliveryProject,
+  ...approverProject,
   strings,
   tour
 };

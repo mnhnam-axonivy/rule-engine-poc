@@ -4,15 +4,12 @@
  * runtime/ui/architecture.js for the blocks and links it can light.
  */
 
-import { MODEL, SAMPLE_INVOICE } from '../shared/project.js';
-import { toJson } from '../../runtime/model/mapping.js';
+import { MODEL, DECISION } from '../shared/project.js';
 
 /** What the demo process has in its process data when it reaches the Business Rule Task: the inputs of the model. */
-const INPUT_NAMES = ['customerTier', 'country', 'paymentTerms', 'promoCode', 'expressDelivery', 'invoiceDate', 'lines'];
-const INPUT = Object.fromEntries(INPUT_NAMES.map(name => [name, toJson(SAMPLE_INVOICE[name])]));
+const INPUT = { customerTier: 'Silver', orderAmount: 9200 };
 
-const lines = values => Object.keys(values).map(name => name + ' = '
-  + (Array.isArray(values[name]) ? '[' + values[name].length + ' lines]' : JSON.stringify(values[name]))).join('\n');
+const lines = values => Object.keys(values).map(name => name + ' = ' + JSON.stringify(values[name])).join('\n');
 
 /** 1 — two sides and one connection. */
 async function parts(d) {
@@ -81,22 +78,21 @@ async function flow(d) {
 
   d.arch({ lit: ['connector', 'api'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/evaluate' } });
   await d.note('flowEvaluate', { target: 'arch:http', quote: lines(INPUT) });
-  const answer = app.runtime.evaluate(MODEL, null, INPUT);
-  const table = answer.dmn.functions.find(fn => fn.name === 'lineDiscountTable').table;
-  const first = answer.calls.lineDiscountTable[0];
-  const rule = table.rules[first.matched[0]];
-  const rules = answer.calls.lineDiscountTable.map((made, n) => ({ table: 'lineDiscountTable', call: n + 1, index: made.matched[0] }));
-  app.arch.setCall({ model: MODEL, decision: null, results: answer.results, version: answer.version, rule: null, rules });
+  const answer = app.runtime.evaluate(MODEL, DECISION, INPUT);
+  const table = answer.dmn.decisions.find(decision => decision.name === DECISION).table;
+  const index = answer.matched[DECISION][0];
+  const rule = { index, inputs: table.rules[index].inputs, outputs: table.rules[index].outputs };
+  app.arch.setCall({ model: MODEL, decision: DECISION, results: answer.results, version: answer.version, rule, rules: [] });
   d.arch({ lit: ['api', 'engine', 'db'] });
-  await d.note('flowDecide', { target: 'arch:engine', quote: 'Line 1, rule ' + (first.matched[0] + 1) + ':  ' + rule.inputs.slice(0, 2).join('  |  ') + '  →  ' + rule.outputs[0] + ' %' });
+  await d.note('flowDecide', { target: 'arch:engine', quote: 'rule ' + (index + 1) + ':  ' + rule.inputs.join('  |  ') + '  →  ' + rule.outputs.join(', ') });
 
-  const total = answer.results.totals.total;
-  d.arch({ lit: ['connector', 'api'], flow: ['http<'], label: { http: '{ "results": { "pricedLines": [5], "totals": { "total": ' + total + ' }, … }, "version": ' + answer.version + ' }' } });
+  const result = answer.results[DECISION];
+  d.arch({ lit: ['connector', 'api'], flow: ['http<'], label: { http: '{ "results": { "discount": { "discountPercent": ' + result.discountPercent + ', … } }, "version": ' + answer.version + ' }' } });
   await d.note('flowResult', { target: 'arch:http' });
   d.arch({ lit: ['connector', 'demo'] });
   await d.note('flowWritten', {
     target: 'arch:demo',
-    quote: ['in.pricing.totals.total = ' + total, 'case: ruleVersion_' + MODEL + ' = "' + answer.version + '"'].join('\n')
+    quote: ['in.invoice.discountPercent = ' + result.discountPercent, 'case: ruleVersion_' + MODEL + ' = "' + answer.version + '"'].join('\n')
   });
   d.arch(null);
 

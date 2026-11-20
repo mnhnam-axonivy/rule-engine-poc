@@ -57,7 +57,7 @@ npm run preview      # the tutorial page without an engine: http://127.0.0.1:431
 
 `npm run watch` rebuilds on every change, `node build.mjs --check` fails if the built files are not what the
 sources produce. The build reads the real files of `rule-engine-demo` (`InvoicePricing.p.json`, its data
-classes, `dmn/invoice-pricing.dmn`): build again after the demo changes.
+classes, `dmn/invoice-discount.dmn`): build again after the demo changes.
 
 The built files are part of the Ivy project, so the tutorial runs without Node.js. To build and test the project:
 

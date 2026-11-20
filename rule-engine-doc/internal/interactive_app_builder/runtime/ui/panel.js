@@ -273,7 +273,7 @@ export class BottomPanel {
     })));
   }
 
-  /** An object or a list in one line: its simple values joined, e.g. Laptop 14" · Hardware · 10 · 1200. */
+  /** An object or a list in one line: its simple values joined, e.g. Laptop 14" · 4 · 1200. */
   dataLine(value) {
     const text = v => (v === null || v === undefined ? 'null' : Array.isArray(v) ? '[' + v.length + ']'
       : typeof v === 'object' ? '{…}' : String(v));

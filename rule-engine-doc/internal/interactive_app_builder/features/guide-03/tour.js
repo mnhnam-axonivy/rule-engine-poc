@@ -3,22 +3,23 @@
  * it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do. The runs
  * play at the normal speed: they are what the page is about.
  */
-import { ELEMENTS, inputsText, lineRulesText, pricedText, errorText } from '../shared/project.js';
+import { ELEMENTS, inputsText, ruleText, discountText, invoiceText, errorText } from '../shared/project.js';
 
-const { START, PREPARE, RULE_TASK, LOG, BOUNDARY, NOT_PRICED } = ELEMENTS;
+const { START, SUM, RULE_TASK, APPLY, BOUNDARY, NOT_PRICED } = ELEMENTS;
 
 /** Step 3: the demo process, element by element, then the parts it went through. */
 async function run(d) {
   await d.run({
     on: {
       ['enter:' + START]: () => d.note('called', { target: 'el:' + START }),
-      ['enter:' + PREPARE]: () => d.note('prepare', { target: 'el:' + PREPARE }),
+      ['enter:' + SUM]: () => d.note('sum', { target: 'el:' + SUM }),
       ['enter:' + RULE_TASK]: () => d.note('task', { target: 'el:' + RULE_TASK }),
       'rule:request': ({ call }) => d.note('request', { quote: inputsText(call) }),
       'rule:registered': () => d.note('registered'),
-      'rule:response': ({ call }) => d.note('response', { quote: lineRulesText(call) }),
-      'rule:mapped': ({ call }) => d.note('mapped', { quote: pricedText(call) }),
-      ['after:' + LOG]: async () => {
+      'rule:response': ({ call }) => d.note('response', { quote: ruleText(call) }),
+      'rule:mapped': ({ call }) => d.note('mapped', { quote: discountText(call) }),
+      ['after:' + APPLY]: async () => {
+        await d.note('applied', { target: 'el:' + APPLY, quote: invoiceText(d.app.data.invoice) });
         await d.panel('log');
         await d.note('log', { target: 'log:last' });
         await d.panel(null);

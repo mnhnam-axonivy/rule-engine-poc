@@ -12,13 +12,13 @@ This page is the developer's side: the `.dmn` file of the project changes. How t
 
 During development the `.dmn` file of your project is what counts. Try it:
 
-1. Start **Rule Engine Demo: invoice pricing**. The 10 laptops get 6 percent, decided by version 1 of the model; the page says which version decided.
-2. Open `dmn/invoice-pricing.dmn` and change the result of rule 6 of `lineDiscountTable`, "Hardware: 10 units or more", from `6` to `8`. Save the file.
-3. Click **Apply rules** again. The laptops get 8 percent. The changed file became version 2.
+1. Start **Rule Engine Demo: invoice discount**. The Silver customer gets 2 percent, decided by version 1 of the model; the page says which version decided.
+2. Open `dmn/invoice-discount.dmn` and change the result of rule 6, "Silver customer", from `2` to `3`. Save the file.
+3. Click **Apply rules** again. The invoice gets 3 percent, the total is 8,924.00 instead of 9,016.00. The changed file became version 2, and the table on the page shows it.
 
 Before every evaluation the Business Rule Task compares the file with what it registered last. A changed file is sent to the runtime, becomes a new version and goes live. An unchanged file is not sent again.
 
-Content that the runtime already has never becomes a second version. If you change the 8 back to 6, the runtime recognises version 1 and makes it active again.
+Content that the runtime already has never becomes a second version. If you change the 3 back to 2, the runtime recognises version 1 and makes it active again.
 
 ---
 
@@ -44,19 +44,19 @@ Every version also knows where it came from:
 List the versions of a model:
 
 ```bash
-curl http://localhost:8090/api/models/invoice-pricing/versions
+curl http://localhost:8090/api/models/invoice-discount/versions
 ```
 
 ---
 
 ## Which version decided?
 
-Rules change over time, so "why did these laptops get 6 percent?" needs to know which rules were in force. You do not choose a version: a Business Rule Task always evaluates the active version of the model, and every answer of the runtime names that version.
+Rules change over time, so "why did this invoice get 2 percent?" needs to know which rules were in force. You do not choose a version: a Business Rule Task always evaluates the active version of the model, and every answer of the runtime names that version.
 
-The connector writes it to the case, as custom field `ruleVersion_<model>`, here `ruleVersion_invoice-pricing`. There is nothing to configure, which is why the element has no field for it. You can search and report on it like on any other custom field, and read it in a script; the page of the demo shows it next to the result:
+The connector writes it to the case, as custom field `ruleVersion_<model>`, here `ruleVersion_invoice-discount`. There is nothing to configure, which is why the element has no field for it. You can search and report on it like on any other custom field, and read it in a script; the page of the demo shows it next to the result:
 
 ```java
-ivy.case.customFields().stringField("ruleVersion_invoice-pricing").getOrNull()
+ivy.case.customFields().stringField("ruleVersion_invoice-discount").getOrNull()
 ```
 
 ---
@@ -66,14 +66,14 @@ ivy.case.customFields().stringField("ruleVersion_invoice-pricing").getOrNull()
 A rule that turns out to be wrong is taken back in one call. The version that was active before becomes active again:
 
 ```bash
-curl -X POST http://localhost:8090/api/models/invoice-pricing/rollback
+curl -X POST http://localhost:8090/api/models/invoice-discount/rollback
 ```
 
 A second rollback goes one step further back. Any version can also be activated directly:
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"user":"rule.approver"}' \
-     http://localhost:8090/api/models/invoice-pricing/versions/1/activate
+     http://localhost:8090/api/models/invoice-discount/versions/1/activate
 ```
 
 The change is live at once. Evaluations that are running at that moment finish with the version they started with.

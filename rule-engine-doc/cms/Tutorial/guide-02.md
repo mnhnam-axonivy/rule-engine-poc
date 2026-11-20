@@ -19,7 +19,7 @@ Two things run side by side and talk over HTTP:
  │   Admin Settings › Rule Mgmt     │          │                                          │
  │   ┆ calls Portal/RuleManagement  │          │                                          │
  │ rule-engine-demo   your project  │          │ image axonivy/rule-engine-runtime        │
- │   page, process, invoice-pricing │          │                                          │
+ │   page, process, invoice-discount│          │                                          │
  │       │ requires                 │ register │  REST API /api      DMN editor /editor/  │ ◄── browser
  │ rule-engine        connector     │ ───────► │                                          │
  │   Business Rule Task, client     │ evaluate │  DMN engine         Database             │ ──► volume
@@ -42,7 +42,7 @@ Rules change more often than processes. That is why they live apart: the runtime
 
 | Project | Role | What is in it |
 | --- | --- | --- |
-| `rule-engine-demo` | Stands for your own project. | The page of the invoice, the process with a Business Rule Task that prices it, the process data, and the rules: one `.dmn` file per model, in the folder `dmn`, here `dmn/invoice-pricing.dmn`. |
+| `rule-engine-demo` | Stands for your own project. | The page of the invoice, the process with a Business Rule Task that decides its discount, the process data, and the rules: one `.dmn` file per model, in the folder `dmn`, here `dmn/invoice-discount.dmn`. |
 | `rule-engine` | The connector. Your project requires it. | The element **Business Rule Task**, the mapping between process data and decisions, the client of the runtime, and the variables `RuleEngine.*`. |
 | `rule-engine-core` | Shared code. The connector requires it. | The requests and responses of the runtime, and the generator that creates a `.dmn` file from a data class. The same code is compiled into the image of the runtime, so both sides use the same classes. |
 
@@ -76,14 +76,13 @@ The container `axonivy-rule-engine` runs the image `axonivy/rule-engine-runtime`
 
 When a process reaches a Business Rule Task, this happens:
 
-1. **Your project** has the inputs in its process data. In the demo the page passes the invoice: `customerTier = "Silver"`, `country = "CH"`, five `lines`, and four more.
+1. **Your project** has the inputs in its process data. In the demo the page passes the invoice, and a Script sums its lines: `customerTier = "Silver"`, `orderAmount = 9200`.
 2. **The connector** finds the inputs the model needs in the process data, by their names.
-3. If the runtime does not have the content of `dmn/invoice-pricing.dmn` yet, the connector sends the file to the **REST API**. The **DMN engine** checks it, and the **database** stores it as a new version.
-4. The connector sends the inputs to the REST API and asks for every decision of the model.
-5. The DMN engine evaluates the active version, decision after decision. The table of line discounts runs once per line; the first rule that matches decides each one.
-6. The results go back as JSON in one answer, with the number of the version that decided.
-7. The connector writes each result to the field named like its decision, and the process goes on.
-
+3. If the runtime does not have the content of `dmn/invoice-discount.dmn` yet, the connector sends the file to the **REST API**. The **DMN engine** checks it, and the **database** stores it as a new version.
+4. The connector sends the inputs to the REST API and asks for the decision `discount`.
+5. The DMN engine evaluates the active version. The rules are tried from the top; the first one that matches decides, here rule 6: 2 percent.
+6. The result goes back as JSON, with the number of the version that decided.
+7. The connector writes each output to the field with its name, and the process goes on.
 ---
 
 ## What comes next

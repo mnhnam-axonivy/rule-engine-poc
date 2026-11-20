@@ -28,7 +28,7 @@ By the name. For every input of the decision it looks for a field with the same 
 
 ### My field has another name than the input. What do I do?
 
-Set a field with the name of the input in a Script before the Business Rule Task, for example `in.invoice.customerTier = in.customer.tier;`. The same Script is where a value is calculated or cleaned first, as the demo does with the promo code.
+Set a field with the name of the input in a Script before the Business Rule Task, for example `in.invoice.customerTier = in.customer.tier;`. The same Script is where a value is calculated or cleaned first, as the demo does with the order amount.
 
 ### What are Input fields and Output fields for?
 
@@ -66,7 +66,7 @@ To make your file live, activate its version on purpose, in the Portal or in the
 
 ### How do I go back to the version before?
 
-In the Portal: **Admin Settings › Rule Management**, **Show versions** of the model, then **Roll back**. The version before is active again, and the next evaluation uses it. Any other version of the list can be activated the same way. In Java: `RuleEngine.rollback("invoice-pricing", "rule.approver")`.
+In the Portal: **Admin Settings › Rule Management**, **Show versions** of the model, then **Roll back**. The version before is active again, and the next evaluation uses it. Any other version of the list can be activated the same way. In Java: `RuleEngine.rollback("invoice-discount", "rule.approver")`.
 
 ### What happens when the decision runtime is down?
 

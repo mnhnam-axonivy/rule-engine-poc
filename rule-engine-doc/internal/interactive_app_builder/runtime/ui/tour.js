@@ -70,8 +70,9 @@
  *   'side'                         the readout next to variables.yaml
  *   'arch:connector'               a block of the tab "Architecture": ivy, demo, connector, core,
  *                                  container, api, editor, engine, db, shared, browser, volume;
- *                                  or the label of a link: http, code, ui, store. The note
- *                                  goes below the diagram, so that it covers no block
+ *                                  or the label of a link: http, code, ui, store. The camera
+ *                                  of the diagram zooms to it and what is lit, on one side
+ *                                  of the tab, and the note stands on the other side
  *   (none)                         the note docks in the bottom left corner of the canvas
  *
  * Hooks of d.run: 'enter:<id>' (the token has arrived, the element has not run yet),
@@ -122,7 +123,7 @@ const typingTime = steps => clamp(Math.round(1400 / steps), 40, 200);
 
 /**
  * A part of a scope by its key: 'rule2', 'r2.o1', 'addRule'. In the editor of a .dmn file with several tables,
- * '<table>/<key>' looks inside one of them: 'lineDiscountTable/rule6', 'taxFormula/expr'.
+ * '<table>/<key>' looks inside one of them: 'discount/rule6', 'discount/r6.o1'.
  */
 function findPart(scope, part, suffix = '') {
   if (!scope || !part) return null;
@@ -131,7 +132,7 @@ function findPart(scope, part, suffix = '') {
   return root ? root.querySelector('[data-tour="' + part.slice(slash + 1) + '"]' + suffix) : null;
 }
 
-/** The key of a part without its table: 'r6.o1' for 'lineDiscountTable/r6.o1'. */
+/** The key of a part without its table: 'r6.o1' for 'discount/r6.o1'. */
 const partKey = part => String(part || '').slice(String(part || '').indexOf('/') + 1);
 
 function parseTarget(target) {
@@ -773,11 +774,7 @@ export class Tour {
       if (row) app.panel.dataView.scrollTop = Math.max(0, row.offsetTop - 2);
       return;
     }
-    if (target.kind === 'arch') {
-      const node = app.state.tab === 'arch' ? app.arch.node(target.name) : null;
-      if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      return;
-    }
+    if (target.kind === 'arch') return; // the camera of the diagram brings it into view, see #place
     if (target.kind === 'dmn' || target.kind === 'owner' || target.kind === 'runtime' || target.kind === 'portal') {
       const scope = this.#scope(target);
       const part = target.kind === 'runtime' ? target.name : target.line;
@@ -900,6 +897,10 @@ export class Tour {
     const { app } = this;
     const layer = app.layer.getBoundingClientRect();
     if (!layer.width) return;
+    if (this.target && this.target.kind === 'arch' && app.state.tab === 'arch' && !this.noteEl.hidden) {
+      // the diagram moves the block into view and leaves room for the note; the note follows it frame by frame
+      app.arch.frame(this.target.name, { width: this.noteEl.offsetWidth, height: this.noteEl.offsetHeight });
+    }
     const r = this.target ? this.#rect(this.target) : null;
     const spot = this.spotEl;
     if (r) {
@@ -957,7 +958,15 @@ export class Tour {
         y = clamp(cy - ht / 2, 8, Math.max(8, floor - ht));
         arrow = clamp(cy - y, 18, ht - 18);
       }
-      if (r.under && r.under - layer.top + 12 + ht <= floor) {
+      const framed = this.target.kind === 'arch' && app.state.tab === 'arch' ? app.arch.framed() : null;
+      if (framed) {
+        // beside all the camera frames, on the side it keeps free, level with the block the note is about
+        side = framed.side;
+        x = side === 'right' ? framed.rect.right - layer.left + gap : framed.rect.left - layer.left - gap - w;
+        x = clamp(x, 8, Math.max(8, layer.width - w - 8));
+        y = clamp(cy - ht / 2, 8, Math.max(8, floor - ht));
+        arrow = clamp(cy - y, 18, ht - 18);
+      } else if (r.under && r.under - layer.top + 12 + ht <= floor) {
         // a block of the architecture: below the diagram, in line with the block, so that no block is covered
         x = clamp(cx - w / 2, 8, Math.max(8, layer.width - w - 8));
         y = r.under - layer.top + 12;

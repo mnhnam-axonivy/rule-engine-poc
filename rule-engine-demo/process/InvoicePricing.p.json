@@ -8,12 +8,12 @@
   "elements" : [ {
       "id" : "f0",
       "type" : "CallSubStart",
-      "name" : "price(SalesInvoice)",
+      "name" : "price(Invoice)",
       "config" : {
         "signature" : "price",
         "input" : {
           "params" : [
-            { "name" : "invoice", "type" : "com.axonivy.utils.rule.engine.demo.SalesInvoice", "desc" : "The invoice with its lines" }
+            { "name" : "invoice", "type" : "com.axonivy.utils.rule.engine.demo.Invoice", "desc" : "The invoice with its lines and the customer tier" }
           ],
           "map" : {
             "out.invoice" : "param.invoice"
@@ -21,10 +21,14 @@
         },
         "result" : {
           "params" : [
-            { "name" : "pricing", "type" : "com.axonivy.utils.rule.engine.demo.PricingResult", "desc" : "What the rules decided, or errorCode and errorMessage" }
+            { "name" : "invoice", "type" : "com.axonivy.utils.rule.engine.demo.Invoice", "desc" : "The invoice with its amounts, discount and total" },
+            { "name" : "errorCode", "type" : "String", "desc" : "Set if the rules could not decide" },
+            { "name" : "errorMessage", "type" : "String", "desc" : "Why the rules could not decide" }
           ],
           "map" : {
-            "result.pricing" : "in.pricing"
+            "result.invoice" : "in.invoice",
+            "result.errorCode" : "in.errorCode",
+            "result.errorMessage" : "in.errorMessage"
           }
         }
       },
@@ -38,19 +42,23 @@
     }, {
       "id" : "f2",
       "type" : "Script",
-      "name" : "Prepare the promo code",
+      "name" : "Sum the lines",
       "config" : {
         "output" : {
           "code" : [
-            "if (in.invoice.promoCode != null) {",
-            "  in.invoice.promoCode = in.invoice.promoCode.trim().toUpperCase();",
-            "}"
+            "import com.axonivy.utils.rule.engine.demo.InvoiceLine;",
+            "",
+            "BigDecimal orderAmount = BigDecimal.ZERO;",
+            "for (InvoiceLine line : in.invoice.lines) {",
+            "  line.amount = line.unitPrice.multiply(BigDecimal.valueOf(line.quantity.longValue()));",
+            "  orderAmount = orderAmount.add(line.amount);",
+            "}",
+            "in.invoice.orderAmount = orderAmount;"
           ]
         }
       },
       "visual" : {
-        "at" : { "x" : 240, "y" : 64 },
-        "size" : { "width" : 144, "height" : 60 }
+        "at" : { "x" : 240, "y" : 64 }
       },
       "connect" : [
         { "id" : "f3", "to" : "f4" }
@@ -60,16 +68,16 @@
       "type" : "ProgramInterface",
       "name" : [
         "Business Rule Task",
-        "invoice-pricing"
+        "invoice-discount"
       ],
       "config" : {
         "javaClass" : "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig" : {
-          "decision" : "invoice-pricing"
+          "decision" : "invoice-discount#discount"
         }
       },
       "visual" : {
-        "at" : { "x" : 432, "y" : 64 },
+        "at" : { "x" : 400, "y" : 64 },
         "size" : { "width" : 144, "height" : 60 }
       },
       "boundaries" : [ {
@@ -80,17 +88,17 @@
             "errorCode" : "rule:engine",
             "output" : {
               "code" : [
-                "in.pricing.errorCode = error.getErrorCode();",
-                "in.pricing.errorMessage = error.getMessage();",
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();",
                 "ivy.log.error(\"The invoice cannot be priced: \" + error.getMessage());"
               ]
             }
           },
           "visual" : {
-            "at" : { "x" : 472, "y" : 96 }
+            "at" : { "x" : 440, "y" : 96 }
           },
           "connect" : [
-            { "id" : "f9", "to" : "f10", "via" : [ { "x" : 472, "y" : 168 } ] }
+            { "id" : "f9", "to" : "f10", "via" : [ { "x" : 440, "y" : 168 } ] }
           ]
         } ],
       "connect" : [
@@ -99,16 +107,20 @@
     }, {
       "id" : "f6",
       "type" : "Script",
-      "name" : "Log the result",
+      "name" : "Apply the discount",
       "config" : {
         "output" : {
           "code" : [
-            "ivy.log.info(\"Invoice \" + in.invoice.number + \": total \" + in.pricing.totals.total + \", \" + in.pricing.approval.route);"
+            "import java.math.RoundingMode;",
+            "",
+            "in.invoice.discountAmount = in.invoice.orderAmount.multiply(in.invoice.discountPercent).movePointLeft(2).setScale(2, RoundingMode.HALF_UP);",
+            "in.invoice.total = in.invoice.orderAmount.subtract(in.invoice.discountAmount);",
+            "ivy.log.info(\"Invoice \" + in.invoice.number + \": \" + in.invoice.discountPercent + \"% (\" + in.invoice.discountReason + \"), total \" + in.invoice.total);"
           ]
         }
       },
       "visual" : {
-        "at" : { "x" : 616, "y" : 64 }
+        "at" : { "x" : 560, "y" : 64 }
       },
       "connect" : [
         { "id" : "f7", "to" : "f11" }
@@ -117,26 +129,26 @@
       "id" : "f11",
       "type" : "CallSubEnd",
       "visual" : {
-        "at" : { "x" : 752, "y" : 64 }
+        "at" : { "x" : 704, "y" : 64 }
       }
     }, {
       "id" : "f10",
       "type" : "CallSubEnd",
       "name" : "not priced",
       "visual" : {
-        "at" : { "x" : 616, "y" : 168 }
+        "at" : { "x" : 560, "y" : 168 }
       }
     }, {
       "id" : "f30",
       "type" : "ProcessAnnotation",
       "name" : [
-        "The whole model is evaluated. Its inputs are read by name from in.invoice,",
-        "each decision is written to the field of its name in in.pricing:",
-        "pricedLines, orderDiscounts, orderDiscountPercent, shipping, totals, approval."
+        "The Business Rule Task reads customerTier and orderAmount from in.invoice by name.",
+        "The decision discount answers discountPercent and discountReason,",
+        "which are written back to in.invoice by name."
       ],
       "visual" : {
-        "at" : { "x" : 432, "y" : 248 },
-        "size" : { "width" : 448, "height" : 60 }
+        "at" : { "x" : 400, "y" : 248 },
+        "size" : { "width" : 480, "height" : 60 }
       }
     } ]
 }

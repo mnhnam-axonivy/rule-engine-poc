@@ -49,14 +49,14 @@ Most installations keep `true`: the project brings the first version, the rule o
 
 ## Several applications, one runtime
 
-Two applications can have a `.dmn` file with the same name, say `invoice-pricing`. On a shared runtime they would be one model. Give each application a prefix:
+Two applications can have a `.dmn` file with the same name, say `invoice-discount`. On a shared runtime they would be one model. Give each application a prefix:
 
 | Application | `RuleEngine.ModelPrefix` | Model on the runtime |
 | --- | --- | --- |
-| Sales | `sales-` | `sales-invoice-pricing` |
-| Purchasing | `purchasing-` | `purchasing-invoice-pricing` |
+| Sales | `sales-` | `sales-invoice-discount` |
+| Purchasing | `purchasing-` | `purchasing-invoice-discount` |
 
-The Business Rule Task, the Portal and the Java API add the prefix themselves. Inside the application the model is still `invoice-pricing`.
+The Business Rule Task, the Portal and the Java API add the prefix themselves. Inside the application the model is still `invoice-discount`.
 
 ---
 

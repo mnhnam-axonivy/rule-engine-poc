@@ -1,8 +1,8 @@
 /**
  * Guide 01 — What is DMN?
  *
- * A decision table, without any process: the walkthrough plays on the editor of dmn/invoice-pricing.dmn,
- * on its table lineDiscountTable only. The table is read, tried with other inputs in "Try it", its hit policy explained, its
+ * A decision table, without any process: the walkthrough plays on the editor of dmn/invoice-discount.dmn,
+ * on its table discount. The table is read, tried with other inputs in "Try it", its hit policy explained, its
  * conditions read, and a rule of your own added.
  */
 import { project } from '../shared/project.js';

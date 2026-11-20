@@ -18,17 +18,14 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
-import com.axonivy.utils.rule.engine.api.ModelInfo;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.api.VersionStatus;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
+import com.axonivy.utils.rule.engine.demo.DiscountTable;
+import com.axonivy.utils.rule.engine.demo.Invoice;
 import com.axonivy.utils.rule.engine.demo.InvoiceSamples;
-import com.axonivy.utils.rule.engine.demo.PricedLine;
-import com.axonivy.utils.rule.engine.demo.PricingResult;
-import com.axonivy.utils.rule.engine.demo.SalesInvoice;
-import com.axonivy.utils.rule.engine.demo.TaxFormula;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.portal.RuleManagement;
@@ -42,16 +39,17 @@ import ch.ivyteam.ivy.environment.AppFixture;
 
 /**
  * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, REST,
- * DMN engine and the database of the runtime. The demo invoice is priced by dmn/invoice-pricing.dmn of rule-engine-demo.
+ * DMN engine and the database of the runtime. The discount of the demo invoice is decided by dmn/invoice-discount.dmn
+ * of rule-engine-demo.
  * <p>Build the image first: <code>docker compose build</code>, then <code>mvn verify -Pcontainer.test</code>.</p>
  */
 @IvyProcessTest
 class RuleEngineContainerTest {
 
   private static final String API_KEY = "container-secret";
-  private static final String PRICING = TaxFormula.MODEL;
-  /** The line discount of the rule "Hardware: 10 units or more" in dmn/invoice-pricing.dmn. */
-  private static final String HARDWARE_10 = "<outputEntry id=\"_lineDiscount_rule_6_out_1\"><text>6</text></outputEntry>";
+  private static final String DEMO = DiscountTable.MODEL;
+  /** The discount of the rule "Silver customer" in dmn/invoice-discount.dmn. */
+  private static final String SILVER = "<outputEntry id=\"_discount_rule_6_out_1\"><text>2</text></outputEntry>";
 
   @SuppressWarnings("resource")
   static GenericContainer<?> runtime = new GenericContainer<>(
@@ -81,63 +79,33 @@ class RuleEngineContainerTest {
   }
 
   @Test
-  void demoInvoice_isPricedByTheWholeModel(BpmClient client) {
-    var execution = TestInvoicePricing.execute(client, sample());
-    PricingResult pricing = execution.subResult().param("pricing", PricingResult.class);
+  void demoInvoice_isDecidedByTheTable(BpmClient client) {
+    var execution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
+    Invoice invoice = execution.subResult().param("invoice", Invoice.class);
 
-    assertThat(pricing.getErrorMessage()).isNull();
-    assertThat(pricing.getPricedLines()).extracting(PricedLine::getDiscountReason).as("one rule for each line")
-        .containsExactly("Hardware: 10 units or more", "Volume licence: 20 seats or more", "Services are not discounted",
-            "Consumables: 50 or more", "Books: 10 copies or more");
-    assertThat(pricing.getPricedLines()).extracting(line -> line.getVat().toPlainString())
-        .containsExactly("913.68", "206.55", "97.20", "111.78", "13.34");
-    assertThat(pricing.getPricedLines().get(4).getVatRate()).as("reduced rate for books in CH").isEqualByComparingTo("2.6");
-    assertThat(pricing.getOrderDiscounts()).isEmpty();
-    assertThat(pricing.getShipping().getFee()).isEqualByComparingTo("0");
-    assertThat(pricing.getTotals().getNet()).isEqualByComparingTo("16923.00");
-    assertThat(pricing.getTotals().getVat()).isEqualByComparingTo("1342.55");
-    assertThat(pricing.getTotals().getTotal()).isEqualByComparingTo("18265.55");
-    assertThat(pricing.getApproval().getRoute()).isEqualTo("Sales manager");
-    assertThat(pricing.getApproval().getReasons()).containsExactly("A line discount of 15% or more");
+    assertThat(execution.subResult().param("errorMessage", String.class)).isNullOrEmpty();
+    assertThat(invoice.getOrderAmount()).isEqualByComparingTo("9200.00");
+    assertThat(invoice.getDiscountPercent()).isEqualByComparingTo("2");
+    assertThat(invoice.getDiscountReason()).isEqualTo("Silver customer");
+    assertThat(invoice.getDiscountAmount()).isEqualByComparingTo("184.00");
+    assertThat(invoice.getTotal()).isEqualByComparingTo("9016.00");
 
-    Integer decided = TestBusinessRuleTask.decidedBy(execution, PRICING);
+    Integer decided = TestBusinessRuleTask.decidedBy(execution, DEMO);
     assertThat(decided).as("the version that decided is stored on the case").isNotNull().isPositive();
-    var version = RuleEngine.versions(PRICING).stream().filter(ModelVersion::isActive).findFirst().orElseThrow();
+    var version = RuleEngine.versions(DEMO).stream().filter(ModelVersion::isActive).findFirst().orElseThrow();
     assertThat(version.version()).isEqualTo(decided);
     assertThat(version.source()).as("registered from the project on its first use").isEqualTo(VersionSource.PROJECT);
     assertThat(version.author()).contains("rule-engine-demo");
+    assertThat(DiscountTable.of(decided).matching(invoice)).as("the rule the page marks").isEqualTo(6);
   }
 
   @Test
-  void demoInvoice_otherConditions_otherRules(BpmClient client) {
-    SalesInvoice germany = sample();
-    germany.setCountry("DE");
-    PricingResult inGermany = TestInvoicePricing.price(client, germany);
-    assertThat(inGermany.getPricedLines().get(4).getDiscountReason()).isEqualTo("Fixed book price in DE and AT: no discount");
-    assertThat(inGermany.getPricedLines()).extracting(line -> line.getVatRate().toPlainString())
-        .containsExactly("19", "19", "19", "19", "7");
-    assertThat(inGermany.getTotals().getTotal()).isEqualByComparingTo("20105.70");
-    assertThat(inGermany.getApproval().getRoute()).isEqualTo("Finance director");
-    assertThat(inGermany.getApproval().getReasons())
-        .containsExactly("A line discount of 15% or more", "Invoice total above 20,000");
-
-    SalesInvoice stacked = sample();
-    stacked.setCustomerTier("Platinum");
-    stacked.setPaymentTerms("Prepaid");
-    stacked.setPromoCode("winter26");
-    PricingResult discounts = TestInvoicePricing.price(client, stacked);
-    assertThat(discounts.getOrderDiscounts()).as("COLLECT: every rule that matches")
-        .extracting(discount -> discount.getPercent().intValue()).containsExactly(4, 2, 5);
-    assertThat(discounts.getOrderDiscountPercent()).as("11 percent, capped").isEqualByComparingTo("10");
-    assertThat(discounts.getPricedLines().get(0).getDiscountReason())
-        .isEqualTo("Hardware: 10 units or more, Gold and Platinum");
-    assertThat(discounts.getTotals().getTotal()).isEqualByComparingTo("15972.00");
-
-    SalesInvoice expired = sample();
-    expired.setPromoCode("WINTER26");
-    expired.setInvoiceDate(java.time.LocalDate.of(2027, 3, 1));
-    assertThat(TestInvoicePricing.price(client, expired).getOrderDiscounts()).singleElement()
-        .satisfies(discount -> assertThat(discount.getReason()).contains("only valid from 1 Nov 2026 to 31 Jan 2027"));
+  void demoInvoice_otherTier_otherRule(BpmClient client) {
+    assertThat(discount(client, "Standard", 4)).isEqualTo("0 No discount 9200.00");
+    assertThat(discount(client, "Gold", 4)).isEqualTo("5 Gold customer 8740.00");
+    assertThat(discount(client, "Platinum", 4)).isEqualTo("8 Platinum customer 8464.00");
+    assertThat(discount(client, "Silver", 5)).as("a fifth laptop: 10,400").isEqualTo("4 Silver, order of 10,000 or more 9984.00");
+    assertThat(discount(client, "Gold", 5)).isEqualTo("8 Gold, order of 10,000 or more 9568.00");
   }
 
   /**
@@ -167,101 +135,78 @@ class RuleEngineContainerTest {
   }
 
   /**
-   * The Portal story of the tutorial: a rule owner adds the input customer and a key account rule to the table
-   * orderDiscounts. The invoice has a field customer, which the file of the project does not read. The same invoice,
-   * the same process, no deployment: it costs less. The walkthrough of the tutorial plays the same version.
+   * A rule owner adds the input customer and a key account rule at the top of the table. The invoice has a field
+   * customer, which the file of the project does not read. The same invoice, the same process, no deployment: it
+   * costs less.
    */
   @Test
   @SuppressWarnings("unchecked")
   void keyAccountAddedInThePortal_pricesTheSameInvoiceLower(BpmClient client) throws IOException {
-    assertThat(TestInvoicePricing.price(client, sample()).getOrderDiscounts()).isEmpty();
+    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getDiscountReason()).isEqualTo("Silver customer");
 
     String keyAccount = Files.readString(Project.current().directory()
-        .resolve("src_test/com/axonivy/utils/rule/engine/scenario/invoice-pricing-key-account.dmn.xml"));
-    var saved = RuleManagement.save(PRICING, keyAccount, "admin", "Key account discount for Bluebird Architects", true);
+        .resolve("src_test/com/axonivy/utils/rule/engine/scenario/invoice-discount-key-account.dmn.xml"));
+    var saved = RuleManagement.save(DEMO, keyAccount, "admin", "Key account discount for Bluebird Architects", true);
     assertThat(saved.error()).as("the runtime refused the model").isNull();
     var version = (Map<String, Object>) saved.result();
     try {
-      var execution = TestInvoicePricing.execute(client, sample());
-      PricingResult pricing = execution.subResult().param("pricing", PricingResult.class);
-      assertThat(pricing.getErrorMessage()).isNull();
-      assertThat(pricing.getOrderDiscounts()).singleElement().satisfies(discount -> {
-        assertThat(discount.getReason()).isEqualTo("Key account");
-        assertThat(discount.getPercent()).isEqualByComparingTo("3");
-      });
-      assertThat(pricing.getPricedLines()).extracting(line -> line.getOrderDiscount().stripTrailingZeros().toPlainString())
-          .as("each line its share").containsExactly("338.4", "76.5", "36", "41.4", "15.39");
-      assertThat(pricing.getTotals().getTotal()).isEqualByComparingTo("17717.58");
-      assertThat(TestBusinessRuleTask.decidedBy(execution, PRICING)).isEqualTo(version.get("version"));
+      var execution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
+      Invoice invoice = execution.subResult().param("invoice", Invoice.class);
+      assertThat(execution.subResult().param("errorMessage", String.class)).isNullOrEmpty();
+      assertThat(invoice.getDiscountReason()).isEqualTo("Key account: framework contract");
+      assertThat(invoice.getDiscountPercent()).isEqualByComparingTo("10");
+      assertThat(invoice.getTotal()).isEqualByComparingTo("8280.00");
+      assertThat(TestBusinessRuleTask.decidedBy(execution, DEMO)).isEqualTo(version.get("version"));
+
+      Invoice other = InvoiceSamples.standard();
+      other.setCustomer("Another customer");
+      assertThat(TestInvoicePricing.price(client, other).getDiscountReason()).isEqualTo("Silver customer");
     } finally {
-      RuleEngine.rollback(PRICING, "admin");
+      RuleEngine.rollback(DEMO, "admin");
     }
-    assertThat(TestInvoicePricing.price(client, sample()).getTotals().getTotal()).as("rolled back").isEqualByComparingTo("18265.55");
+    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getTotal()).as("rolled back")
+        .isEqualByComparingTo("9016.00");
   }
 
-  /** The story of the demo: a rule owner raises a discount, the same invoice is priced otherwise, and back. */
+  /** The story of the demo: a rule owner changes a cell, the same invoice is priced otherwise, and back. */
   @Test
   void versionActivatedFromThePortal_isLiveAtOnce_andSurvivesRedeployment(BpmClient client) {
-    var initialExecution = TestInvoicePricing.execute(client, sample());
-    assertThat(hardwareDiscount(initialExecution.subResult().param("pricing", PricingResult.class))).isEqualTo(6);
-    int projectVersion = TestBusinessRuleTask.decidedBy(initialExecution, PRICING);
+    var initialExecution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
+    assertThat(silverDiscount(initialExecution.subResult().param("invoice", Invoice.class))).isEqualTo(2);
+    int projectVersion = TestBusinessRuleTask.decidedBy(initialExecution, DEMO);
 
-    // a rule owner raises the discount for 10 laptops or more
-    String current = RuleEngine.client().content(PRICING, projectVersion);
-    String changed = current.replace(HARDWARE_10, HARDWARE_10.replace("<text>6</text>", "<text>8</text>"));
+    // a rule owner raises the discount of Silver customers
+    String current = RuleEngine.client().content(DEMO, projectVersion);
+    String changed = current.replace(SILVER, SILVER.replace("<text>2</text>", "<text>3</text>"));
     assertThat(changed).isNotEqualTo(current);
-    ModelVersion draft = RuleEngine.register(PRICING, changed, "rule.editor", "Hardware 10+ raised to 8%");
+    ModelVersion draft = RuleEngine.register(DEMO, changed, "rule.editor", "Silver customers get 3%");
     assertThat(draft.status()).isEqualTo(VersionStatus.DRAFT);
-    assertThat(hardwareDiscount(client)).as("a draft is not live").isEqualTo(6);
+    assertThat(silverDiscount(client)).as("a draft is not live").isEqualTo(2);
 
-    assertThat(RuleEngine.approve(PRICING, draft.version()).status()).isEqualTo(VersionStatus.APPROVED);
-    ModelVersion active = RuleEngine.activate(PRICING, draft.version(), "rule.approver");
+    assertThat(RuleEngine.approve(DEMO, draft.version()).status()).isEqualTo(VersionStatus.APPROVED);
+    ModelVersion active = RuleEngine.activate(DEMO, draft.version(), "rule.approver");
     assertThat(active.status()).isEqualTo(VersionStatus.ACTIVE);
     assertThat(active.activatedBy()).isEqualTo("rule.approver");
 
-    var activationExecution = TestInvoicePricing.execute(client, sample());
-    PricingResult afterActivation = activationExecution.subResult().param("pricing", PricingResult.class);
-    assertThat(hardwareDiscount(afterActivation)).as("live without restart or deployment").isEqualTo(8);
-    assertThat(afterActivation.getPricedLines().get(0).getNet()).isEqualByComparingTo("11040.00");
-    assertThat(TestBusinessRuleTask.decidedBy(activationExecution, PRICING)).isEqualTo(draft.version());
+    var activationExecution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
+    Invoice afterActivation = activationExecution.subResult().param("invoice", Invoice.class);
+    assertThat(silverDiscount(afterActivation)).as("live without restart or deployment").isEqualTo(3);
+    assertThat(afterActivation.getTotal()).isEqualByComparingTo("8924.00");
+    assertThat(TestBusinessRuleTask.decidedBy(activationExecution, DEMO)).isEqualTo(draft.version());
+    assertThat(DiscountTable.of(draft.version()).rules().get(5).getOutputs()).as("the table the page shows")
+        .containsExactly("3", "\"Silver customer\"");
 
     // the project is deployed again: its file is registered, but the version of the Portal stays active
     ModelDeployer.reset();
     var deployed = RuleEngine.deploy(Project.current());
-    assertThat(deployed).extracting(ModelVersion::model).contains(PRICING, "discount");
-    assertThat(hardwareDiscount(client)).as("redeployment does not overwrite the version of the Portal").isEqualTo(8);
+    assertThat(deployed).extracting(ModelVersion::model).contains(DEMO, "discount");
+    assertThat(silverDiscount(client)).as("redeployment does not overwrite the version of the Portal").isEqualTo(3);
 
     // rollback: the previous version is active again
-    ModelVersion rolledBack = RuleEngine.rollback(PRICING, "rule.approver");
+    ModelVersion rolledBack = RuleEngine.rollback(DEMO, "rule.approver");
     assertThat(rolledBack.version()).isEqualTo(projectVersion);
-    assertThat(hardwareDiscount(client)).isEqualTo(6);
-    assertThat(RuleEngine.versions(PRICING)).filteredOn(ModelVersion::isActive).hasSize(1);
-  }
-
-  /** The tax formula of the demo page: tried on a copy of the model, the live rules stay as they are. */
-  @Test
-  void taxFormula_triedOnACopy_leavesTheLiveRulesAlone(BpmClient client) {
-    var execution = TestInvoicePricing.execute(client, sample());
-    int version = TestBusinessRuleTask.decidedBy(execution, PRICING);
-    int versions = RuleEngine.versions(PRICING).size();
-    assertThat(TaxFormula.of(version)).isEqualTo(TaxFormula.DEFAULT);
-
-    var swiss = TaxFormula.tryFormula(sample(), version, "round half up(net * rate / 100 * 20, 0) / 20");
-
-    assertThat(swiss.getErrorMessage()).isNull();
-    assertThat(swiss.getPricedLines()).extracting(line -> line.getVat().stripTrailingZeros().toPlainString())
-        .as("rounded to 5 centimes").containsExactly("913.7", "206.55", "97.2", "111.8", "13.35");
-    assertThat(swiss.getTotals().getVat()).isEqualByComparingTo("1342.60");
-
-    var broken = TaxFormula.tryFormula(sample(), version, "net * rate /");
-    assertThat(broken.getErrorMessage()).contains("syntax error").doesNotContain("DMN id");
-    var unknown = TaxFormula.tryFormula(sample(), version, "netto * rate");
-    assertThat(unknown.getErrorMessage()).contains("Unknown variable 'netto'");
-
-    assertThat(RuleEngine.versions(PRICING)).as("no version was added to the live model").hasSize(versions);
-    assertThat(RuleEngine.client().models()).extracting(ModelInfo::name).as("every copy is deleted")
-        .noneMatch(name -> name.contains("-try-"));
-    assertThat(hardwareDiscount(client)).isEqualTo(6);
+    assertThat(silverDiscount(client)).isEqualTo(2);
+    assertThat(RuleEngine.versions(DEMO)).filteredOn(ModelVersion::isActive).hasSize(1);
   }
 
   @Test
@@ -342,10 +287,10 @@ class RuleEngineContainerTest {
   void wrongApiKey_isAnsweredByTheDemo(BpmClient client, AppFixture fixture) {
     fixture.var(Var.API_KEY, "wrong");
 
-    PricingResult pricing = TestInvoicePricing.price(client, sample());
+    var result = TestInvoicePricing.execute(client, InvoiceSamples.standard()).subResult();
 
-    assertThat(pricing.getErrorCode()).isEqualTo(RuleErrors.DMN);
-    assertThat(pricing.getErrorMessage()).contains("API key");
+    assertThat(result.param("errorCode", String.class)).isEqualTo(RuleErrors.DMN);
+    assertThat(result.param("errorMessage", String.class)).contains("API key");
   }
 
   @Test
@@ -353,17 +298,23 @@ class RuleEngineContainerTest {
     assertThat(RuleEngine.client().isReady()).isTrue();
   }
 
-  private static SalesInvoice sample() {
-    return InvoiceSamples.standard(TestInvoicePricing.INVOICE_DATE);
+  /** @return percent, reason and total of the sample invoice with this tier and this many laptops */
+  private static String discount(BpmClient client, String tier, int laptops) {
+    Invoice sample = InvoiceSamples.standard();
+    sample.setCustomerTier(tier);
+    sample.getLines().get(0).setQuantity(laptops);
+    Invoice invoice = TestInvoicePricing.price(client, sample);
+    return invoice.getDiscountPercent().stripTrailingZeros().toPlainString() + " " + invoice.getDiscountReason() + " "
+        + invoice.getTotal().toPlainString();
   }
 
-  private static int hardwareDiscount(BpmClient client) {
-    return hardwareDiscount(TestInvoicePricing.price(client, sample()));
+  private static int silverDiscount(BpmClient client) {
+    return silverDiscount(TestInvoicePricing.price(client, InvoiceSamples.standard()));
   }
 
-  private static int hardwareDiscount(PricingResult pricing) {
-    assertThat(pricing.getErrorMessage()).isNull();
-    return pricing.getPricedLines().get(0).getDiscountPercent().intValue();
+  private static int silverDiscount(Invoice invoice) {
+    assertThat(invoice.getDiscountReason()).isEqualTo("Silver customer");
+    return invoice.getDiscountPercent().intValue();
   }
 
   private static int activeVersion(com.axonivy.utils.rule.engine.client.RuleEngineClient client) {

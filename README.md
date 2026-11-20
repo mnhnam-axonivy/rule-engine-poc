@@ -27,7 +27,7 @@ User documentation: [rule-engine-product/README.md](rule-engine-product/README.m
 | [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses) and the DMN generator. |
 | [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Dockerfile for the generic image, built from the root of the repository. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping, Java API `RuleEngine`. Requires `rule-engine-core`. |
-| [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines priced by `dmn/invoice-pricing.dmn` (line discounts, VAT, order discounts, shipping, approval), a page to change the invoice, and the tax formula to try out. |
+| [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount; a page to change the invoice and see the rule that decided. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector: with a mocked runtime and against the real container. |
 | [rule-engine-product](rule-engine-product) | Market product: README, product.json. |
 | [portal](portal), [portal-components](portal-components) | Axon Ivy Portal 14.0.1.2 with the tab **Rule Management** in its Admin Settings. Not part of the Maven build of the rule engine, see [Rule Management in the Portal](#rule-management-in-the-portal). |
@@ -39,20 +39,18 @@ docker compose up -d --build      # decision runtime on http://localhost:8090
 ```
 
 Import `rule-engine-core`, `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
-an invoice with five lines, priced by the rules. Change the invoice and click **Apply rules**.
+an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click **Apply rules**.
 The variable `RuleEngine.Url` points to `http://localhost:8090` by default.
 Change the rules in the browser at `http://localhost:8090/editor/`, or in the Portal, and apply them again.
 
 ```
-curl -X POST -H "Content-Type: application/xml" --data-binary @rule-engine-demo/dmn/invoice-pricing.dmn \
-     http://localhost:8090/api/models/invoice-pricing/versions
+curl -X POST -H "Content-Type: application/xml" --data-binary @rule-engine-demo/dmn/invoice-discount.dmn \
+     http://localhost:8090/api/models/invoice-discount/versions
 curl -X POST -H "Content-Type: application/json" \
-     -d '{"decision":"totals","input":{"customerTier":"Gold","country":"DE","paymentTerms":"Prepaid","promoCode":null,
-          "invoiceDate":"2026-11-19","expressDelivery":true,
-          "lines":[{"product":"Laptop","category":"Hardware","quantity":12,"unitPrice":1200}]}}' \
-     http://localhost:8090/api/models/invoice-pricing/evaluate
-# {"decision":"totals","model":"invoice-pricing","result":{"gross":14400,"lineDiscounts":1440.00,"subtotal":12960.00,
-#  "orderDiscount":518.40,"net":12441.60,"vat":2363.90,"shippingFee":45,"total":14850.50},"results":{...},"version":1}
+     -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}' \
+     http://localhost:8090/api/models/invoice-discount/evaluate
+# {"decision":"discount","model":"invoice-discount","result":{"discountPercent":8,
+#  "discountReason":"Gold, order of 10,000 or more"},"results":{...},"version":1}
 ```
 
 Every input of the decisions it needs must be in `input`, `null` if it has no value.
@@ -64,7 +62,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | Command | What runs |
 | --- | --- |
 | `mvn verify` | Everything without Docker: tests of the runtime (REST API, version rules, generated DMN checked by the KIE validator and executed in the engine) and tests of the connector with a mocked runtime. |
-| `docker compose build` then `mvn verify -Pcontainer.test -pl rule-engine-test -am` | `RuleEngineContainerTest`: the demo invoice and the test processes against the real runtime in a container (Testcontainers), including a rule changed and an input added as in the Portal, and the tax formula tried on a copy of the model. If Testcontainers times out waiting for the container (seen with Rancher Desktop), set `TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1`. |
+| `docker compose build` then `mvn verify -Pcontainer.test -pl rule-engine-test -am` | `RuleEngineContainerTest`: the demo invoice and the test processes against the real runtime in a container (Testcontainers), including a rule changed and an input added as in the Portal. If Testcontainers times out waiting for the container (seen with Rancher Desktop), set `TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1`. |
 | `mvn test -Pperformance -f rule-engine-runtime` | Performance baseline, written to `rule-engine-runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090, database in `rule-engine-runtime/data`. |
 

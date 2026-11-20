@@ -2,15 +2,18 @@
   "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
   "simpleName": "InvoicePricingData",
   "namespace": "com.axonivy.utils.rule.engine.demo",
-  "comment": "Data of the callable InvoicePricing: the inputs of the decisions are read from the invoice by name, the results are written to pricing by name.",
+  "comment": "The data of the callable InvoicePricing.",
   "fields": [
     {
       "name": "invoice",
-      "type": "com.axonivy.utils.rule.engine.demo.SalesInvoice"
+      "type": "com.axonivy.utils.rule.engine.demo.Invoice"
     },
     {
-      "name": "pricing",
-      "type": "com.axonivy.utils.rule.engine.demo.PricingResult"
+      "name": "errorCode",
+      "comment": "Set if the rules could not decide, e.g. rule:engine:unavailable"
+    },
+    {
+      "name": "errorMessage"
     }
   ]
 }

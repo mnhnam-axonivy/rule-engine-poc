@@ -1,19 +1,19 @@
 /**
  * Guide 05 — the walkthrough. Four chapters, each starting from the project as the tutorial
  * ships it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do.
- * The project is the callable of the demo with a second Business Rule Task, see shared/delivery-project.js.
+ * The project is the callable of the demo with a second Business Rule Task, see shared/approver-project.js.
  */
-import { DELIVERY, NEW_MODEL } from '../shared/delivery-project.js';
-import { errorText } from '../shared/project.js';
+import { APPROVER, NEW_MODEL } from '../shared/approver-project.js';
+import { MODEL, errorText } from '../shared/project.js';
 
-const { CREATE_TASK } = DELIVERY;
+const { CREATE_TASK } = APPROVER;
 const DMN = 'dmn:' + NEW_MODEL;
-const AT = DMN + '@deliveryDays/'; // a part of the generated table: + rule1, r1.i1
-const CELL = DMN + ':deliveryDays.'; // a cell of the generated table: + r1.i1
+const AT = DMN + '@approver/'; // a part of the generated table: + rule1, r1.i1
+const CELL = DMN + ':approver.'; // a cell of the generated table: + r1.i1
 
-const resultOf = call => 'deliveryDays = ' + JSON.stringify((call.results || {}).deliveryDays) + '   (version ' + call.version + ')';
+const resultOf = call => 'approver = ' + JSON.stringify((call.results || {}).approver) + '   (version ' + call.version + ')';
 const field = key => 'field:' + CREATE_TASK + '.' + key;
-/** Only what the new task does: the pricing before it runs as always. */
+/** Only what the new task does: the discount before it is decided as always. */
 const created = call => call.elementId === CREATE_TASK;
 
 /** 1 — what the element is told: a new file, which fields go in, which field comes out. */
@@ -38,7 +38,7 @@ async function name(d) {
   await d.open(CREATE_TASK, 'configuration');
   d.focus(field('newModel'));
   await d.wait(400);
-  await d.edit(CREATE_TASK + '.newModel', 'invoice-pricing');
+  await d.edit(CREATE_TASK + '.newModel', MODEL);
   await d.note('nameTaken', { target: field('newModel'), extra: 600 });
   await d.close();
   await d.run({ fast: true, on: { 'rule:failed': ({ call }) => (created(call) ? d.note('taken', { quote: errorText(call) }) : null) } });
@@ -71,9 +71,9 @@ async function rules(d) {
   await d.click(AT + 'addRule');
   await d.note('above', { target: AT + 'rule1' });
   d.focus(AT + 'r1.i1');
-  await d.edit(CELL + 'r1.i1', '"CH"');
+  await d.edit(CELL + 'r1.i1', '>= 5000');
   d.focus(AT + 'r1.o1');
-  await d.edit(CELL + 'r1.o1', '2');
+  await d.edit(CELL + 'r1.o1', '"Sales manager"');
   await d.note('written', { target: AT + 'rule1', wait: 2200 });
   await d.tab('process');
   await d.run({

@@ -1,18 +1,18 @@
 # Use an existing DMN decision
 
-The **Business Rule Task** is the process element that evaluates a DMN decision with your process data. When your project already has a `.dmn` file, you select one of its decisions, or all of them, and that is the whole configuration: inputs and results find their process data fields by name. What the decision should get, you set in the process data before the element, for example in a Script.
+The **Business Rule Task** is the process element that evaluates a DMN decision with your process data. When your project already has a `.dmn` file, you select one of its decisions, and that is the whole configuration: inputs and results find their process data fields by name. What the decision should get, you set in the process data before the element, for example in a Script.
 
 > **Walkthrough:** the button next to the title plays this page in a simulated Designer, one chapter per section: the one field to fill in, how a field is found by its name, what an empty field sends, what happens without a field, and how a Script prepares a value. Afterwards you can change the data, the rules and the element yourself.
 
-**Example used on this page: the invoice pricing of the demo.** The process is the callable sub process `InvoicePricing`, start `price(SalesInvoice)`, the one the page of [Set up and run your first decision] calls with **Apply rules**. Its process data has two fields: `invoice`, a `SalesInvoice` with `customerTier`, `country`, `paymentTerms`, `promoCode`, `expressDelivery`, `invoiceDate` and the list `lines`, and `pricing`, a `PricingResult` for the results. The rules are `dmn/invoice-pricing.dmn` from [What is DMN?].
+**Example used on this page: the invoice discount of the demo.** The process is the callable sub process `InvoicePricing`, start `price(Invoice)`, the one the page of [Set up and run your first decision] calls with **Apply rules**. Its process data has the field `invoice`, an `Invoice` with `customer`, `customerTier`, the list `lines`, and the fields the process fills: `orderAmount`, `discountPercent`, `discountReason`, `discountAmount` and `total`. Beside it are `errorCode` and `errorMessage`. The rules are `dmn/invoice-discount.dmn` from [What is DMN?].
 
 The process has three steps:
 
 | Element | What it does |
 | --- | --- |
-| **Prepare the promo code** | A Script that trims the promo code and writes it in capitals. The invoice itself comes from the page; in your own process the values come from a form, a service or a Script. |
-| **Business Rule Task invoice-pricing** | Sends the inputs of the model to the runtime and writes every result back to the process data. |
-| **Log the result** | Writes the total and the approver to the Runtime Log. |
+| **Sum the lines** | A Script that works out the amount of each line and their sum, `in.invoice.orderAmount`. The invoice itself comes from the page; in your own process the values come from a form, a service or a Script. |
+| **Business Rule Task invoice-discount** | Sends the inputs of the decision to the runtime and writes its outputs back to the process data. |
+| **Apply the discount** | A Script that works out the discount amount and the total, and writes a line to the Runtime Log. |
 
 Your project has no `.dmn` file yet? Start on the page [Create a new DMN from scratch].
 
@@ -31,81 +31,75 @@ The dropdown **DMN decision** lists every `.dmn` file of the project and of the 
 
 | Entry | Meaning |
 | --- | --- |
-| `invoice-pricing › all decisions` | Every decision of the model at once. The demo selects this one: one call prices the whole invoice. |
-| `invoice-pricing › shipping` | Only the decision `shipping`: `out: fee (number), reason (string)`. The decisions it depends on are evaluated with it. |
+| `invoice-discount › discount` | The decision `discount`: `in: customerTier (string), orderAmount (number)`, `out: discountPercent (number), discountReason (string)`. The demo selects this one. |
+| `<model> › all decisions` | Every decision of a model at once. Only for a model with several decisions, see [Several decisions and the Java API]. |
 | `New DMN...` | Generates a new file, see [Create a new DMN from scratch]. |
 
-The demo process is configured exactly like that: only the decision is selected. It runs, and the invoice is priced.
+The demo process is configured exactly like that: only the decision is selected. It runs, and the discount is decided.
 
 ---
 
 ## How does the element find a field by name?
 
-In short: for every input of the model, the element looks for a field of the process data with the same name. It starts at `in` and goes down one level at a time. The first field it finds is the one it uses. The model itself never sees the process data; it only gets the values the element sends.
+In short: for every input of the decision, the element looks for a field of the process data with the same name. It starts at `in` and goes down one level at a time. The first field it finds is the one it uses. The model itself never sees the process data; it only gets the values the element sends.
 
 ```text
-the model "invoice-pricing" needs:   customerTier  country  paymentTerms  promoCode  expressDelivery  invoiceDate  lines
+the decision "discount" needs:   customerTier  orderAmount
 
-in   (InvoicePricingData)                    level 0: no field with one of the names
- ├─ invoice   (SalesInvoice)
+in   (InvoicePricingData)                      level 0: no field with one of the names
+ ├─ invoice   (Invoice)
  │   ├─ number
  │   ├─ customer
- │   ├─ customerTier     ◄── customerTier    level 1: found
- │   ├─ country          ◄── country         level 1: found
- │   ├─ paymentTerms     ◄── paymentTerms    …
- │   ├─ promoCode        ◄── promoCode
- │   ├─ expressDelivery  ◄── expressDelivery
- │   ├─ invoiceDate      ◄── invoiceDate
- │   └─ lines            ◄── lines           a list of InvoiceLine: sent as a list of structures
- └─ pricing   (PricingResult)
-     ├─ pricedLines      ◄── the result "pricedLines" goes back here
-     ├─ orderDiscounts   ◄── "orderDiscounts"
-     ├─ shipping, totals, approval  ◄── the results with these names
-     └─ errorCode, errorMessage
+ │   ├─ customerTier     ◄── customerTier      level 1: found
+ │   ├─ lines            a list: not searched inside
+ │   ├─ orderAmount      ◄── orderAmount       level 1: found, set by the Script before
+ │   ├─ discountPercent  ◄── the output "discountPercent" goes back here
+ │   ├─ discountReason   ◄── the output "discountReason"
+ │   ├─ discountAmount, total
+ ├─ errorCode
+ └─ errorMessage
 
-sent to the model:   { "customerTier": "Silver", "country": "CH", …,
-                       "lines": [ { "product": "Laptop 14\"", "category": "Hardware", "quantity": 10, "unitPrice": 1200.00 }, … ] }
+sent to the model:   { "customerTier": "Silver", "orderAmount": 9200.00 }
 ```
 
 Step by step:
 
-1. **The names come from the model.** The `.dmn` file of the project says which inputs a decision needs; for all decisions, every input of the model. If a version activated in the Portal needs more inputs, they are looked up the same way.
+1. **The names come from the model.** The `.dmn` file of the project says which inputs a decision needs. If a version activated in the Portal needs more inputs, they are looked up the same way.
 2. **The search goes level by level.** First the fields of `in` itself. Then the fields one level down, inside each data class of `in`, in the order the data class declares them. Then one more level, and so on, up to 4 levels below `in`. A list is not searched inside; a list field is only found by its own name.
 3. **The exact name comes first.** Only if no field anywhere has exactly the name does the element search again, ignoring case, blanks and separators. Then an input `Customer Tier` finds the field `customerTier`.
-4. **The first match wins.** A field closer to `in` beats a deeper one: `in.country` wins over `in.invoice.country`.
+4. **The first match wins.** A field closer to `in` beats a deeper one: `in.customerTier` wins over `in.invoice.customerTier`.
 5. **The value is sent as it is.** A field that is not set, or whose parent object is not set, is sent as `null`.
 6. **No match is an error.** If no field has the name, the element throws `rule:engine:mapping` and the model is not evaluated. See *What happens when an input has no field?* below.
 
-The results go back the same way: the result `pricedLines` goes to the field named `pricedLines`, here `in.pricing.pricedLines`, a list of the data class `PricedLine`. A structured result without a field of its own is split up: each of its entries goes to the field with the name of the entry. A result that has no field at all, such as `approvalFlags`, is not stored.
+The results go back the same way. A result goes to the field with the name of its decision. The result of `discount` is a structure with two entries, and the process data has no field `discount`: so each entry goes to the field with its own name, `in.invoice.discountPercent` and `in.invoice.discountReason`. A result that has no field at all is not stored.
 
 > **Watch out: the same name twice on one level**
 >
-> With a field `country` in two data classes on the same level, say `in.invoice.country` and `in.customer.country`, the element takes the one whose parent comes first in the data class, here `in.invoice.country`. It does not warn. To send the other one, give it a field of its own closer to `in` and set it in a Script before the element: `in.country = in.customer.country;`.
+> With a field `customerTier` in two data classes on the same level, say `in.invoice.customerTier` and `in.customer.customerTier`, the element takes the one whose parent comes first in the data class, here `in.invoice.customerTier`. It does not warn. To send the other one, give it a field of its own closer to `in` and set it in a Script before the element: `in.customerTier = in.customer.customerTier;`.
 
 The values are sent as JSON, with the type the decision expects:
 
 | Process data | DMN | Example |
 | --- | --- | --- |
 | String | string | `"Silver"` |
-| Number, Integer, Double, BigDecimal | number | `1200.00` |
+| Number, Integer, Double, BigDecimal | number | `9200.00` |
 | Boolean | boolean | `false` |
 | Date, LocalDate | date | `"2026-11-19"` |
 | DateTime | date and time | `"2026-11-19T10:30:00"` |
 | Time, Duration | time, days and time duration | `"08:00:00"`, `"PT36H"` |
 | Enum | string | `"GOLD"` |
-| Data class | structure | `{ "fee": 0, "reason": "…" }` |
+| Data class | structure | `{ "product": "Laptop 14\"", "quantity": 4, … }` |
 | List | collection | `[ { "product": "Laptop 14\"", … }, … ]` |
 
 ---
 
 ## What is sent when a field is empty?
 
-`null`. The model still gets the input, without a value. What happens then depends on its type:
+`null`. The model still gets the input, without a value. A condition such as `"Silver"` or `>= 10000` does not match `null`; only `-` does.
 
-- A type with **allowed values** takes `null` only if it lists it. The demo model lists `"Standard", "Silver", "Gold", "Platinum"` for `customerTier`, without `null`: an invoice without a tier is refused with `rule:engine:dmn`, *the value 'null' of 'customerTier' is not allowed by the declared type*. The models that New DMN... generates list `null` for every enum.
-- Any other type takes `null`. Without a promo code, `null` is sent, and every rule whose condition for the promo code is `-` still matches: the invoice is priced as before.
+In the demo: an invoice without a customer tier is sent with `"customerTier": null`. No rule for a tier matches, the last rule has `-` for the tier and decides: no discount. If no rule of a table matches at all, its result is `null`, and the field of the result is cleared.
 
-A condition such as `"WINTER26"` or `>= 50` does not match `null`; only `-` does. If no rule of a table matches at all, its result is `null`, for COLLECT an empty list, and the field of the result is cleared.
+A type with **allowed values** takes `null` only if it lists it. A model that lists `"Standard", "Silver", "Gold", "Platinum"` as the allowed values of `customerTier` refuses an invoice without a tier with `rule:engine:dmn`: *the value 'null' of 'customerTier' is not allowed by the declared type*. The models that New DMN... generates list `null` for every enum. The tier of the demo is a plain text.
 
 ---
 
@@ -114,7 +108,7 @@ A condition such as `"WINTER26"` or `>= 50` does not match `null`; only `-` does
 The element throws `rule:engine:mapping`, and the model is not evaluated. The message names the input:
 
 ```text
-No process data field found for the input(s) [creditLimit] of the model 'invoice-pricing'.
+No process data field found for the input(s) [creditLimit] of the decision 'discount' in model 'invoice-discount'.
 The process data needs a field named like each input, e.g. in.creditLimit, set before the Business Rule Task.
 ```
 
@@ -124,21 +118,26 @@ There are two ways out: add a field named like the input to the data class and s
 
 ## How do I prepare a value for the decision?
 
-In a Script before the Business Rule Task. The element reads the fields when the token arrives, so whatever a Script sets there is what the decision gets. The demo does it with the promo code: people type it in any case and with blanks, the rule says `"WINTER26"`.
+In a Script before the Business Rule Task. The element reads the fields when the token arrives, so whatever a Script sets there is what the decision gets. The demo does it with the order amount: the rules ask for it, the page only has the lines.
 
 ```java
-if (in.invoice.promoCode != null) {
-  in.invoice.promoCode = in.invoice.promoCode.trim().toUpperCase();
+import com.axonivy.utils.rule.engine.demo.InvoiceLine;
+
+BigDecimal orderAmount = BigDecimal.ZERO;
+for (InvoiceLine line : in.invoice.lines) {
+  line.amount = line.unitPrice.multiply(BigDecimal.valueOf(line.quantity.longValue()));
+  orderAmount = orderAmount.add(line.amount);
 }
+in.invoice.orderAmount = orderAmount;
 ```
 
-A customer who types ` winter26 ` gets the promotion: `"WINTER26"` is sent, and 5 percent come off the invoice.
+The sum goes to a field with the name of the input, `orderAmount`, so the element finds it: `9200.00` is sent, and rule 6 decides. With a fifth laptop the sum is 10,400.00, and rule 5 decides.
 
 | Case | In the Script |
 | --- | --- |
-| A value has to be calculated or cleaned first | `in.invoice.promoCode = in.invoice.promoCode.trim().toUpperCase();` |
+| A value has to be calculated or cleaned first | `in.invoice.orderAmount = …;` as above |
 | Your field has another name than the input | `in.invoice.customerTier = in.customer.tier;` |
-| A result is needed in another field | after the element: `in.order.total = in.pricing.totals.total;` |
+| A result is needed in another field | after the element: `in.order.discount = in.invoice.discountPercent;` |
 
 ---
 

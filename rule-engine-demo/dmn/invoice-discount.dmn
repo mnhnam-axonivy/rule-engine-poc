@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" id="_definitions_invoice_discount" name="invoice-discount" namespace="https://axonivy.com/dmn/invoice-discount" expressionLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" typeLanguage="https://www.omg.org/spec/DMN/20230324/FEEL/" exporter="Axon Ivy Rules Engine">
+  <description>The discount of an invoice, by customer tier and order amount.</description>
+  <itemDefinition id="_tDiscount" name="tDiscount" isCollection="false">
+    <itemComponent id="_tDiscount_discountPercent" name="discountPercent" isCollection="false">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tDiscount_discountReason" name="discountReason" isCollection="false">
+      <typeRef>string</typeRef>
+    </itemComponent>
+  </itemDefinition>
+  <inputData id="_input_customerTier" name="customerTier">
+    <variable id="_input_var_customerTier" name="customerTier" typeRef="string"/>
+  </inputData>
+  <inputData id="_input_orderAmount" name="orderAmount">
+    <variable id="_input_var_orderAmount" name="orderAmount" typeRef="number"/>
+  </inputData>
+  <decision id="_decision_discount" name="discount">
+    <description>Discount in percent, and the rule that gave it. The first rule that matches wins.</description>
+    <variable id="_decision_var_discount" name="discount" typeRef="tDiscount"/>
+    <informationRequirement id="_req_discount_customerTier">
+      <requiredInput href="#_input_customerTier"/>
+    </informationRequirement>
+    <informationRequirement id="_req_discount_orderAmount">
+      <requiredInput href="#_input_orderAmount"/>
+    </informationRequirement>
+    <decisionTable id="_table_discount" hitPolicy="FIRST" typeRef="tDiscount">
+      <input id="_table_discount_in_customerTier" label="customerTier">
+        <inputExpression id="_table_discount_in_customerTier_expr" typeRef="string">
+          <text>customerTier</text>
+        </inputExpression>
+      </input>
+      <input id="_table_discount_in_orderAmount" label="orderAmount">
+        <inputExpression id="_table_discount_in_orderAmount_expr" typeRef="number">
+          <text>orderAmount</text>
+        </inputExpression>
+      </input>
+      <output id="_table_discount_out_percent" name="discountPercent" typeRef="number"/>
+      <output id="_table_discount_out_reason" name="discountReason" typeRef="string"/>
+      <rule id="_discount_rule_1">
+        <inputEntry id="_discount_rule_1_in_1"><text>"Platinum"</text></inputEntry>
+        <inputEntry id="_discount_rule_1_in_2"><text>&gt;= 10000</text></inputEntry>
+        <outputEntry id="_discount_rule_1_out_1"><text>12</text></outputEntry>
+        <outputEntry id="_discount_rule_1_out_2"><text>"Platinum, order of 10,000 or more"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_2">
+        <inputEntry id="_discount_rule_2_in_1"><text>"Platinum"</text></inputEntry>
+        <inputEntry id="_discount_rule_2_in_2"><text>-</text></inputEntry>
+        <outputEntry id="_discount_rule_2_out_1"><text>8</text></outputEntry>
+        <outputEntry id="_discount_rule_2_out_2"><text>"Platinum customer"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_3">
+        <inputEntry id="_discount_rule_3_in_1"><text>"Gold"</text></inputEntry>
+        <inputEntry id="_discount_rule_3_in_2"><text>&gt;= 10000</text></inputEntry>
+        <outputEntry id="_discount_rule_3_out_1"><text>8</text></outputEntry>
+        <outputEntry id="_discount_rule_3_out_2"><text>"Gold, order of 10,000 or more"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_4">
+        <inputEntry id="_discount_rule_4_in_1"><text>"Gold"</text></inputEntry>
+        <inputEntry id="_discount_rule_4_in_2"><text>-</text></inputEntry>
+        <outputEntry id="_discount_rule_4_out_1"><text>5</text></outputEntry>
+        <outputEntry id="_discount_rule_4_out_2"><text>"Gold customer"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_5">
+        <inputEntry id="_discount_rule_5_in_1"><text>"Silver"</text></inputEntry>
+        <inputEntry id="_discount_rule_5_in_2"><text>&gt;= 10000</text></inputEntry>
+        <outputEntry id="_discount_rule_5_out_1"><text>4</text></outputEntry>
+        <outputEntry id="_discount_rule_5_out_2"><text>"Silver, order of 10,000 or more"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_6">
+        <inputEntry id="_discount_rule_6_in_1"><text>"Silver"</text></inputEntry>
+        <inputEntry id="_discount_rule_6_in_2"><text>-</text></inputEntry>
+        <outputEntry id="_discount_rule_6_out_1"><text>2</text></outputEntry>
+        <outputEntry id="_discount_rule_6_out_2"><text>"Silver customer"</text></outputEntry>
+      </rule>
+      <rule id="_discount_rule_7">
+        <inputEntry id="_discount_rule_7_in_1"><text>-</text></inputEntry>
+        <inputEntry id="_discount_rule_7_in_2"><text>-</text></inputEntry>
+        <outputEntry id="_discount_rule_7_out_1"><text>0</text></outputEntry>
+        <outputEntry id="_discount_rule_7_out_2"><text>"No discount"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_diagram_invoice_discount" name="Default DRD" useAlternativeInputDataShape="false">
+      <dmndi:DMNShape id="_shape_discount" dmnElementRef="_decision_discount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="200" y="40" width="180" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_customerTier" dmnElementRef="_input_customerTier" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="60" y="220" width="180" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_orderAmount" dmnElementRef="_input_orderAmount" isCollapsed="false" isListedInputData="false">
+        <dc:Bounds x="340" y="220" width="180" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="_edge_discount_customerTier" dmnElementRef="_req_discount_customerTier" sourceElement="_shape_customerTier" targetElement="_shape_discount">
+        <di:waypoint x="150" y="220"/>
+        <di:waypoint x="290" y="120"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_discount_orderAmount" dmnElementRef="_req_discount_orderAmount" sourceElement="_shape_orderAmount" targetElement="_shape_discount">
+        <di:waypoint x="430" y="220"/>
+        <di:waypoint x="290" y="120"/>
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

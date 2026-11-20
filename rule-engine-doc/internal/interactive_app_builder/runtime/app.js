@@ -1007,7 +1007,7 @@ export class DesignerApp {
    * each input column, and the rule that decides them lights up. It evaluates the table as it is in the editor, in the
    * browser; nothing goes to the runtime. The values stay with the file while the editor is drawn again. The boxes are
    * in `controls` as "try.<input>", so the walkthrough types into them like into a cell:
-   * 'dmn:invoice-pricing:try.quantity'.
+   * 'dmn:invoice-discount:try.orderAmount'.
    */
   tryStrip(file, controls) {
     const t = this.t;

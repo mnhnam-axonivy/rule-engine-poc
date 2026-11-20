@@ -113,6 +113,7 @@ export function decisionTable({ decision, hits = [], editable = true, onChange =
     return h('td.note', { 'data-tour': key }, input);
   };
 
+  const emptyRule = () => ({ inputs: table.inputs.map(() => '-'), outputs: table.outputs.map(() => 'null'), annotation: '' });
   const rows = table.rules.map((rule, rowIndex) => {
     const hit = hits.includes(rowIndex);
     const remove = editable && table.rules.length > 1
@@ -121,12 +122,19 @@ export function decisionTable({ decision, hits = [], editable = true, onChange =
         onclick: () => { table.rules.splice(rowIndex, 1); onChange('rules'); }
       }, icon('trash', 12))
       : null;
+    // as "Insert rule above" in the DMN editor: with FIRST the place of a rule decides
+    const above = editable
+      ? h('button.icon-btn.dmn-remove', {
+        type: 'button', title: t('dmn.insertAbove'), 'aria-label': t('dmn.insertAbove'), 'data-tour': 'above' + (rowIndex + 1),
+        onclick: () => { table.rules.splice(rowIndex, 0, emptyRule()); onChange('rules'); }
+      }, icon('plus', 12))
+      : null;
     return h('tr' + (hit ? '.hit' : ''), { 'data-tour': 'rule' + (rowIndex + 1) },
       h('td.num', null, hit ? h('span.dmn-hit', { title: t('dmn.hit') }, icon('check', 11)) : null, String(rowIndex + 1)),
       table.inputs.map((input, column) => cell(rule, rowIndex, 'i', column)),
       table.outputs.map((output, column) => cell(rule, rowIndex, 'o', column)),
       editable ? noteCell(rule, rowIndex) : h('td.note', null, rule.annotation || ''),
-      h('td.act', null, remove));
+      h('td.act', null, above, remove));
   });
 
   root.append(h('div.dmn-scroll', null, h('table.dmn-table', null,
@@ -144,7 +152,7 @@ export function decisionTable({ decision, hits = [], editable = true, onChange =
       h('button.link-btn', {
         type: 'button', 'data-tour': 'addRule',
         onclick: () => {
-          const rule = { inputs: table.inputs.map(() => '-'), outputs: table.outputs.map(() => 'null'), annotation: '' };
+          const rule = emptyRule();
           // a new rule goes above the rule that catches everything, otherwise it could never hit
           const last = table.rules[table.rules.length - 1];
           const at = last && isCatchAll(last) && table.hitPolicy === 'FIRST' ? table.rules.length - 1 : table.rules.length;

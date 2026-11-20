@@ -5,34 +5,45 @@
   "fields": [
     {
       "name": "invoice",
-      "type": "com.axonivy.utils.rule.engine.demo.SalesInvoice",
-      "comment": "What the user edits"
+      "type": "com.axonivy.utils.rule.engine.demo.Invoice",
+      "comment": "What the user edits, and what the rules decided at the last Apply"
     },
     {
-      "name": "pricing",
-      "type": "com.axonivy.utils.rule.engine.demo.PricingResult",
-      "comment": "What the rules decided at the last Apply"
+      "name": "errorCode"
     },
     {
-      "name": "previous",
-      "type": "com.axonivy.utils.rule.engine.demo.PricingResult",
-      "comment": "What the rules decided at the Apply before"
+      "name": "errorMessage"
     },
     {
-      "name": "taxFormula",
-      "comment": "The FEEL text of taxFormula in the version that decided"
+      "name": "lastTotal",
+      "type": "java.math.BigDecimal",
+      "comment": "The total of the last Apply"
     },
     {
-      "name": "taxSteps",
-      "type": "List<com.axonivy.utils.rule.engine.demo.TaxStep>"
+      "name": "previousTotal",
+      "type": "java.math.BigDecimal",
+      "comment": "The total of the Apply before"
     },
     {
-      "name": "trialFormula",
-      "comment": "The tax formula a developer tries"
+      "name": "ruleVersion",
+      "type": "java.lang.Integer",
+      "comment": "The version of the model that decided, null if none did"
     },
     {
-      "name": "trial",
-      "type": "com.axonivy.utils.rule.engine.demo.TaxTrial"
+      "name": "hitPolicy"
+    },
+    {
+      "name": "ruleInputs",
+      "type": "List<String>",
+      "comment": "The input columns of the table discount in that version"
+    },
+    {
+      "name": "ruleOutputs",
+      "type": "List<String>"
+    },
+    {
+      "name": "rules",
+      "type": "List<com.axonivy.utils.rule.engine.demo.RuleRow>"
     },
     {
       "name": "editorUrl",

@@ -8,7 +8,7 @@ The decision runtime is another system. It can be down, slow, or it can refuse a
 
 ## The runtime is not reachable
 
-Stop the container and click **Apply rules** on the page of **Rule Engine Demo: invoice pricing**:
+Stop the container and click **Apply rules** on the page of **Rule Engine Demo: invoice discount**:
 
 ```bash
 docker compose stop
@@ -36,8 +36,8 @@ Catch one error code to treat it differently from the others, for example `rule:
 In the output code of the boundary event, `error` is the error that was caught:
 
 ```java
-in.pricing.errorCode = error.getErrorCode();
-in.pricing.errorMessage = error.getMessage();
+in.errorCode = error.getErrorCode();
+in.errorMessage = error.getMessage();
 ```
 
 | Attribute of the error | Content |
@@ -57,10 +57,10 @@ Normally a project brings its models along: the element registers the `.dmn` fil
 If the model is not there, the runtime answers `MODEL_NOT_FOUND` and the element throws `rule:engine:dmn`. The error message names the model:
 
 ```text
-Model 'invoice-pricing' is not loaded.
+Model 'invoice-discount' is not loaded.
 ```
 
-The same error code covers everything the runtime refuses. A model that gets a value it does not accept, for example a category that is not one of its allowed values, or no customer tier at all, answers `EVALUATION_FAILED` with the reason.
+The same error code covers everything the runtime refuses. A model that gets a value it does not accept, for example a text where it expects a number, or a value that is not one of the allowed values of its type, answers `EVALUATION_FAILED` with the reason.
 
 ---
 

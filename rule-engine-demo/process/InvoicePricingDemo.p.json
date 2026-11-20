@@ -11,8 +11,8 @@
       "config" : {
         "signature" : "start",
         "request" : {
-          "name" : "Rule Engine Demo: invoice pricing",
-          "description" : "An invoice with five lines, priced by dmn/invoice-pricing.dmn: line discounts, VAT, order discounts, shipping and who approves it. Change the invoice or the rules and apply them again."
+          "name" : "Rule Engine Demo: invoice discount",
+          "description" : "An invoice with five lines. Its discount is decided by the table of dmn/invoice-discount.dmn, by customer tier and order amount. Change the invoice or the table and apply the rules again."
         }
       },
       "visual" : {
@@ -24,7 +24,7 @@
     }, {
       "id" : "f2",
       "type" : "DialogCall",
-      "name" : "Invoice pricing",
+      "name" : "Invoice discount",
       "config" : {
         "dialog" : "com.axonivy.utils.rule.engine.demo.InvoicePricingDialog:start()"
       },

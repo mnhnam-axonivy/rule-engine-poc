@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "RuleRow",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "A rule of a decision table, as the page of the demo shows it: the FEEL text of each cell.",
+  "fields": [
+    {
+      "name": "number",
+      "type": "java.lang.Integer"
+    },
+    {
+      "name": "inputs",
+      "type": "List<String>"
+    },
+    {
+      "name": "outputs",
+      "type": "List<String>"
+    },
+    {
+      "name": "matched",
+      "type": "java.lang.Boolean",
+      "comment": "The rule that decided the invoice"
+    }
+  ]
+}

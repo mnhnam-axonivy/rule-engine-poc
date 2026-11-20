@@ -164,10 +164,10 @@ const questionsOfPart = (page, n) => page.evaluate(part => {
  * @param {string[]} wanted  notes that must have been shown
  * @param {(page, key: string) => Promise<void>} [atStop]  looks at the page at every stop
  */
-async function playWalkthrough(id, stops, wanted, atStop = null) {
-  console.log('\nGuide ' + id + ': walkthrough');
+async function playWalkthrough(id, stops, wanted, atStop = null, viewport = undefined) {
+  console.log('\nGuide ' + id + ': walkthrough' + (viewport ? ', ' + viewport.width + ' × ' + viewport.height : ''));
   const [pageId, part] = id.split('-');
-  const { page, problems, external } = await openTutorial();
+  const { page, problems, external } = await openTutorial('', viewport);
   await showPage(page, pageId);
   const button = part ? '#re-article .re-part-row .re-walkthrough-btn[data-walkthrough="guide-' + id + '"]' : '#re-article .re-title-row .re-walkthrough-btn';
   check(Boolean(await page.$(button)), 'page ' + pageId + ' has a Walkthrough button next to ' + (part ? 'the heading of part ' + part : 'its title'));
@@ -348,8 +348,8 @@ console.log('Tutorial: the path and the pages');
   const lookAtTable = async (page, key) => {
     seen[key] = await page.evaluate(() => {
       const handle = window.reInteractive.instances()[0];
-      const editor = handle.app.dmnEditors['invoice-pricing'];
-      const table = editor.querySelector('[data-decision="lineDiscountTable"]');
+      const editor = handle.app.dmnEditors['invoice-discount'];
+      const table = editor.querySelector('[data-decision="discount"]');
       return {
         tab: handle.app.state.tab,
         result: (editor.querySelector('[data-tour="tryResult"]') || {}).textContent || '',
@@ -359,46 +359,46 @@ console.log('Tutorial: the path and the pages');
     });
   };
   const page = await playWalkthrough('01',
-    ['laptops', 'gold', 'volume', 'several', 'belowRange', 'nextRange', 'nothing', 'written', 'newResult'],
-    ['table', 'rule', 'output', 'dash', 'function', 'tryStrip', 'laptops', 'gold', 'volume', 'several', 'policy', 'order', 'catchAll',
-      'text', 'list', 'range', 'compare', 'belowRange', 'nextRange', 'nothing', 'added', 'written', 'newResult', 'whereEdit'],
+    ['sample', 'gold', 'large', 'several', 'below', 'from', 'nothing', 'written', 'newResult'],
+    ['table', 'rule', 'output', 'dash', 'model', 'tryStrip', 'sample', 'gold', 'large', 'several', 'policy', 'order', 'catchAll',
+      'text', 'compare', 'below', 'from', 'nothing', 'added', 'written', 'newResult', 'whereEdit'],
     lookAtTable);
-  check(seen.laptops.tab === 'dmn:invoice-pricing' && /"percent":6,.*decided by rule 6$/.test(seen.laptops.result) && seen.laptops.hits === 'rule6',
-    'it plays on the table lineDiscountTable: 10 laptops for a Silver customer light up rule 6: ' + seen.laptops.result);
-  check(/"percent":10,.*decided by rule 5$/.test(seen.gold.result) && /"percent":12,.*decided by rule 4$/.test(seen.volume.result),
-    'other facts, other rules: ' + seen.gold.result + ' | ' + seen.volume.result);
-  check(seen.several.hits === 'rule1' && /Fixed book price.*decided by rule 1$/.test(seen.several.result), 'first match wins: ' + seen.several.result);
-  check(/decided by rule 8$/.test(seen.belowRange.result) && /"percent":15,.*decided by rule 7$/.test(seen.nextRange.result), 'the ranges meet without a gap: ' + seen.nextRange.result);
-  check(/decided by rule 10$/.test(seen.nothing.result) && seen.written.rules === 11 && /"percent":4,.*decided by rule 10$/.test(seen.newResult.result),
+  check(seen.sample.tab === 'dmn:invoice-discount' && /"discountPercent":2,.*decided by rule 6$/.test(seen.sample.result) && seen.sample.hits === 'rule6',
+    'it plays on the table discount: the sample invoice of a Silver customer lights up rule 6: ' + seen.sample.result);
+  check(/"discountPercent":5,.*decided by rule 4$/.test(seen.gold.result) && /"discountPercent":8,.*decided by rule 3$/.test(seen.large.result),
+    'other facts, other rules: ' + seen.gold.result + ' | ' + seen.large.result);
+  check(seen.several.hits === 'rule5' && /"discountPercent":4,.*decided by rule 5$/.test(seen.several.result), 'first match wins: ' + seen.several.result);
+  check(/decided by rule 6$/.test(seen.below.result) && /"discountPercent":4,.*decided by rule 5$/.test(seen.from.result), '>= includes the number: ' + seen.from.result);
+  check(/decided by rule 7$/.test(seen.nothing.result) && seen.written.rules === 8 && /"discountPercent":1,.*decided by rule 7$/.test(seen.newResult.result),
     'a new rule above the one that catches everything decides: ' + seen.newResult.result);
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
 
   console.log('Guide 01: "Try it", used like a learner');
-  await inApp(page, '[data-tab="dmn:invoice-pricing"]');
+  await inApp(page, '[data-tab="dmn:invoice-discount"]');
   await settle(page);
   const tryIt = (values, cell) => withApp(page, (app, handle, typed, change) => {
     Object.keys(typed).forEach(name => {
-      const box = app.dmnControls['invoice-pricing:try.' + name];
+      const box = app.dmnControls['invoice-discount:try.' + name];
       box.setValue(typed[name]);
       box.dispatchEvent(new Event('input'));
     });
     if (change) {
-      const input = app.dmnControls['invoice-pricing:lineDiscountTable.' + change[0]];
+      const input = app.dmnControls['invoice-discount:discount.' + change[0]];
       input.value = change[1];
       input.dispatchEvent(new Event('input'));
     }
-    const table = app.dmnEditors['invoice-pricing'].querySelector('[data-decision="lineDiscountTable"]');
+    const table = app.dmnEditors['invoice-discount'].querySelector('[data-decision="discount"]');
     return {
-      result: app.dmnEditors['invoice-pricing'].querySelector('[data-tour="tryResult"]').textContent,
+      result: app.dmnEditors['invoice-discount'].querySelector('[data-tour="tryResult"]').textContent,
       hits: [...table.querySelectorAll('tr.hit')].map(row => row.getAttribute('data-tour')).join()
     };
   }, values, cell || null);
-  let tried = await tryIt({ category: '"Hardware"', quantity: '10', customerTier: 'Silver', country: 'CH' });
-  check(/"percent":6,.*decided by rule 6$/.test(tried.result) && tried.hits === 'rule6', 'a learner types the facts, quotes or not: ' + tried.result);
+  let tried = await tryIt({ customerTier: '"Silver"', orderAmount: '9200' });
+  check(/"discountPercent":2,.*decided by rule 6$/.test(tried.result) && tried.hits === 'rule6', 'a learner types the facts, quotes or not: ' + tried.result);
   await shot(page, '01-90-try-it');
-  tried = await tryIt({}, ['r6.o1', '7']);
-  check(/"percent":7,.*decided by rule 6$/.test(tried.result), 'an edited result is answered at once: ' + tried.result);
-  tried = await tryIt({ category: '', quantity: '', customerTier: '', country: '' });
+  tried = await tryIt({}, ['r6.o1', '3']);
+  check(/"discountPercent":3,.*decided by rule 6$/.test(tried.result), 'an edited result is answered at once: ' + tried.result);
+  tried = await tryIt({ customerTier: '', orderAmount: '' });
   check(/No values yet/.test(tried.result), 'without values, nothing is evaluated');
   check(await withApp(page, app => app.runtime.modelNames().length) === 0, '"Try it" sends nothing to the runtime');
   await page.close();
@@ -406,24 +406,33 @@ console.log('Tutorial: the path and the pages');
 
 // ── Guide 02: How the rule engine works — the architecture ───────────────────
 {
-  // at a stop on the tab "Architecture": what is lit, and whether the note keeps clear of the blocks
-  const seen = [];
-  const lookAtArchitecture = async (page, key) => {
+  // at a stop on the tab "Architecture": what is lit, whether the camera shows the block the note is about, and
+  // whether the note keeps clear of what is lit
+  const lookAtArchitectureInto = seen => async (page, key) => {
+    await settle(page, 700); // the camera moves the diagram
     seen.push(await page.evaluate(k => {
       const handle = window.reInteractive.instances()[0];
       const root = handle.host.shadowRoot;
       const note = root.querySelector('.tour-note').getBoundingClientRect();
-      const blocks = [...root.querySelectorAll('.arch-diagram .arch-block, .arch-diagram .arch-frame')];
-      const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      const view = root.querySelector('.arch-scroll').getBoundingClientRect();
+      const lit = [...root.querySelectorAll('.arch-diagram .arch-block.lit, .arch-diagram .arch-link-label.lit')];
+      const hits = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+      const inside = (a, b) => a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+      const onArch = handle.app.state.tab === 'arch';
+      const target = onArch && handle.app.tour.target ? handle.app.arch.node(handle.app.tour.target.name) : null;
       return {
         key: k,
         tab: handle.app.state.tab,
         lit: [...root.querySelectorAll('.arch-diagram .lit[data-arch]')].map(node => node.dataset.arch),
         flowing: root.querySelectorAll('.arch-line.flow').length,
-        covered: handle.app.state.tab === 'arch' ? blocks.filter(block => hits(note, block.getBoundingClientRect())).map(block => block.dataset.arch) : []
+        covered: onArch ? lit.filter(node => hits(note, node.getBoundingClientRect())).map(node => node.dataset.arch) : [],
+        hidden: onArch ? lit.concat(target ? [target] : []).filter(node => !inside(node.getBoundingClientRect(), view)).map(node => node.dataset.arch) : [],
+        noteInside: !onArch || inside(note, view)
       };
     }, key));
   };
+  const seen = [];
+  const lookAtArchitecture = lookAtArchitectureInto(seen);
   const page = await playWalkthrough('02',
     ['ivy', 'http', 'demo', 'shared', 'portal', 'image', 'db', 'editor', 'flowRegister', 'flowStored', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
     ['ivy', 'container', 'http', 'why', 'demo', 'connector', 'core', 'shared', 'requires', 'portal', 'image', 'api', 'engine', 'db', 'editor',
@@ -438,8 +447,14 @@ console.log('Tutorial: the path and the pages');
   check(at('shared').lit.includes('core') && at('shared').lit.includes('shared') && at('db').lit.includes('volume') && at('editor').lit.includes('browser'),
     'and what belongs together: the shared code on both sides, database and volume, editor page and browser');
   check(at('http').flowing === 2 && at('flowRegister').flowing === 1 && at('flowResult').flowing === 1, 'the link between engine and container flows in the direction of the call');
-  const covering = onArch.filter(stop => stop.covered.length);
-  check(covering.length === 0, 'no note covers a block of the diagram' + (covering.length ? ': ' + covering.map(stop => stop.key + ' over ' + stop.covered.join('+')).join(', ') : ''));
+  const framing = stops => {
+    const covering = stops.filter(stop => stop.covered.length);
+    check(covering.length === 0, 'no note covers what is lit' + (covering.length ? ': ' + covering.map(stop => stop.key + ' over ' + stop.covered.join('+')).join(', ') : ''));
+    const hiding = stops.filter(stop => stop.hidden.length || !stop.noteInside);
+    check(hiding.length === 0, 'the camera brings the block of every note and what is lit with it into view, and the note beside it'
+      + (hiding.length ? ': ' + hiding.map(stop => stop.key + (stop.hidden.length ? ' hides ' + stop.hidden.join('+') : ' note outside')).join(', ') : ''));
+  };
+  framing(onArch);
   await shot(page, '02-90-end');
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
 
@@ -461,7 +476,7 @@ console.log('Tutorial: the path and the pages');
   let view = await arch();
   check(view.blocks === 'api,browser,callable,code,connector,container,core,db,demo,editor,engine,http,ivy,portal,shared,store,ui,volume', 'the diagram has the engine with the Portal and three projects, the container with what is in its image, browser and volume');
   check(view.links === 'callable,code,http,store,ui', 'and the five links between them');
-  check(view.db === 'no model yet' && view.state === 'running' && /invoice-pricing\.dmn/.test(view.demo), 'it starts with an empty database: ' + view.db);
+  check(view.db === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo), 'it starts with an empty database: ' + view.db);
   const panelShown = () => page.evaluate(() => getComputedStyle(window.reInteractive.instances()[0].host.shadowRoot.querySelector('.panel')).display !== 'none');
   check(!await panelShown(), 'the tab has no bottom panel');
   // the details of a block: a drawer on the right, that changes with the block and closes again
@@ -519,13 +534,50 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   view = await arch();
-  check(/invoice-pricing: version 1 active \(project\), 1 stored/.test(view.db) && /last answer: 7 results, version 1/.test(view.api) && /every decision of invoice-pricing/.test(view.engine),
+  check(/invoice-discount: version 1 active \(project\), 1 stored/.test(view.db) && /last answer: discount = .*, version 1/.test(view.api) && /rule 6 of discount decided/.test(view.engine),
     'after a run it shows what happened: ' + view.db + ' | ' + view.api + ' | ' + view.engine);
   await shot(page, '02-92-after-run');
   await withApp(page, app => app.setRuntimeState('stopped'));
   view = await arch();
   check(view.state === 'stopped' && view.stopped && view.broken, 'a stopped container is shown as stopped, and the link to it as broken');
   await shot(page, '02-93-stopped');
+  await page.close();
+}
+
+// ── Guide 02 again, inside a small frame as in the Axon Ivy Portal ───────────
+{
+  const seen = [];
+  const lookAround = async (page, key) => {
+    await settle(page, 700); // the camera moves the diagram
+    seen.push(await page.evaluate(k => {
+      const handle = window.reInteractive.instances()[0];
+      const root = handle.host.shadowRoot;
+      const note = root.querySelector('.tour-note').getBoundingClientRect();
+      const view = root.querySelector('.arch-scroll').getBoundingClientRect();
+      const lit = [...root.querySelectorAll('.arch-diagram .arch-block.lit, .arch-diagram .arch-link-label.lit')];
+      const hits = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+      const inside = (a, b) => a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+      const onArch = handle.app.state.tab === 'arch';
+      const target = onArch && handle.app.tour.target ? handle.app.arch.node(handle.app.tour.target.name) : null;
+      return {
+        key: k,
+        onArch,
+        covered: onArch ? lit.filter(node => hits(note, node.getBoundingClientRect())).map(node => node.dataset.arch) : [],
+        hidden: onArch ? lit.concat(target ? [target] : []).filter(node => !inside(node.getBoundingClientRect(), view)).map(node => node.dataset.arch) : [],
+        noteInside: !onArch || inside(note, view)
+      };
+    }, key));
+  };
+  const page = await playWalkthrough('02',
+    ['why', 'demo', 'core', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten'],
+    ['ivy', 'why', 'demo', 'core', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten', 'designer'],
+    lookAround, { width: 1800, height: 650 });
+  const stops = seen.filter(stop => stop.onArch);
+  const covering = stops.filter(stop => stop.covered.length);
+  check(stops.length === 8 && covering.length === 0, 'no note covers what is lit' + (covering.length ? ': ' + covering.map(stop => stop.key + ' over ' + stop.covered.join('+')).join(', ') : ''));
+  const hiding = stops.filter(stop => stop.hidden.length || !stop.noteInside);
+  check(hiding.length === 0, 'in a frame as small as in the Portal, the camera still shows the block of every note and what is lit with it'
+    + (hiding.length ? ': ' + hiding.map(stop => stop.key + (stop.hidden.length ? ' hides ' + stop.hidden.join('+') : ' note outside')).join(', ') : ''));
   await page.close();
 }
 
@@ -545,7 +597,7 @@ const lookAround = seen => async (page, key) => {
       createDecision: task ? (task.config.userConfig || {}).decision : null,
       data: JSON.parse(JSON.stringify(app.data || {})),
       logs: app.panel.logs.map(entry => entry.message).slice(-3),
-      statuses: Object.fromEntries(['invoice-pricing', 'delivery-days'].map(model => [model, app.runtime.versions(model).map(v => v.version + ':' + v.status + ':' + v.source).join(' ')]))
+      statuses: Object.fromEntries(['invoice-discount', 'invoice-approver'].map(model => [model, app.runtime.versions(model).map(v => v.version + ':' + v.status + ':' + v.source).join(' ')]))
     };
   });
 };
@@ -554,14 +606,15 @@ const lookAround = seen => async (page, key) => {
   // page 03: the first decision, what the runtime holds, a runtime that does not answer
   let seen = {};
   let page = await playWalkthrough('03',
-    ['request', 'response', 'mapped', 'where', 'versionOne', 'lastCall', 'stored', 'unreachable', 'notPriced'],
-    ['called', 'prepare', 'task', 'request', 'registered', 'response', 'mapped', 'log', 'where', 'versionOne', 'lastCall', 'stored',
+    ['request', 'response', 'mapped', 'applied', 'where', 'versionOne', 'lastCall', 'stored', 'unreachable', 'notPriced'],
+    ['called', 'sum', 'task', 'request', 'registered', 'response', 'mapped', 'applied', 'log', 'where', 'versionOne', 'lastCall', 'stored',
       'stopped', 'unreachable', 'caught', 'notPriced'],
     lookAround(seen));
-  check(/customerTier = "Silver"/.test(seen.request.quote) && /lines = \[5 lines\]/.test(seen.request.quote), 'the first run sends the seven inputs, the lines as a list: ' + seen.request.quote.replace(/\n/g, ', '));
-  check(/line 1: rule 6 · Hardware: 10 units or more/.test(seen.response.quote) && /line 5: rule 2 · Books: 10 copies or more/.test(seen.response.quote), 'a rule decides each line: ' + seen.response.quote.split('\n')[0]);
-  check(/total 18265\.55 · Sales manager\s+\(version 1\)/.test(seen.mapped.quote), 'and the results come back: ' + seen.mapped.quote.split('\n').pop());
-  check(/^1:ACTIVE:PROJECT$/.test(seen.versionOne.statuses['invoice-pricing']), 'the runtime holds version 1, active, from the project: ' + seen.versionOne.statuses['invoice-pricing']);
+  check(/customerTier = "Silver"/.test(seen.request.quote) && /orderAmount = 9200/.test(seen.request.quote), 'the first run sends the two inputs, the amount the Script summed: ' + seen.request.quote.replace(/\n/g, ', '));
+  check(/rule 6:\s+"Silver"\s+\|\s+-\s+→\s+2 · Silver customer/.test(seen.response.quote), 'the first rule that matches decides: ' + seen.response.quote);
+  check(/discount = 2 % · Silver customer\s+\(version 1\)/.test(seen.mapped.quote), 'and the result comes back: ' + seen.mapped.quote);
+  check(/order 9200\.00 · 2 % · −184\.00 · total 9016\.00/.test(seen.applied.quote), 'the process applies the discount: ' + seen.applied.quote);
+  check(/^1:ACTIVE:PROJECT$/.test(seen.versionOne.statuses['invoice-discount']), 'the runtime holds version 1, active, from the project: ' + seen.versionOne.statuses['invoice-discount']);
   check(seen.stored.tab === 'arch', 'the version is shown in the database of the container');
   check(/rule:engine:unreachable/.test(seen.unreachable.quote) && seen.notPriced.tab === 'process', 'a stopped runtime: rule:engine:unreachable, caught, path "not priced"');
   await shot(page, '03-90-end');
@@ -571,32 +624,32 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
   const first = await withApp(page, app => ({
-    status: app.state.status, total: app.data.pricing.totals.total, lines: app.data.pricing.pricedLines.length,
-    version: app.runtime.versions('invoice-pricing').find(v => v.status === 'ACTIVE').version, logs: app.panel.logs.map(l => l.message)
+    status: app.state.status, total: app.data.invoice.total, percent: app.data.invoice.discountPercent,
+    version: app.runtime.versions('invoice-discount').find(v => v.status === 'ACTIVE').version, logs: app.panel.logs.map(l => l.message)
   }));
-  check(first.status === 'completed' && first.total === 18265.55 && first.lines === 5 && first.version === 1, 'Run: the invoice is priced, 18265.55, by version 1');
-  check(first.logs.includes('Invoice INV-2026-0042: total 18265.55, Sales manager'), 'the Runtime Log has the line of the tutorial');
+  check(first.status === 'completed' && first.total === 9016 && first.percent === 2 && first.version === 1, 'Run: 2 percent, a total of 9016, decided by version 1');
+  check(first.logs.includes('Invoice INV-2026-0042: 2% (Silver customer), total 9016'), 'the Runtime Log has the line of the Script');
   await inApp(page, '.panel-tab[data-tab="data"]');
   await settle(page, 200);
-  check(await page.evaluate(() => window.reInteractive.instances()[0].host.shadowRoot.querySelectorAll('.data-list li').length) >= 10, 'the process data shows the lines and the priced lines, one per row');
+  check(await page.evaluate(() => window.reInteractive.instances()[0].host.shadowRoot.querySelectorAll('.data-list li').length) >= 5, 'the process data shows the lines, one per row');
   await shot(page, '03-91-process-data');
 
   // change a rule in the table of the file, the way a learner types into a cell
-  await inApp(page, '[data-tab="dmn:invoice-pricing"]');
+  await inApp(page, '[data-tab="dmn:invoice-discount"]');
   await settle(page);
   await withApp(page, app => {
-    const cell = app.dmnControls['invoice-pricing:lineDiscountTable.r6.o1'];
-    cell.value = '9';
+    const cell = app.dmnControls['invoice-discount:discount.r6.o1'];
+    cell.value = '3';
     cell.dispatchEvent(new Event('input'));
   });
-  const changedMark = await page.evaluate(() => Boolean(window.reInteractive.instances()[0].host.shadowRoot.querySelector('[data-tab="dmn:invoice-pricing"] .tab-mark.changed')));
+  const changedMark = await page.evaluate(() => Boolean(window.reInteractive.instances()[0].host.shadowRoot.querySelector('[data-tab="dmn:invoice-discount"] .tab-mark.changed')));
   check(changedMark, 'an edited table marks its tab as changed');
   await shot(page, '03-92-table-edited');
   await inApp(page, '[data-tab="process"]');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  const second = await withApp(page, app => ({ laptop: app.data.pricing.pricedLines[0].discountPercent, version: app.runtime.versions('invoice-pricing').find(v => v.status === 'ACTIVE').version, versions: app.runtime.versions('invoice-pricing').map(v => v.status) }));
-  check(second.laptop === 9 && second.version === 2 && second.versions.join() === 'RETIRED,ACTIVE', 'the changed file is version 2 and decides the next run: 9 % on the laptops');
+  const second = await withApp(page, app => ({ percent: app.data.invoice.discountPercent, version: app.runtime.versions('invoice-discount').find(v => v.status === 'ACTIVE').version, versions: app.runtime.versions('invoice-discount').map(v => v.status) }));
+  check(second.percent === 3 && second.version === 2 && second.versions.join() === 'RETIRED,ACTIVE', 'the changed file is version 2 and decides the next run: 3 %');
   await shot(page, '03-93-after-edit');
 
   // stop the runtime with the switch of the panel: the boundary event catches the error
@@ -604,15 +657,15 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '.rt-switch-btn.stopped');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  const stopped = await withApp(page, app => ({ status: app.state.status, code: app.data.pricing.errorCode, executed: Object.keys(app.visual.executed) }));
+  const stopped = await withApp(page, app => ({ status: app.state.status, code: app.data.errorCode, executed: Object.keys(app.visual.executed) }));
   check(stopped.status === 'completed' && stopped.code === 'rule:engine:unreachable' && stopped.executed.includes('f10'), 'runtime stopped: rule:engine:unreachable is caught, the process ends at "not priced"');
   await shot(page, '03-94-runtime-stopped');
 
   // Reset puts everything back
   await inApp(page, '.rt-switch-btn.running');
   await page.evaluate(() => window.reInteractive.instances()[0].app.reset());
-  const reset = await withApp(page, app => ({ versions: app.runtime.modelNames().length, cell: app.dmnControls['invoice-pricing:lineDiscountTable.r6.o1'].value, state: app.runtime.state }));
-  check(reset.versions === 0 && reset.cell === '6' && reset.state === 'running', 'Reset: the runtime is empty and the file is the one of the tutorial again');
+  const reset = await withApp(page, app => ({ versions: app.runtime.modelNames().length, cell: app.dmnControls['invoice-discount:discount.r6.o1'].value, state: app.runtime.state }));
+  check(reset.versions === 0 && reset.cell === '2' && reset.state === 'running', 'Reset: the runtime is empty and the file is the one of the tutorial again');
 
   // the dialog closes with Escape and releases the simulation
   await page.keyboard.press('Escape');
@@ -623,23 +676,22 @@ const lookAround = seen => async (page, key) => {
   // page 04: the one field, mapping by name, null, and a Script that prepares a value
   seen = {};
   page = await playWalkthrough('04',
-    ['decisionField', 'enough', 'levelZero', 'levelOne', 'foundIn', 'resultsBack', 'sentNull', 'refused', 'dashMatches', 'newInput', 'mappingError', 'caught', 'typed', 'preparedSent', 'preparedResult'],
+    ['decisionField', 'enough', 'levelZero', 'levelOne', 'foundIn', 'resultsBack', 'sentNull', 'dashMatches', 'newInput', 'mappingError', 'caught', 'loop', 'preparedSent', 'preparedResult'],
     ['decisionField', 'fieldsEmpty', 'enough', 'namesToFind', 'levelZero', 'levelOne', 'foundIn', 'resultsBack', 'closestWins', 'sameLevel', 'caseAndBlanks',
-      'noTier', 'sentNull', 'refused', 'allowedValues', 'noPromo', 'dashMatches', 'noMatch', 'newInput', 'mappingError', 'caught', 'waysOut',
-      'scriptBefore', 'trimUpper', 'typed', 'preparedSent', 'preparedResult', 'otherName'],
+      'noTier', 'sentNull', 'dashMatches', 'noMatch', 'allowedValues', 'newInput', 'mappingError', 'caught', 'waysOut',
+      'scriptBefore', 'loop', 'sumSet', 'preparedSent', 'preparedResult', 'otherName'],
     lookAround(seen));
-  check(/total 18265\.55 · Sales manager/.test(seen.enough.quote), 'with only the decision selected, the invoice is priced: ' + seen.enough.quote.split('\n').pop());
+  check(/discount = 2 % · Silver customer/.test(seen.enough.quote), 'with only the decision selected, the discount is decided: ' + seen.enough.quote);
   check(seen.levelZero.tab === 'process' && seen.levelZero.data.invoice && seen.levelZero.data.invoice.customerTier === 'Silver',
     'the search is shown on the process data before the call: the invoice of the page');
-  check(seen.foundIn.sent.customerTier === 'Silver' && seen.foundIn.sent.country === 'CH' && seen.foundIn.sent.lines.length === 5, 'all seven inputs are found one level down, in in.invoice');
-  check(seen.resultsBack.data.pricing && seen.resultsBack.data.pricing.pricedLines.length === 5, 'the results are written to in.pricing by name');
+  check(seen.foundIn.sent.customerTier === 'Silver' && seen.foundIn.sent.orderAmount === 9200 && Object.keys(seen.foundIn.sent).length === 2, 'both inputs are found one level down, in in.invoice');
+  check(seen.resultsBack.data.invoice.discountPercent === 2 && seen.resultsBack.data.invoice.discountReason === 'Silver customer', 'the entries of the result are written to in.invoice by name');
   check(seen.sentNull.sent.customerTier === null && 'customerTier' in seen.sentNull.sent, 'an empty field is sent as null');
-  check(/not allowed by the declared type \(tCustomerTier\)/.test(seen.refused.quote), 'null is not one of the allowed values: ' + seen.refused.quote.split('\n')[0]);
-  check(/line 1: Hardware 10 × 1200 · 6 %/.test(seen.dashMatches.quote) && /orderDiscounts = none/.test(seen.dashMatches.quote), 'without a promo code the rules with - decide: ' + seen.dashMatches.quote.split('\n')[0]);
-  check(/rule:engine:mapping[\s\S]*creditLimit[\s\S]*of the model 'invoice-pricing'[\s\S]*set before the Business Rule Task/.test(seen.mappingError.quote),
+  check(/rule 7:[\s\S]*No discount/.test(seen.dashMatches.quote) && /discount = 0 %/.test(seen.dashMatches.quote), 'only - matches null: ' + seen.dashMatches.quote.split('\n')[0]);
+  check(/rule:engine:mapping[\s\S]*creditLimit[\s\S]*of the decision 'discount' in model 'invoice-discount'[\s\S]*set before the Business Rule Task/.test(seen.mappingError.quote),
     'an input without a field throws rule:engine:mapping, names it and says where to set it');
-  check(seen.preparedSent.sent.promoCode === 'WINTER26', 'the Script before the element prepares the value that is sent: ' + seen.preparedSent.sent.promoCode);
-  check(/Promotion WINTER26 5 %/.test(seen.preparedResult.quote), 'and the promotion applies: ' + seen.preparedResult.quote);
+  check(seen.preparedSent.sent.orderAmount === 9200, 'the Script before the element prepares the value that is sent: ' + seen.preparedSent.sent.orderAmount);
+  check(/discount = 2 %/.test(seen.preparedResult.quote), 'and the table decides with it: ' + seen.preparedResult.quote);
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
   await page.close();
 }
@@ -652,9 +704,9 @@ const lookAround = seen => async (page, key) => {
     ['before', 'edited', 'pending', 'registered', 'live', 'list', 'active', 'retired', 'answerNames', 'activeOne', 'onTheCase',
       'rollbackButton', 'rolledBack', 'rollbackResult', 'rollbackFile'],
     lookAround(seen));
-  check(/line 1: Hardware 10 × 1200 · 8 %.*\(version 2\)/.test(seen.live.quote), 'a saved file is live with the next run: ' + seen.live.quote);
-  check(/^1:ACTIVE/.test(seen.answerNames.statuses['invoice-pricing']), 'the answer names the active version: ' + seen.answerNames.statuses['invoice-pricing']);
-  check(/^1:ACTIVE.* 2:RETIRED/.test(seen.rolledBack.statuses['invoice-pricing']), 'rolled back, version 1 is active again: ' + seen.rolledBack.statuses['invoice-pricing']);
+  check(/discount = 3 % · Silver customer\s+\(version 2\)/.test(seen.live.quote), 'a saved file is live with the next run: ' + seen.live.quote);
+  check(/^1:ACTIVE/.test(seen.answerNames.statuses['invoice-discount']), 'the answer names the active version: ' + seen.answerNames.statuses['invoice-discount']);
+  check(/^1:ACTIVE.* 2:RETIRED/.test(seen.rolledBack.statuses['invoice-discount']), 'rolled back, version 1 is active again: ' + seen.rolledBack.statuses['invoice-discount']);
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
 
   console.log('Guide 06: a rule owner on the editor page of the runtime, used like a learner');
@@ -664,8 +716,8 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '[data-tour="owner"]');
   await settle(page);
   await withApp(page, app => {
-    const cell = app.ownerDialog.controls['lineDiscountTable.r6.o1'];
-    cell.value = '10';
+    const cell = app.ownerDialog.controls['discount.r6.o1'];
+    cell.value = '4';
     cell.dispatchEvent(new Event('input'));
   });
   await shot(page, '06-90-owner-dialog');
@@ -673,14 +725,14 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
   const owned = await withApp(page, app => ({
-    laptop: app.data.pricing.pricedLines[0].discountPercent, versions: app.runtime.versions('invoice-pricing').map(v => v.source + ':' + v.status),
-    file: app.findDmn('invoice-pricing').functions[0].table.rules[5].outputs[0]
+    percent: app.data.invoice.discountPercent, versions: app.runtime.versions('invoice-discount').map(v => v.source + ':' + v.status),
+    file: app.findDmn('invoice-discount').decisions[0].table.rules[5].outputs[0]
   }));
-  check(owned.laptop === 10 && owned.versions.join() === 'PROJECT:RETIRED,PORTAL:ACTIVE' && owned.file === '6', 'the rule owner\'s version decides (10 %), the file of the project still says 6');
+  check(owned.percent === 4 && owned.versions.join() === 'PROJECT:RETIRED,PORTAL:ACTIVE' && owned.file === '2', 'the rule owner\'s version decides (4 %), the file of the project still says 2');
   await inApp(page, '[data-tour="rollback"]');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  check(await withApp(page, app => app.data.pricing.pricedLines[0].discountPercent) === 6, 'Roll back: version 1 decides again (6 %)');
+  check(await withApp(page, app => app.data.invoice.discountPercent) === 2, 'Roll back: version 1 decides again (2 %)');
   await shot(page, '06-91-rolled-back');
   await page.close();
 }
@@ -693,30 +745,30 @@ const lookAround = seen => async (page, key) => {
     ['create', 'inputs', 'outputs', 'nameField', 'nameEmpty', 'noName', 'nameTaken', 'taken', 'ownName', 'created', 'registered', 'placeholderResult', 'inputsNamed', 'table', 'selected',
       'placeholder', 'above', 'written', 'saved', 'decided'],
     lookAround(seen));
-  check(/rule:engine:mapping[\s\S]*'New DMN name' is empty/.test(seen.noName.quote) && seen.noName.files === 'invoice-pricing'
+  check(/rule:engine:mapping[\s\S]*'New DMN name' is empty/.test(seen.noName.quote) && seen.noName.files === 'invoice-discount'
     && seen.noName.logs.some(m => /cannot create its new DMN\. 'New DMN name' is empty/.test(m)),
     'without a name nothing is created, and the Runtime Log says why: ' + seen.noName.quote.split('\n')[1]);
-  check(/A DMN named 'invoice-pricing' exists already \(invoice-pricing\.dmn\)/.test(seen.taken.quote) && seen.taken.createDecision === '#create',
+  check(/A DMN named 'invoice-discount' exists already \(invoice-discount\.dmn\)/.test(seen.taken.quote) && seen.taken.createDecision === '#create',
     'the name of another file is an error, that file is not selected: ' + seen.taken.quote.split('\n')[1]);
-  check(seen.inputsNamed.tab === 'dmn:delivery-days' && seen.inputsNamed.files === 'invoice-pricing,delivery-days', 'the new task builds dmn/delivery-days.dmn from its fields');
-  check(/deliveryDays = 2\s+\(version 2\)/.test(seen.decided.quote), 'the rule of the author decides: ' + seen.decided.quote);
+  check(seen.inputsNamed.tab === 'dmn:invoice-approver' && seen.inputsNamed.files === 'invoice-discount,invoice-approver', 'the new task builds dmn/invoice-approver.dmn from its fields');
+  check(/approver = "Sales manager"\s+\(version 2\)/.test(seen.decided.quote), 'the rule of the author decides: ' + seen.decided.quote);
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
   const fresh = await withApp(page, app => ({ files: app.dmnFiles.map(f => f.id), decision: app.model.elements.find(e => e.id === 'f40').config.userConfig.decision }));
-  check(fresh.files.join() === 'invoice-pricing' && fresh.decision === '#create', 'the project is back to how the tutorial ships it: no generated file');
+  check(fresh.files.join() === 'invoice-discount' && fresh.decision === '#create', 'the project is back to how the tutorial ships it: no generated file');
 
   console.log('Guide 05: the new task, used like a learner');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
   const created = await withApp(page, app => ({
-    status: app.state.status, files: app.dmnFiles.map(f => f.id), days: app.data.pricing.deliveryDays, total: app.data.pricing.totals.total,
+    status: app.state.status, files: app.dmnFiles.map(f => f.id), approver: app.data.invoice.approver, total: app.data.invoice.total,
     tabs: [...app.tabsEl.querySelectorAll('.tab')].map(tab => tab.textContent.trim())
   }));
-  check(created.status === 'completed' && created.files.join() === 'invoice-pricing,delivery-days' && created.days === 0 && created.total === 18265.55,
-    'a run prices the invoice, generates delivery-days.dmn and evaluates its placeholder rule: 0');
-  check(created.tabs.includes('delivery-days.dmn'), 'the generated file has its own editor tab');
+  check(created.status === 'completed' && created.files.join() === 'invoice-discount,invoice-approver' && created.approver === '' && created.total === 9016,
+    'a run decides the discount, generates invoice-approver.dmn and evaluates its placeholder rule: an empty text');
+  check(created.tabs.includes('invoice-approver.dmn'), 'the generated file has its own editor tab');
   await withApp(page, app => { app.select('f40'); app.setInscriptionOpen(true); });
   await settle(page);
-  check(await withApp(page, app => app.model.elements.find(e => e.id === 'f40').config.userConfig.decision) === 'delivery-days#deliveryDays', 'opening the mask again selects the generated decision');
+  check(await withApp(page, app => app.model.elements.find(e => e.id === 'f40').config.userConfig.decision) === 'invoice-approver#approver', 'opening the mask again selects the generated decision');
   await shot(page, '05-90-generated-selected');
   await page.close();
 }
@@ -739,7 +791,7 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '[data-tab="process"]');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  check(await withApp(page, app => app.data.pricing.errorCode) === 'rule:engine:unreachable', 'and the run throws rule:engine:unreachable');
+  check(await withApp(page, app => app.data.errorCode) === 'rule:engine:unreachable', 'and the run throws rule:engine:unreachable');
   await page.close();
 }
 
@@ -751,7 +803,7 @@ const lookAround = seen => async (page, key) => {
       const app = window.reInteractive.instances()[0].app;
       const portal = app.portal;
       const title = portal && portal.root ? (portal.root.querySelector('[data-tour="title"]') || {}).textContent || '' : '';
-      const decision = portal && portal.edit ? portal.edit.dmn.decisions.find(d => d.name === 'orderDiscounts') : null;
+      const decision = portal && portal.edit ? portal.edit.dmn.decisions.find(d => d.name === 'discount') : null;
       const table = decision ? decision.table : null;
       const quote = app.tour.current && app.tour.current.quote;
       return {
@@ -759,24 +811,28 @@ const lookAround = seen => async (page, key) => {
         title,
         columns: table ? table.inputs.map(input => input.label).join() : '',
         rules: table ? table.rules.length : 0,
+        first: table ? table.rules[0].inputs.join() + ' > ' + table.rules[0].outputs.join() : '',
         quote: Array.isArray(quote) ? quote.map(line => line.text).join('\n') : String(quote || '')
       };
     });
   };
   const page = await playWalkthrough('07',
-    ['noKeyAccount', 'customer', 'bridge', 'row', 'editor', 'inputs', 'keyAccount', 'collect', 'saved', 'moreInputs', 'applied', 'untouched', 'versionList', 'rolledBack', 'backAgain',
-      'fileChanged', 'stillPortal', 'draftBeside'],
-    ['noKeyAccount', 'table', 'customer', 'bridge', 'tab', 'row', 'editor', 'goal', 'inputs', 'newRule', 'keyAccount', 'collect', 'checked', 'saved',
-      'moreInputs', 'applied', 'untouched', 'versionList', 'rolledBack', 'backAgain', 'portalActive', 'fileChanged', 'asDraft', 'stillPortal', 'draftBeside'],
+    ['noKeyAccount', 'customer', 'bridge', 'row', 'editor', 'inputs', 'newRule', 'keyAccount', 'first', 'saved', 'moreInputs', 'applied', 'lower', 'untouched',
+      'versionList', 'rolledBack', 'backAgain', 'fileChanged', 'stillPortal', 'draftBeside'],
+    ['noKeyAccount', 'table', 'customer', 'bridge', 'tab', 'row', 'editor', 'goal', 'inputs', 'newRule', 'keyAccount', 'first', 'checked', 'saved',
+      'moreInputs', 'applied', 'lower', 'untouched', 'versionList', 'rolledBack', 'backAgain', 'portalActive', 'fileChanged', 'asDraft', 'stillPortal', 'draftBeside'],
     lookAroundPortal);
-  check(/orderDiscounts = none · applied 0 %.*\(version 1\)/.test(seen.noKeyAccount.quote), 'before: no order discount for the sample invoice: ' + seen.noKeyAccount.quote);
+  check(/discount = 2 % · Silver customer\s+\(version 1\)/.test(seen.noKeyAccount.quote), 'before: the sample invoice gets the discount of its tier: ' + seen.noKeyAccount.quote);
   check(seen.bridge.tab === 'arch' && seen.row.tab === 'portal', 'it shows how the Portal finds the rule engine, then the Portal itself');
-  check(seen.inputs.columns === 'customerTier,paymentTerms,promoCode,invoiceDate,customer', 'the table gets the input customer in the Portal: ' + seen.inputs.columns);
-  check(seen.keyAccount.rules === 7 && /Version 2 · Active/.test(seen.saved.title), 'one more rule, saved and activated as version 2: ' + seen.saved.title);
+  check(seen.inputs.columns === 'customerTier,orderAmount,customer', 'the table gets the input customer in the Portal: ' + seen.inputs.columns);
+  check(seen.newRule.rules === 8 && seen.newRule.first === '-,-,- > null,null', 'Insert above rule 1: a new, empty first rule');
+  check(seen.keyAccount.first === '-,-,"Bluebird Architects" > 10,"Key account: framework contract"' && /Version 2 · Active/.test(seen.saved.title),
+    'the key account rule at the top, saved and activated as version 2: ' + seen.keyAccount.first);
   check(/customer = "Bluebird Architects"/.test(seen.moreInputs.quote), 'after: the Business Rule Task sends the new input: ' + seen.moreInputs.quote.split('\n').pop());
-  check(/Key account 3 % · applied 3 % · total 17717\.58\s+\(version 2\)/.test(seen.applied.quote), 'and the same invoice costs less: ' + seen.applied.quote);
-  check(/none · applied 0 %.*\(version 1\)/.test(seen.backAgain.quote), 'rolled back, no key account discount any more');
-  check(/line 1: Hardware 10 × 1200 · 6 %[\s\S]*Key account 3 %/.test(seen.stillPortal.quote), 'who has the last word: a changed file of the project does not replace the rule owner\'s version');
+  check(/discount = 10 % · Key account: framework contract\s+\(version 2\)/.test(seen.applied.quote) && /total 8280\.00/.test(seen.lower.quote),
+    'and the same invoice costs less: ' + seen.lower.quote);
+  check(/discount = 2 % · Silver customer\s+\(version 1\)/.test(seen.backAgain.quote), 'rolled back, no key account discount any more');
+  check(/discount = 10 % · Key account/.test(seen.stillPortal.quote), 'who has the last word: a changed file of the project does not replace the rule owner\'s version');
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
 
   console.log('Guide 07: the Portal, used like a learner');
@@ -785,7 +841,7 @@ const lookAround = seen => async (page, key) => {
     const root = shadow.querySelector('.portal');
     const text = selector => { const node = root.querySelector(selector); return node ? node.textContent.replace(/\s+/g, ' ').trim() : ''; };
     return {
-      row: text('[data-tour="row:invoice-pricing"]'),
+      row: text('[data-tour="row:invoice-discount"]'),
       message: text('.portal-messages'),
       title: text('[data-tour="title"]'),
       panelShown: getComputedStyle(shadow.querySelector('.panel')).display !== 'none'
@@ -794,28 +850,28 @@ const lookAround = seen => async (page, key) => {
   await inApp(page, '[data-tab="process"]');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  check(await withApp(page, app => app.data.pricing.totals.total) === 18265.55, 'a run of the process prices the invoice: 18265.55');
+  check(await withApp(page, app => app.data.invoice.total) === 9016, 'a run of the process decides the discount: a total of 9016');
   await inApp(page, '[data-tab="portal"]');
   await settle(page, 300);
   let view = await portal();
-  check(/invoice-pricing/.test(view.row) && /Version 1/.test(view.row) && !view.panelShown, 'the tab Portal lists the rules at version 1, without the bottom panel');
-  await inApp(page, '[data-tour="edit:invoice-pricing"]');
+  check(/invoice-discount/.test(view.row) && /Version 1/.test(view.row) && !view.panelShown, 'the tab Portal lists the rules at version 1, without the bottom panel');
+  await inApp(page, '[data-tour="edit:invoice-discount"]');
   await settle(page, 300);
   await page.evaluate(() => {
-    const cell = window.reInteractive.instances()[0].host.shadowRoot.querySelector('.portal [data-decision="orderDiscounts"] [data-tour="r1.i1"] input');
-    cell.value = '"Gold", "Silver"';
+    const cell = window.reInteractive.instances()[0].host.shadowRoot.querySelector('.portal [data-decision="discount"] [data-tour="r6.o1"] input');
+    cell.value = '3';
     cell.dispatchEvent(new Event('input'));
   });
   await inApp(page, '[data-tour="activate"]');
   await settle(page, 300);
   view = await portal();
-  check(/Version 2 of invoice-pricing is saved and active/.test(view.message) && /Version 2/.test(view.title), 'a learner gives the tier bonus to Silver customers too and saves it: ' + view.message);
+  check(/Version 2 of invoice-discount is saved and active/.test(view.message) && /Version 2/.test(view.title), 'a learner gives Silver customers 3 percent and saves it: ' + view.message);
   await shot(page, '07-90-portal-learner');
   await inApp(page, '[data-tab="process"]');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
-  check(await withApp(page, app => app.data.pricing.orderDiscountPercent) === 2, 'and the same process gives the same invoice 2 percent');
-  check(await withApp(page, app => app.findDmn('invoice-pricing').decisions[0].table.rules[0].inputs[0]) === '"Gold"', 'the file of the project still says Gold');
+  check(await withApp(page, app => app.data.invoice.discountPercent) === 3, 'and the same process gives the same invoice 3 percent');
+  check(await withApp(page, app => app.findDmn('invoice-discount').decisions[0].table.rules[5].outputs[0]) === '2', 'the file of the project still says 2');
   await page.close();
 }
 
@@ -829,14 +885,14 @@ const lookAround = seen => async (page, key) => {
       'portalActive', 'fileChanged', 'asDraft', 'stillPortal', 'draftBeside', 'versionList', 'rollbackButton', 'rolledBack', 'backAgain',
       'stopped', 'unreachable', 'boundary', 'notPriced'],
     lookAround(seen));
-  check(/· 6 %.*\(version 1\)/.test(seen.before.quote), 'before: 6 % on the laptops: ' + seen.before.quote);
-  check(/· 8 %.*\(version 2\)/.test(seen.after.quote), 'a changed rule decides as version 2, the process unchanged: ' + seen.after.quote);
+  check(/discount = 2 % .*\(version 1\)/.test(seen.before.quote), 'before: 2 % for the Silver customer: ' + seen.before.quote);
+  check(/discount = 3 % .*\(version 2\)/.test(seen.after.quote), 'a changed rule decides as version 2, the process unchanged: ' + seen.after.quote);
   check(seen.inputsSent.sent.customer === 'Bluebird Architects', 'the input added in the Portal is sent: ' + seen.inputsSent.sent.customer);
-  check(/Key account 3 %.*\(version 2\)/.test(seen.portalDecides.quote), 'and the version of the Portal decides: ' + seen.portalDecides.quote);
-  check(/Key account 3 %/.test(seen.stillPortal.quote), 'a changed file does not replace the version of the Portal');
-  check(/3:DRAFT:PROJECT/.test(seen.draftBeside.statuses['invoice-pricing']), 'the changed file is version 3, a draft: ' + seen.draftBeside.statuses['invoice-pricing']);
-  check(/1:ACTIVE/.test(seen.rolledBack.statuses['invoice-pricing']), 'rolled back in the Portal, version 1 is active: ' + seen.rolledBack.statuses['invoice-pricing']);
-  check(/none · applied 0 %.*\(version 1\)/.test(seen.backAgain.quote), 'and the next run is decided by it: ' + seen.backAgain.quote);
+  check(/discount = 10 % · Key account.*\(version 2\)/.test(seen.portalDecides.quote), 'and the version of the Portal decides: ' + seen.portalDecides.quote);
+  check(/discount = 10 % · Key account/.test(seen.stillPortal.quote), 'a changed file does not replace the version of the Portal');
+  check(/3:DRAFT:PROJECT/.test(seen.draftBeside.statuses['invoice-discount']), 'the changed file is version 3, a draft: ' + seen.draftBeside.statuses['invoice-discount']);
+  check(/1:ACTIVE/.test(seen.rolledBack.statuses['invoice-discount']), 'rolled back in the Portal, version 1 is active: ' + seen.rolledBack.statuses['invoice-discount']);
+  check(/discount = 2 % .*\(version 1\)/.test(seen.backAgain.quote), 'and the next run is decided by it: ' + seen.backAgain.quote);
   check(/rule:engine:unreachable/.test(seen.unreachable.quote) && seen.notPriced.tab === 'process', 'a stopped runtime: rule:engine:unreachable, caught, path "not priced"');
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
   await page.close();

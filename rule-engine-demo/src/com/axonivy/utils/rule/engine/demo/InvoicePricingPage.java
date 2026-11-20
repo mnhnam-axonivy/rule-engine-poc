@@ -1,11 +1,15 @@
 package com.axonivy.utils.rule.engine.demo;
 
+import java.util.ArrayList;
+
 import com.axonivy.utils.rule.engine.demo.InvoicePricingDialog.InvoicePricingDialogData;
 
+import ch.ivyteam.ivy.environment.Ivy;
+import ch.ivyteam.ivy.scripting.objects.List;
+
 /**
- * What the page of the demo shows besides the result of the callable: the version that decided, and the tax
- * formula of that version. In Java, because IvyScript initializes a field it reads: <code>in.pricing.ruleVersion</code>
- * would be 0 instead of not set.
+ * What the page of the demo shows besides the priced invoice: the version that decided, its table, and the rule that
+ * matched. In Java, because IvyScript initializes a field it reads: a version that is not set would read as 0.
  */
 public final class InvoicePricingPage {
 
@@ -13,22 +17,33 @@ public final class InvoicePricingPage {
 
   /** After the callable priced the invoice. */
   public static void priced(InvoicePricingDialogData data) {
-    PricingResult pricing = data.getPricing();
-    if (pricing != null && pricing.getErrorCode() == null) {
-      pricing.setRuleVersion(RuleVersion.ofCase(TaxFormula.MODEL));
+    boolean decided = data.getErrorCode() == null || data.getErrorCode().isBlank();
+    data.setRuleVersion(decided ? RuleVersion.ofCase(DiscountTable.MODEL) : null);
+    data.setPreviousTotal(decided ? data.getLastTotal() : null);
+    if (decided) {
+      data.setLastTotal(data.getInvoice().getTotal());
     }
-    Integer version = pricing == null ? null : pricing.getRuleVersion();
-    data.setTaxFormula(TaxFormula.of(version));
-    data.setTaxSteps(TaxFormula.steps(pricing, data.getTaxFormula()));
-    if (data.getTrialFormula() == null || data.getTrialFormula().isBlank()) {
-      data.setTrialFormula(data.getTaxFormula());
-    }
+    showTable(data, decided);
   }
 
-  /** After the callable priced the invoice: the formula a developer typed in, tried on a copy of the model. */
-  public static void tried(InvoicePricingDialogData data) {
-    priced(data);
-    Integer version = data.getPricing() == null ? null : data.getPricing().getRuleVersion();
-    data.setTrial(TaxFormula.tryFormula(data.getInvoice(), version, data.getTrialFormula()));
+  private static void showTable(InvoicePricingDialogData data, boolean decided) {
+    DiscountTable.Table table;
+    try {
+      table = DiscountTable.of(data.getRuleVersion());
+    } catch (IllegalStateException ex) {
+      Ivy.log().warn("Rule engine demo: the table cannot be shown. " + ex.getMessage());
+      data.setRules(null);
+      return;
+    }
+    Integer matched = decided ? table.matching(data.getInvoice()) : null;
+    var rules = new ArrayList<RuleRow>();
+    for (RuleRow rule : table.rules()) {
+      rule.setMatched(rule.getNumber().equals(matched));
+      rules.add(rule);
+    }
+    data.setHitPolicy(table.hitPolicy());
+    data.setRuleInputs(List.create(String.class, table.inputs()));
+    data.setRuleOutputs(List.create(String.class, table.outputs()));
+    data.setRules(List.create(RuleRow.class, rules));
   }
 }

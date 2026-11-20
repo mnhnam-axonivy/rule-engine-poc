@@ -75,16 +75,16 @@ class TestRuleManagement {
 
     assertThat(models).extracting(model -> model.get("name"))
         .as("sorted by name: the runtime's models and the .dmn files of rule-engine-test and rule-engine-demo")
-        .containsSubsequence("discount", "invoice-approval", "invoice-pricing");
+        .containsSubsequence("discount", "invoice-approval", "invoice-discount");
     Map<String, Object> discount = byName(models, "discount");
     assertThat(discount).containsEntry("onRuntime", true).containsEntry("activeVersion", 1)
         .containsEntry("versionCount", 1).containsEntry("decisions", List.of("discount"))
         .containsEntry("file", "discount.dmn");
     assertThat((String) discount.get("project")).startsWith("rule-engine-test");
     assertThat(byName(models, "invoice-approval")).containsEntry("onRuntime", false).containsEntry("versionCount", 0);
-    Map<String, Object> pricing = byName(models, "invoice-pricing");
-    assertThat(pricing).containsEntry("onRuntime", false).containsEntry("file", "invoice-pricing.dmn");
-    assertThat((String) pricing.get("project")).as("a required project").startsWith("rule-engine-demo");
+    Map<String, Object> demo = byName(models, "invoice-discount");
+    assertThat(demo).containsEntry("onRuntime", false).containsEntry("file", "invoice-discount.dmn");
+    assertThat((String) demo.get("project")).as("a required project").startsWith("rule-engine-demo");
     assertThat(MockRuntime.calls("models").get(0).apiKey()).isEqualTo("test-key");
   }
 
@@ -114,11 +114,11 @@ class TestRuleManagement {
   @Test
   void aModelThatIsNotOnTheRuntimeIsReadFromItsProject() {
     Map<String, Object> content = (Map<String, Object>) result(call("ruleManagementContent(String,Integer)",
-        params("model", "invoice-pricing", "version", null)));
+        params("model", "invoice-discount", "version", null)));
 
     assertThat(content).containsEntry("version", null);
     assertThat((String) content.get("project")).startsWith("rule-engine-demo");
-    assertThat((String) content.get("dmn")).contains("<definitions").contains("taxFormula");
+    assertThat((String) content.get("dmn")).contains("<definitions").contains("Silver customer");
   }
 
   @Test

@@ -6,7 +6,6 @@
  *     ┆ calls Portal/RuleManagement
  *     rule-engine-demo   (your project)       REST API        DMN editor page  ← Browser
  *     rule-engine        (connector)  ⇄ HTTP  DMN engine      Database         → Volume
- *     rule-engine-core   (shared code) ·····  rule-engine-core (compiled in)
  *
  * The diagram is live: it shows the state of the container, what the database holds, the files
  * of the project and the last call. A walkthrough lights blocks and lets a link flow
@@ -14,8 +13,8 @@
  *
  * Blocks and link labels carry data-arch="<id>", which is what the walkthrough points at
  * ('arch:demo', 'arch:http'):
- *   blocks  ivy, portal, demo, connector, core, container, api, editor, engine, db, shared, browser, volume
- *   links   http (connector ⇄ api), code (core ··· shared), ui (browser → editor), store (db → volume),
+ *   blocks  ivy, portal, demo, connector, container, api, editor, engine, db, browser, volume
+ *   links   http (connector ⇄ api), ui (browser → editor), store (db → volume),
  *           callable (portal → connector, along the side of the projects)
  */
 import { h, clear, brief } from '../util.js';
@@ -38,13 +37,12 @@ const compact = value => (value !== null && typeof value === 'object' && !Array.
   : brief(value));
 
 /**
- * from → to; `both`: a second line carries the answer back; `plain`: no direction; `side`: runs along the left
+ * from → to; `both`: a second line carries the answer back; `side`: runs along the left
  * edge of the blocks in between, its label stands in the row below `from`.
  */
 const LINKS = [
   { id: 'callable', from: 'portal', to: 'connector', side: true },
   { id: 'http', from: 'connector', to: 'api', both: true },
-  { id: 'code', from: 'core', to: 'shared', plain: true },
   { id: 'ui', from: 'browser', to: 'editor' },
   { id: 'store', from: 'db', to: 'volume' }
 ];
@@ -173,17 +171,16 @@ export class ArchitectureView {
         t('arch.ivy.sub'), t('arch.ivy.kind'),
         h('div.arch-stack', null,
           block('portal', 'pointer', '.arch-optional'), calls(),
-          block('demo', 'process'), requires(), block('connector', 'extension'), requires(), block('core', 'braces'))),
+          block('demo', 'process'), requires(), block('connector', 'extension'))),
       h('div.arch-outside.arch-top', null, block('browser', 'pointer', '.arch-small')),
       frame('container',
         h('span.arch-frame-title', null, icon('database', 15), t('arch.container.title'), h('code', null, t('arch.container.name')), this.stateEl),
         t('arch.container.sub', { image: IMAGE }), t('arch.container.kind'),
         h('div.arch-cells', null,
           block('api', 'arrowRight'), block('editor', 'list'),
-          block('engine', 'settings'), block('db', 'database'),
-          block('shared', 'braces', '.arch-dashed'))),
+          block('engine', 'settings'), block('db', 'database'))),
       h('div.arch-outside.arch-bottom', null, block('volume', 'database', '.arch-small')),
-      label('http', t('arch.link.http')), label('code', t('arch.link.code')), label('ui', t('arch.link.ui')), label('store', t('arch.link.store')));
+      label('http', t('arch.link.http')), label('ui', t('arch.link.ui')), label('store', t('arch.link.store')));
     // the label of 'callable' was created above, in its row of the stack
 
     // the details of the selected block: a drawer on the right, beside the diagram
@@ -355,8 +352,6 @@ export class ArchitectureView {
     while (this.linksEl.firstChild) this.linksEl.removeChild(this.linksEl.firstChild);
     this.paths = {};
     LINKS.forEach(link => {
-      this.labels[link.id].node.hidden = mode === 'narrow' && link.id === 'code';
-      if (this.labels[link.id].node.hidden) return;
       // Browser and volume above and below the container: their links end at its frame, so that
       // they cross none of its texts. In one column the frames are connected, at their left half,
       // where the browser is not in the way.
@@ -391,7 +386,7 @@ export class ArchitectureView {
         return;
       }
       const there = route(a, b, link.both ? -6 : 0);
-      const entry = { group, out: line(there.points, 'out', !link.plain) };
+      const entry = { group, out: line(there.points, 'out', true) };
       if (link.both) entry.back = line(route(b, a, -6).points, 'back', true);
       this.linksEl.append(group);
       this.paths[link.id] = entry;
@@ -410,7 +405,7 @@ export class ArchitectureView {
   /**
    * Lights blocks and lets links flow; everything else steps back.
    * @param {{ lit?: string[], flow?: string[], label?: Object }|null} focus
-   *   flow: 'http>' (to the runtime), 'http<' (the answer), 'ui>', 'store>', 'code'
+   *   flow: 'http>' (to the runtime), 'http<' (the answer), 'ui>', 'store>'
    *   label: text for the label of a link while the focus lasts, e.g. { http: 'POST …/evaluate' }
    */
   setFocus(focus) {

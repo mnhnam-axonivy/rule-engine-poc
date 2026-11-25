@@ -25,18 +25,14 @@ async function parts(d) {
   d.arch(null);
 }
 
-/** 2 — the three Ivy projects and what each is for, and the Portal beside them. */
+/** 2 — the two Ivy projects and what each is for, and the Portal beside them. */
 async function projects(d) {
   await d.tab('arch');
   d.arch({ lit: ['demo'] });
   await d.note('demo', { target: 'arch:demo' });
   d.arch({ lit: ['connector'] });
   await d.note('connector', { target: 'arch:connector' });
-  d.arch({ lit: ['core'] });
-  await d.note('core', { target: 'arch:core' });
-  d.arch({ lit: ['core', 'shared'], flow: ['code'] });
-  await d.note('shared', { target: 'arch:shared' });
-  d.arch({ lit: ['demo', 'connector', 'core'] });
+  d.arch({ lit: ['demo', 'connector'] });
   await d.note('requires', { target: 'arch:demo' });
   d.arch({ lit: ['portal', 'connector'], flow: ['callable>'] });
   await d.note('portal', { target: 'arch:portal' });

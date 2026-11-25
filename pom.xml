@@ -7,11 +7,9 @@
   <name>Axon Ivy Rules Engine</name>
 
   <modules>
-    <!-- shared by the connector and the runtime: the API of the runtime and the DMN generator (Ivy project, plain Java) -->
-    <module>rule-engine-core</module>
     <!-- decision runtime: Quarkus service with the DMN engine and its database, shipped as container image -->
-    <module>rule-engine-runtime</module>
-    <!-- Ivy connector: Business Rule Task, client of the runtime -->
+    <module>rule-engine/runtime</module>
+    <!-- Ivy connector: Business Rule Task, client of the runtime, DMN generator -->
     <module>rule-engine</module>
     <module>rule-engine-demo</module>
     <module>rule-engine-test</module>

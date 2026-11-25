@@ -1,9 +1,0 @@
-# The image of the decision runtime is built from the root of the repository (see rule-engine-runtime/Dockerfile).
-# It needs only these; everything else, e.g. node_modules and target folders, stays out of the build context.
-*
-!rule-engine-runtime/pom.xml
-!rule-engine-runtime/src/main
-!rule-engine-runtime/docker
-!rule-engine-runtime/LICENSE
-!rule-engine-runtime/NOTICE
-!rule-engine-core/src

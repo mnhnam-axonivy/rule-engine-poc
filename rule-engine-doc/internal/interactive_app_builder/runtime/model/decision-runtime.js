@@ -1,7 +1,7 @@
 /**
  * Stand-in for the decision runtime, the container of the Axon Ivy Rules Engine. It keeps the
  * versions of every model and evaluates decisions, following the rules of the real runtime
- * (rule-engine-runtime: VersionStore, VersionService):
+ * (rule-engine/runtime: VersionStore, VersionService):
  *
  *   - content that is already stored does not create another version
  *   - the first version of a model goes live at once

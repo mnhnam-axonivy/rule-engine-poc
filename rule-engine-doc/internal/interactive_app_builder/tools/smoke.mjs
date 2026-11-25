@@ -434,8 +434,8 @@ console.log('Tutorial: the path and the pages');
   const seen = [];
   const lookAtArchitecture = lookAtArchitectureInto(seen);
   const page = await playWalkthrough('02',
-    ['ivy', 'http', 'demo', 'shared', 'portal', 'image', 'db', 'editor', 'flowRegister', 'flowStored', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
-    ['ivy', 'container', 'http', 'why', 'demo', 'connector', 'core', 'shared', 'requires', 'portal', 'image', 'api', 'engine', 'db', 'editor',
+    ['ivy', 'http', 'demo', 'connector', 'portal', 'image', 'db', 'editor', 'flowRegister', 'flowStored', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
+    ['ivy', 'container', 'http', 'why', 'demo', 'connector', 'requires', 'portal', 'image', 'api', 'engine', 'db', 'editor',
       'flowProcess', 'flowConnector', 'flowRegister', 'flowStored', 'flowEvaluate', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
     lookAtArchitecture);
   const at = key => seen.find(stop => stop.key === key) || { lit: [], covered: [] };
@@ -444,8 +444,8 @@ console.log('Tutorial: the path and the pages');
   check(at('portal').lit.includes('portal') && at('portal').lit.includes('connector') && at('portal').flowing === 1,
     'it shows the Portal, and how it calls the connector');
   check(at('ivy').lit.join() === 'ivy' && at('demo').lit.join() === 'demo' && at('image').lit.join() === 'container', 'it lights the block it talks about: the engine, a project, the container');
-  check(at('shared').lit.includes('core') && at('shared').lit.includes('shared') && at('db').lit.includes('volume') && at('editor').lit.includes('browser'),
-    'and what belongs together: the shared code on both sides, database and volume, editor page and browser');
+  check(at('connector').lit.join() === 'connector' && at('db').lit.includes('volume') && at('editor').lit.includes('browser'),
+    'and the connector, and what belongs together: database and volume, editor page and browser');
   check(at('http').flowing === 2 && at('flowRegister').flowing === 1 && at('flowResult').flowing === 1, 'the link between engine and container flows in the direction of the call');
   const framing = stops => {
     const covering = stops.filter(stop => stop.covered.length);
@@ -474,8 +474,8 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   let view = await arch();
-  check(view.blocks === 'api,browser,callable,code,connector,container,core,db,demo,editor,engine,http,ivy,portal,shared,store,ui,volume', 'the diagram has the engine with the Portal and three projects, the container with what is in its image, browser and volume');
-  check(view.links === 'callable,code,http,store,ui', 'and the five links between them');
+  check(view.blocks === 'api,browser,callable,connector,container,db,demo,editor,engine,http,ivy,portal,store,ui,volume', 'the diagram has the engine with the Portal and two projects, the container with what is in its image, browser and volume');
+  check(view.links === 'callable,http,store,ui', 'and the four links between them');
   check(view.db === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo), 'it starts with an empty database: ' + view.db);
   const panelShown = () => page.evaluate(() => getComputedStyle(window.reInteractive.instances()[0].host.shadowRoot.querySelector('.panel')).display !== 'none');
   check(!await panelShown(), 'the tab has no bottom panel');
@@ -499,7 +499,7 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-arch="connector"]');
   await settle(page, 200);
   let side = await drawer();
-  check(side.open && side.right && !side.covers && /BusinessRuleTask/.test(side.text) && /rule-engine-core/.test(side.text),
+  check(side.open && side.right && !side.covers && /BusinessRuleTask/.test(side.text) && /DMN generator/.test(side.text),
     'selecting a block shows what is in it in a drawer on the right, beside the block');
   await shot(page, '02-91-architecture');
   await inApp(page, '[data-arch="db"]');
@@ -569,8 +569,8 @@ console.log('Tutorial: the path and the pages');
     }, key));
   };
   const page = await playWalkthrough('02',
-    ['why', 'demo', 'core', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten'],
-    ['ivy', 'why', 'demo', 'core', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten', 'designer'],
+    ['why', 'demo', 'connector', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten'],
+    ['ivy', 'why', 'demo', 'connector', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten', 'designer'],
     lookAround, { width: 1800, height: 650 });
   const stops = seen.filter(stop => stop.onArch);
   const covering = stops.filter(stop => stop.covered.length);

@@ -14,19 +14,16 @@ User documentation: [rule-engine-product/README.md](rule-engine-product/README.m
  │   process with                │ ───────────► │   evaluate decision                  │
  │   Business Rule Task          │  evaluate    │ DMN engine (Apache KIE, interpreted) │
  │ rule-engine connector         │ ◄─────────── │ Database with all versions (H2,      │
- │   client, mapping             │   JSON       │   volume /data)                      │
- └───────────────┬───────────────┘              └───────────────────┬──────────────────┘
-                 │            rule-engine-core                      │
-                 └──────────  API records, DMN generator  ──────────┘
+ │   client, mapping, generator  │   JSON       │   volume /data)                      │
+ └───────────────────────────────┘              └──────────────────────────────────────┘
 ```
 
 ## Modules
 
 | Module | Content |
 | --- | --- |
-| [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses) and the DMN generator. |
-| [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Dockerfile for the generic image, built from the root of the repository. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
-| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping, Java API `RuleEngine`. Requires `rule-engine-core`. |
+| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator, Java API `RuleEngine`. |
+| [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Dockerfile for the generic image, built from this folder alone. Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount; a page to change the invoice and see the rule that decided. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector: with a mocked runtime and against the real container. |
 | [rule-engine-product](rule-engine-product) | Market product: README, product.json. |
@@ -38,7 +35,7 @@ User documentation: [rule-engine-product/README.md](rule-engine-product/README.m
 docker compose up -d --build      # decision runtime on http://localhost:8090
 ```
 
-Import `rule-engine-core`, `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
+Import `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
 an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click **Apply rules**.
 The variable `RuleEngine.Url` points to `http://localhost:8090` by default.
 Change the rules in the browser at `http://localhost:8090/editor/`, or in the Portal, and apply them again.
@@ -63,8 +60,8 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | --- | --- |
 | `mvn verify` | Everything without Docker: tests of the runtime (REST API, version rules, generated DMN checked by the KIE validator and executed in the engine) and tests of the connector with a mocked runtime. |
 | `docker compose build` then `mvn verify -Pcontainer.test -pl rule-engine-test -am` | `RuleEngineContainerTest`: the demo invoice and the test processes against the real runtime in a container (Testcontainers), including a rule changed and an input added as in the Portal. If Testcontainers times out waiting for the container (seen with Rancher Desktop), set `TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1`. |
-| `mvn test -Pperformance -f rule-engine-runtime` | Performance baseline, written to `rule-engine-runtime/target/performance-baseline.md`. |
-| `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090, database in `rule-engine-runtime/data`. |
+| `mvn test -Pperformance -f rule-engine/runtime` | Performance baseline, written to `rule-engine/runtime/target/performance-baseline.md`. |
+| `mvn quarkus:dev -f rule-engine/runtime` | Runtime in dev mode on port 8090, database in `rule-engine/runtime/data`. |
 
 ## How the REST client is built
 
@@ -77,8 +74,8 @@ The client of the connector follows the design of LangChain4j:
   way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
 - `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`, custom headers),
   and exceptions for unreachable, timeout and error answers.
-- The typed requests and responses are the records of `rule-engine-core` (`com.axonivy.utils.rule.engine.api`):
-  the runtime serves exactly these classes, so client and server cannot drift apart.
+- The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`. The runtime has records
+  of its own; `ContractTest` fails if the two do not have the same fields.
 
 ## Spike result: runtime loading (MARP-4893)
 
@@ -148,11 +145,12 @@ Build the Portal with `mvn install -f portal-components` and `mvn verify -f port
 
 ## Decisions taken in this implementation
 
-- **One shared core, two deployables.** `rule-engine-core` is an Axon Ivy project, so Ivy projects require it like
-  any other. It is plain Java on purpose: the runtime adds its `src` folder as a source folder and compiles it
-  with Java 21, so the Docker build needs no Ivy tooling, and any use of the Ivy API in the core breaks the runtime
-  build at once. The OpenAPI annotations on its records document the runtime's contract; in Ivy they are a
-  compile-only dependency and are ignored at runtime.
+- **One project, two deployables.** `rule-engine` is the Ivy connector; its folder `runtime` is the decision runtime,
+  a Maven module of its own (Java 21, Quarkus) that the iar leaves out. The two share no code, only JSON: each has
+  its records for the requests and responses. So the image is built from `rule-engine/runtime` alone, without Ivy
+  tooling. What keeps the two in step is `ContractTest` of the runtime: its tests, and only they, compile the packages
+  `api` and `dmn.generator` of the connector. These two packages are plain Java 21 on purpose; any use of the Ivy API
+  in them breaks the tests of the runtime at once.
 
 - **Versions are stored in the runtime container**, not in the system database of the Ivy Engine as MARP-4895
   describes. The container holds the engine and an embedded H2 database on the volume `/data`.

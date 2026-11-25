@@ -11,9 +11,7 @@ services:
   rule-engine:
     image: axonivy/rule-engine-runtime:dev
     build:
-      # the root of the repository: the runtime compiles the sources of rule-engine-core as well
-      context: .
-      dockerfile: rule-engine-runtime/Dockerfile
+      context: rule-engine/runtime
     container_name: axonivy-rule-engine
     ports:
       - "${RULE_ENGINE_PORT:-8090}:8080"

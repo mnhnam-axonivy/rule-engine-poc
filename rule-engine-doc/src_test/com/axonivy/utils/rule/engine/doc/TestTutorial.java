@@ -90,6 +90,6 @@ class TestTutorial {
         .map(project -> project.name().replaceFirst("-\\d+(-SNAPSHOT)?$", ""))
         .toList();
 
-    assertThat(required).as("the projects the tutorial explains").contains("rule-engine-demo", "rule-engine", "rule-engine-core");
+    assertThat(required).as("the projects the tutorial explains").contains("rule-engine-demo", "rule-engine");
   }
 }

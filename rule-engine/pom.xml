@@ -13,13 +13,6 @@
   <packaging>iar</packaging>
   <dependencies>
     <dependency>
-      <!-- the API of the decision runtime and the DMN generator, shared with rule-engine-runtime -->
-      <groupId>com.axonivy.utils.ruleengine</groupId>
-      <artifactId>rule-engine-core</artifactId>
-      <version>${project.version}</version>
-      <type>iar</type>
-    </dependency>
-    <dependency>
       <groupId>com.axonivy.ivy.api</groupId>
       <artifactId>ivy-api</artifactId>
     </dependency>
@@ -57,6 +50,12 @@
         <groupId>com.axonivy.ivy.ci</groupId>
         <artifactId>project-build-plugin</artifactId>
         <version>14.0.1</version>
+        <configuration>
+          <iarExcludes>
+            <!-- the decision runtime: a Quarkus service of its own, shipped as container image -->
+            <iarExclude>runtime/**</iarExclude>
+          </iarExcludes>
+        </configuration>
       </plugin>
     </plugins>
   </build>

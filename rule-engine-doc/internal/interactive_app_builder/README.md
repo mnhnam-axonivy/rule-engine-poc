@@ -125,10 +125,10 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 
 | Blocks | Ids |
 | --- | --- |
-| Axon Ivy Engine and its projects | `ivy`, `portal`, `demo`, `connector`, `core` |
-| Docker container and what is in its image | `container`, `api`, `editor`, `engine`, `db`, `shared` |
+| Axon Ivy Engine and its projects | `ivy`, `portal`, `demo`, `connector` |
+| Docker container and what is in its image | `container`, `api`, `editor`, `engine`, `db` |
 | Around the container | `browser`, `volume` |
-| Links | `http` (connector and REST API, both ways: `http>`, `http<`), `code` (the shared code), `ui` (browser to editor page), `store` (database to volume), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
+| Links | `http` (connector and REST API, both ways: `http>`, `http<`), `ui` (browser to editor page), `store` (database to volume), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
 
 The diagram is live. It reads the simulation: the state of the container, the versions in the database, the
 `.dmn` files of the project, `RuleEngine.Url`, and the last call of a Business Rule Task. That is why the tab
@@ -170,7 +170,7 @@ The simulation has no engine and no container. It implements what a learner can 
 | Business Rule Task | `runner.js`, `mapping.js` | `RuleTaskExecutor` of the connector: mapping by name, field lists, result and version mapping, the BPMN errors `rule:engine:*`, and the inputs of a version from the Portal that the file does not have. |
 | Decision runtime | `decision-runtime.js` | `VersionStore` of the runtime: versions, status, source, the source of truth rule, rollback. It can be running, slow or stopped. |
 | DMN | `dmn.js`, `feel.js`, `decision-runtime.js` | Decision tables with the conditions the tutorial uses: `-`, literals, comparisons, ranges of numbers and dates, lists, `not()`; hit policies FIRST, UNIQUE (two matches are an error), ANY, PRIORITY, COLLECT with or without an aggregation, RULE ORDER. Literal expressions in a subset of FEEL: arithmetic rounded as with decimals, `if`, `for`, contexts, paths over lists, filters and functions such as `sum`, `min`, `round half up`, `decimal`, `list contains`, `date`. Business knowledge models as functions, called once per element of a list. The inputs are checked against their types, allowed values and `null` included, as the DMN engine does with `rule.engine.type-check`. For the demo model the simulation answers exactly what the real runtime answers (`test/runner.test.mjs`, `RuleEngineContainerTest`); the features the demo does not use are tested on a model with functions and every hit policy, `test/fixtures/invoice-pricing.dmn`. |
-| New DMN... | `dmn-generator.js` | `DmnGenerator` of `rule-engine-core`: one input per field, one table, a placeholder rule. |
+| New DMN... | `dmn-generator.js` | `DmnGenerator` of `rule-engine`: one input per field, one table, a placeholder rule. |
 
 Not simulated: the API key, effective dates, boxed expressions other than tables and literal expressions, and FEEL
 function definitions. The simulator says so itself

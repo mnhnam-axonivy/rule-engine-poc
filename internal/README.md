@@ -71,7 +71,7 @@ mvn verify -Pweb.test                              # TutorialWebIT: the tutorial
 In PowerShell quote the profile, `mvn verify '-Pweb.test'`, otherwise it splits the argument at the dot. In Git
 Bash set `NO_COLOR=1` for `web.test`, otherwise the build plugin cannot read the coloured engine state.
 
-In the Designer: import `rule-engine-core`, `rule-engine`, `rule-engine-demo` and `rule-engine-doc`, then start
+In the Designer: import `rule-engine`, `rule-engine-demo` and `rule-engine-doc`, then start
 **Rule Engine Tutorial**.
 
 ## Keep it local

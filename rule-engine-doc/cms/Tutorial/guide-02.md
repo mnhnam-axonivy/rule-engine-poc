@@ -23,9 +23,8 @@ Two things run side by side and talk over HTTP:
  │       │ requires                 │ register │  REST API /api      DMN editor /editor/  │ ◄── browser
  │ rule-engine        connector     │ ───────► │                                          │
  │   Business Rule Task, client     │ evaluate │  DMN engine         Database             │ ──► volume
- │       │ requires                 │ ◄─────── │  (Apache KIE)       (every version)      │
- │ rule-engine-core   shared code   │   JSON   │                                          │
- │   API classes, DMN generator     │ · · · · ·│  rule-engine-core   compiled in          │
+ │   mapping, DMN generator         │ ◄─────── │  (Apache KIE)       (every version)      │
+ │                                  │   JSON   │                                          │
  └──────────────────────────────────┘          └──────────────────────────────────────────┘
 ```
 
@@ -43,10 +42,9 @@ Rules change more often than processes. That is why they live apart: the runtime
 | Project | Role | What is in it |
 | --- | --- | --- |
 | `rule-engine-demo` | Stands for your own project. | The page of the invoice, the process with a Business Rule Task that decides its discount, the process data, and the rules: one `.dmn` file per model, in the folder `dmn`, here `dmn/invoice-discount.dmn`. |
-| `rule-engine` | The connector. Your project requires it. | The element **Business Rule Task**, the mapping between process data and decisions, the client of the runtime, and the variables `RuleEngine.*`. |
-| `rule-engine-core` | Shared code. The connector requires it. | The requests and responses of the runtime, and the generator that creates a `.dmn` file from a data class. The same code is compiled into the image of the runtime, so both sides use the same classes. |
+| `rule-engine` | The connector. Your project requires it. | The element **Business Rule Task**, the mapping between process data and decisions, the client of the runtime, the generator that creates a `.dmn` file from a data class, and the variables `RuleEngine.*`. |
 
-In your own project you add one dependency, `rule-engine`. Maven brings `rule-engine-core` along.
+In your own project you add one dependency, `rule-engine`.
 
 The **Axon Ivy Portal** is not one of these projects and does not require any of them. It looks for the callable sub process `Portal/RuleManagement` of `rule-engine` in the security context, the way it finds Smart Workflow, and only then shows the tab Rule Management. [Edit rules in the Portal] shows it.
 
@@ -62,13 +60,12 @@ The container `axonivy-rule-engine` runs the image `axonivy/rule-engine-runtime`
 | DMN engine | Apache KIE, the engine of Drools and Kogito. It checks a `.dmn` file and evaluates its decision tables, formulas and functions. |
 | Database | Every version of every model, and which one is active. |
 | DMN editor page, `/editor/` | Change a rule in a browser, without a Designer. |
-| `rule-engine-core` | The same request and response classes the connector uses. |
 
 | Around the container | What it is for |
 | --- | --- |
 | Port 8090 | Port 8090 of your computer leads to port 8080 of the container. |
 | Volume `rule-engine-data` | Holds the file of the database. The versions are still there after the container was replaced. |
-| Folders `rule-engine-runtime` and `rule-engine-core` | The image is built from them, by `docker compose up -d --build`. |
+| Folder `rule-engine/runtime` | The image is built from it, by `docker compose up -d --build`. |
 
 ---
 

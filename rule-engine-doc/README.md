@@ -11,12 +11,12 @@ repository builds, tests and ships without it.
 | [internal/interactive_app_builder](internal/interactive_app_builder) | Builds the walkthroughs (Node.js). See its [README](internal/interactive_app_builder/README.md). |
 | `doc/` | Requirements: the concept and MARP-4893 to MARP-4896. |
 
-The project requires `rule-engine-demo`, the project the tutorial explains, and through it `rule-engine` and
-`rule-engine-core`. The iar leaves out `internal/` and `doc/`.
+The project requires `rule-engine-demo`, the project the tutorial explains, and through it `rule-engine`.
+The iar leaves out `internal/` and `doc/`.
 
 ## Use it in the Designer
 
-Import `rule-engine-core`, `rule-engine`, `rule-engine-demo` and `rule-engine-doc`, then start
+Import `rule-engine`, `rule-engine-demo` and `rule-engine-doc`, then start
 **Rule Engine Tutorial**. Without a Designer: `npm run preview` in `internal/interactive_app_builder` serves the
 same page on `http://127.0.0.1:4310/`.
 

@@ -1,0 +1,3 @@
+# LF on every machine, also in a Windows clone with core.autocrlf=true: the walkthroughs embed files of the demo
+# (build.mjs --check compares them), tests compare .dmn files, and the container runs healthcheck.sh.
+* text=auto eol=lf

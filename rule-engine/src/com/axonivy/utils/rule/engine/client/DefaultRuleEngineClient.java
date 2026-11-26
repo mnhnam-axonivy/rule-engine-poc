@@ -21,10 +21,10 @@ import com.axonivy.utils.rule.engine.api.ValidationResult;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.client.http.HttpClient;
 import com.axonivy.utils.rule.engine.client.http.HttpClientBuilder;
-import com.axonivy.utils.rule.engine.client.http.HttpClientBuilderLoader;
 import com.axonivy.utils.rule.engine.client.http.HttpMethod;
 import com.axonivy.utils.rule.engine.client.http.HttpRequest;
 import com.axonivy.utils.rule.engine.client.http.SuccessfulHttpResponse;
+import com.axonivy.utils.rule.engine.client.http.ivy.IvyHttpClientBuilder;
 import com.axonivy.utils.rule.engine.client.http.log.LoggingHttpClient;
 import com.axonivy.utils.rule.engine.client.internal.Json;
 
@@ -48,7 +48,7 @@ public class DefaultRuleEngineClient extends RuleEngineClient {
     this.baseUrl = builder.baseUrl.trim();
     HttpClientBuilder httpClientBuilder = builder.httpClientBuilder != null
         ? builder.httpClientBuilder
-        : HttpClientBuilderLoader.loadHttpClientBuilder();
+        : new IvyHttpClientBuilder();
     HttpClient client = httpClientBuilder
         .connectTimeout(firstNonNull(builder.connectTimeout, httpClientBuilder.connectTimeout(),
             DEFAULT_CONNECT_TIMEOUT))

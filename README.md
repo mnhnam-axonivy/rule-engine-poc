@@ -68,8 +68,8 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 The client of the connector follows the design of LangChain4j:
 
 - `client.http`: the transport abstraction `HttpClient`, `HttpClientBuilder`, `HttpRequest`,
-  `SuccessfulHttpResponse`, `HttpException` and `LoggingHttpClient`. The implementation is found through the
-  service provider interface `HttpClientBuilderFactory` (`HttpClientBuilderLoader`).
+  `SuccessfulHttpResponse`, `HttpException` and `LoggingHttpClient`. Tests pass a fake transport to
+  `RuleEngineClient.builder().httpClientBuilder(...)`.
 - `client.http.ivy`: the default transport. It uses the REST client `ruleEngine` of Axon Ivy (Jersey), the same
   way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
 - `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`, custom headers),

@@ -102,8 +102,7 @@ public abstract class RuleEngineClient {
     public abstract T build();
 
     /**
-     * @param httpClientBuilder the HTTP transport. Default: the one found on the classpath,
-     *          which is the REST client of Axon Ivy.
+     * @param httpClientBuilder the HTTP transport, e.g. a fake one in tests. Default: the REST client of Axon Ivy.
      */
     public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
       this.httpClientBuilder = httpClientBuilder;

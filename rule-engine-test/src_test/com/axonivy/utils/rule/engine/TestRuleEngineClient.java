@@ -23,12 +23,10 @@ import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableException;
 import com.axonivy.utils.rule.engine.client.http.HttpClient;
 import com.axonivy.utils.rule.engine.client.http.HttpClientBuilder;
-import com.axonivy.utils.rule.engine.client.http.HttpClientBuilderLoader;
 import com.axonivy.utils.rule.engine.client.http.HttpException;
 import com.axonivy.utils.rule.engine.client.http.HttpMethod;
 import com.axonivy.utils.rule.engine.client.http.HttpRequest;
 import com.axonivy.utils.rule.engine.client.http.SuccessfulHttpResponse;
-import com.axonivy.utils.rule.engine.client.http.ivy.IvyHttpClientBuilder;
 import com.axonivy.utils.rule.engine.client.http.log.LoggingHttpClient;
 
 import ch.ivyteam.ivy.environment.IvyTest;
@@ -91,13 +89,6 @@ class TestRuleEngineClient {
         .apiKey("secret")
         .readTimeout(Duration.ofSeconds(3))
         .build();
-  }
-
-  @Test
-  void ivyRestClient_isTheDefaultTransport() {
-    assertThat(HttpClientBuilderLoader.loadHttpClientBuilder())
-        .as("the Ivy REST client integrates into the tracing tools of the engine")
-        .isInstanceOf(IvyHttpClientBuilder.class);
   }
 
   @Test

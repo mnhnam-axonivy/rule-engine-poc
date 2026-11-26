@@ -16,9 +16,6 @@ import com.axonivy.utils.rule.engine.demo.RuleRow;
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.IvyTest;
 
-/**
- * The table of the demo page: read from the model as FEEL text, and the rule that decided found by its result.
- */
 @IvyTest
 class TestDiscountTable {
 

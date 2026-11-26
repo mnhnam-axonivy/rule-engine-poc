@@ -1,9 +1,3 @@
-/**
- * DesignerApp: one mounted simulation. It owns the process model, the .dmn files of the
- * project and the simulated decision runtime, creates the stage and the UI parts, and turns a
- * ProcessRunner run into what the learner sees — the token on the canvas, the round trip to
- * the runtime, the rule that decided, log lines and the process data.
- */
 import { h, clear, Emitter, openPopover, debounce, brief } from './util.js';
 import { createTranslator, normalizeLanguage } from './i18n.js';
 import { loadProcess, elementById, ruleConfig, originalOf, restore, startElement, nextOf, docOf, docView } from './model/process.js';
@@ -32,16 +26,6 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const freshVisual = () => ({ executed: {}, connectors: {}, active: null, error: null, breakpoints: new Set() });
 
 export class DesignerApp {
-  /**
-   * @param {HTMLElement} root        container inside the shadow root
-   * @param {Object} definition       the feature's app definition (see README)
-   * @param {Object} [options]
-   * @param {string} [options.lang]         'en' | 'ja' | 'jp'
-   * @param {'webgl'|'canvas'} [options.renderer]  force a renderer (tests)
-   * @param {number} [options.tourPace]     plays the walkthrough faster (tests)
-   * @param {boolean} [options.autoplay]  start the walkthrough at once instead of on its opening card
-   * @param {number} [options.chapter]    with autoplay: the index of the chapter to start with
-   */
   constructor(root, definition, options = {}) {
     this.root = root;
     this.def = definition;
@@ -51,20 +35,18 @@ export class DesignerApp {
     this.model = loadProcess(definition.process, definition.dataClass, {
       file: definition.file, project: definition.project, classes: definition.classes, cms: definition.cms
     });
-    // the .dmn files of the project: what the lesson ships, and what is saved in each right now
     this.dmnSources = (definition.dmn || []).map(file => parseDmn(file.text, { model: file.model, file: file.file }));
     this.dmnFiles = this.dmnSources.map(dmn => ({ id: dmn.model, original: dmn, current: cloneDmn(dmn), generated: false }));
-    this.dmnEditors = {}; // their editors, by model
-    this.dmnControls = {}; // the cells of the open tables, by "<model>:<decision>.r1.o1"
-    this.lastHits = {}; // model → { decision → the rules that hit in the last evaluation }
-    this.runtime = new DecisionRuntime(); // stands in for the container; holds the versions of every model
-    this.ownerDialog = null; // open while a rule owner changes the active version (see editAsRuleOwner)
+    this.dmnEditors = {};
+    this.dmnControls = {};
+    this.lastHits = {};
+    this.runtime = new DecisionRuntime();
+    this.ownerDialog = null;
     this.variablesText = definition.variables || '';
-    // source files the lesson shows in editor tabs: { id, file, path, language, text, readOnly }
     this.sources = definition.sources || [];
     this.sourceText = {};
     this.sources.forEach(source => { this.sourceText[source.id] = source.text; });
-    this.sourceCode = {}; // their editors, by id
+    this.sourceCode = {};
     this.events = new Emitter();
     const motion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     this.reducedMotion = options.reducedMotion !== undefined ? options.reducedMotion : Boolean(motion && motion.matches);
@@ -87,9 +69,9 @@ export class DesignerApp {
     this.runGeneration = 0;
     this.caption = '';
     this.toastTimers = new Map();
-    this.memo = {}; // scratch space for a lesson's walkthrough
-    this.mode = null; // 'intro' | 'tour' | 'explore'
-    this.runHooks = null; // set by the walkthrough while it runs the process
+    this.memo = {};
+    this.mode = null;
+    this.runHooks = null;
 
     this.runner = new ProcessRunner({
       model: this.model,
@@ -102,7 +84,6 @@ export class DesignerApp {
     this.inscription = new Inscription(this, this.inscriptionEl);
     this.panel = new BottomPanel(this, this.panelEl);
     this.arch = new ArchitectureView(this, this.archEditor);
-    // the Axon Ivy Portal at Admin Settings › Rule Management, for lessons about it
     this.portal = definition.portal ? new PortalView(this, this.portalEditor) : null;
     this.tour = new Tour(this, definition.tour);
     this.renderChrome();
@@ -110,8 +91,6 @@ export class DesignerApp {
     else if (options.autoplay) this.tour.start(Math.max(0, Math.min(Number(options.chapter) || 0, this.tour.chapters.length - 1)));
     else this.tour.showIntro();
   }
-
-  // ── construction ───────────────────────────────────────────────────────────
 
   buildSkeleton() {
     const root = clear(this.root);
@@ -136,7 +115,6 @@ export class DesignerApp {
     root.append(this.tabsEl, this.workbench, this.panelEl, this.playerEl, this.layer);
   }
 
-  /** One canvas per file of the lesson; the one of the open editor tab is shown. */
   createStage() {
     const wanted = this.options.renderer;
     this.stages = {};
@@ -178,7 +156,7 @@ export class DesignerApp {
         key: key => this.canvasKey(key)
       }));
     });
-    this.stage = this.stages.process; // where a run and the round trip to the runtime are shown
+    this.stage = this.stages.process;
 
     const onResize = debounce(() => {
       this.updateLayout();
@@ -191,12 +169,10 @@ export class DesignerApp {
     this.stage.resize();
   }
 
-  /** The canvas of the open editor tab (the process while variables.yaml is open). */
   viewStage() {
     return this.stages[this.state.tab] || this.stage;
   }
 
-  /** Repaints an element on the canvas of its file; 'all' and 'connectors' go to every canvas. */
   refresh(target) {
     const el = target === 'all' || target === 'connectors' ? null : elementById(this.model, target);
     Object.keys(this.stages).forEach(doc => {
@@ -204,7 +180,6 @@ export class DesignerApp {
     });
   }
 
-  /** Everything that carries text; rebuilt when the language changes. */
   renderChrome() {
     this.root.lang = this.lang;
     this.model.docs.forEach(doc => this.stages[doc.id].canvas.setAttribute('aria-label', this.t('canvas.label', { file: doc.file })));
@@ -226,8 +201,6 @@ export class DesignerApp {
     }
   }
 
-  // ── painter state ──────────────────────────────────────────────────────────
-
   stateOf(id) {
     return {
       selected: this.state.selection === id,
@@ -244,27 +217,21 @@ export class DesignerApp {
     return { executed: (this.visual.connectors[route.id] || 0) > 0, dashed: route.from.removed || route.to.removed };
   }
 
-  /** For checking scripts and expressions of an element: the data class is the one of its file. */
   scriptContext(el, vars) {
     const dataClass = el ? docOf(this.model, el).dataClass : this.model.dataClass;
     return { data: {}, fields: dataClass.fields, dataClassName: dataClass.name, classes: this.model.classes, cms: this.model.cms, vars };
   }
 
-  // ── events ─────────────────────────────────────────────────────────────────
-
   emit(event) {
-    if (this.arch) this.arch.update(); // the architecture shows the state everything else changes
+    if (this.arch) this.arch.update();
     if (this.portal && event.type !== 'portal') this.portal.update();
     this.events.emit(event);
   }
 
-  /** Lets the walkthrough step in at a point of the run (see ui/tour.js). */
   async hook(name, payload) {
     const fn = this.runHooks && this.runHooks[name];
     if (fn) await fn(payload);
   }
-
-  // ── modes: the walkthrough's opening card, its playback, the editable simulator ──
 
   setMode(mode) {
     if (this.mode === mode) return;
@@ -285,8 +252,6 @@ export class DesignerApp {
       this.stage.fit({ animate: false });
     });
   }
-
-  // ── editor tabs ────────────────────────────────────────────────────────────
 
   renderTabs() {
     const t = this.t;
@@ -316,7 +281,7 @@ export class DesignerApp {
   setTab(id) {
     if (this.state.tab === id) return;
     this.state.tab = id;
-    const stage = this.stages[id]; // a process file, or nothing for the other tabs
+    const stage = this.stages[id];
     this.processEditor.hidden = !stage;
     this.variablesEditor.hidden = id !== 'variables';
     this.archEditor.hidden = id !== 'arch';
@@ -330,7 +295,7 @@ export class DesignerApp {
     if (stage) {
       Object.keys(this.stages).forEach(doc => { this.stages[doc].canvas.style.display = doc === id ? '' : 'none'; });
       const selected = this.selected();
-      if (selected && selected.doc !== id) this.select(null); // the inscription view shows an element of the open file
+      if (selected && selected.doc !== id) this.select(null);
       stage.resize();
       if (stage.needsFit) {
         stage.needsFit = false;
@@ -353,7 +318,6 @@ export class DesignerApp {
       h('div.about-actions', null, h('button.btn', { type: 'button', onclick: () => close() }, t('about.close')))), { align: 'right' });
   }
 
-  /** The walkthrough again: from the start, or one chapter. */
   showReplay() {
     const t = this.t;
     const item = (label, index) => h('button.menu-item', { type: 'button', role: 'menuitem', onclick: () => { close(); this.tour.start(index); } }, label);
@@ -389,8 +353,6 @@ export class DesignerApp {
     stage.effects.moveView({ x: stage.view.x + (x - free / 2) / stage.view.zoom }, 320);
   }
 
-  // ── toolbar ────────────────────────────────────────────────────────────────
-
   renderToolbar() {
     const t = this.t;
     clear(this.toolbarEl);
@@ -403,8 +365,6 @@ export class DesignerApp {
       h('div.tool-group', null, h('span.icon-btn.active', { title: 'Selection Tool' }, icon('pointer', 15)), inert('marquee'), h('span.tool-sep'), inert('undo'), inert('redo')),
       h('div.tool-group', null, inert('database'), inert('settings'), this.inscriptionToggle));
   }
-
-  // ── overlays on the canvas ─────────────────────────────────────────────────
 
   renderOverlays() {
     const t = this.t;
@@ -441,8 +401,6 @@ export class DesignerApp {
     clearTimeout(this.toastTimers.get(id));
     this.toastTimers.set(id, setTimeout(() => { node.remove(); this.toastTimers.delete(id); }, duration));
   }
-
-  // ── selection and inscription ──────────────────────────────────────────────
 
   selected() {
     return this.state.selection ? elementById(this.model, this.state.selection) : null;
@@ -487,7 +445,6 @@ export class DesignerApp {
     this.emitInscription();
   }
 
-  /** Applies an edit to an element and refreshes everything that shows it. */
   changeElement(el, mutate, key = 'name') {
     mutate(el);
     this.refresh(el.id);
@@ -532,8 +489,6 @@ export class DesignerApp {
     return false;
   }
 
-  // ── variables.yaml ─────────────────────────────────────────────────────────
-
   renderVariables() {
     const t = this.t;
     clear(this.variablesEditor);
@@ -561,8 +516,6 @@ export class DesignerApp {
         h('button.link-btn', { type: 'button', onclick: () => this.setVariables(this.def.variables || '') }, icon('reset', 13), t('variables.restore'))));
     this.updateVariablesInfo();
   }
-
-  // ── source files ───────────────────────────────────────────────────────────
 
   renderSources() {
     const t = this.t;
@@ -616,7 +569,6 @@ export class DesignerApp {
     }
     this.variablesCode.setMarkers([]);
     this.variablesField.setMessage('', '');
-    // what the connector reads (RuleEngineConfig), and whether a call would get through
     const settings = readSettings(yaml.value);
     const rightUrl = settings.url.replace(/\/+$/, '') === this.runtime.url;
     const effect = !settings.url ? 'variables.effect.noUrl'
@@ -633,8 +585,6 @@ export class DesignerApp {
       h('div.var-effect.' + (ok ? 'ok' : 'bad'), null, icon(ok ? 'check' : 'error', 14), t(effect, { url: this.runtime.url, timeout: settings.timeout })));
   }
 
-  // ── bottom panel ───────────────────────────────────────────────────────────
-
   setPanelTab(id, byUser = false) {
     this.state.panelTab = id;
     if (byUser) { this.state.panelPinned = true; this.state.panelOpen = true; }
@@ -645,8 +595,6 @@ export class DesignerApp {
     this.state.panelOpen = open;
     this.panel.update();
   }
-
-  // ── running ────────────────────────────────────────────────────────────────
 
   setStatus(status, params = null) {
     this.state.status = status;
@@ -673,7 +621,6 @@ export class DesignerApp {
     else this.run();
   }
 
-  /** Starts a run, or continues a paused one. `step` pauses before every element. */
   async run({ step = false, start = null } = {}) {
     if (this.runner.running) {
       if (!this.resume) return;
@@ -696,7 +643,6 @@ export class DesignerApp {
     this.setStatus('running');
     let result;
     try {
-      // a process with several starts runs from the one that is selected, else from the first
       const selected = this.selected();
       const from = start || (selected && selected.type === 'RequestStart' ? selected.id : null);
       // a callable sub process gets its parameters from its caller; the lesson says what the caller passes
@@ -729,12 +675,10 @@ export class DesignerApp {
     if (resume) resume();
   }
 
-  /** Ends every animation on every canvas. */
   cancelEffects() {
     Object.keys(this.stages).forEach(doc => this.stages[doc].effects.cancelAll());
   }
 
-  /** Clears the run and puts process and variables back to how the tutorial ships them. */
   reset() {
     this.runGeneration++;
     this.stop();
@@ -742,7 +686,6 @@ export class DesignerApp {
     restore(this.model, this.model.original);
     this.variablesText = this.def.variables || '';
     this.sources.forEach(source => { this.sourceText[source.id] = source.text; });
-    // the project and the runtime as the lesson ships them: generated files and all versions are gone
     if (this.ownerDialog) this.ownerDialog.close();
     this.dmnFiles = this.dmnSources.map(dmn => ({ id: dmn.model, original: dmn, current: cloneDmn(dmn), generated: false }));
     this.lastHits = {};
@@ -847,7 +790,6 @@ export class DesignerApp {
     };
   }
 
-  /** The round trip of a Business Rule Task to the decision runtime, phase by phase. */
   async rulePhase(phase, { call, element, ...p }) {
     const fx = this.stage.effects;
     const t = this.t;
@@ -856,7 +798,6 @@ export class DesignerApp {
     this.arch.setCall(call);
     switch (phase) {
       case 'created':
-        // "New DMN...": the file exists now and has its own editor tab
         this.setCaption(t('note.rule.created', { file: p.dmn.file }));
         await fx.chip(element, '✨ ' + p.dmn.file, 'tool');
         break;
@@ -871,7 +812,6 @@ export class DesignerApp {
         break;
       }
       case 'registered': {
-        // the .dmn file of the project was new to the runtime: it is a version now
         this.panel.setCall(call, 'registered');
         this.refreshRuntimeViews();
         this.setCaption(t(p.status === 'ACTIVE' ? 'note.rule.registered' : 'note.rule.registered.draft', { version: p.version, model: call.runtimeModel }));
@@ -919,20 +859,16 @@ export class DesignerApp {
     await this.hook('rule:' + phase, { call, element, ...p });
   }
 
-  // ── the .dmn files of the project ──────────────────────────────────────────
-
-  /** The model of a .dmn file as it is saved now, or null when the project has no such file. */
   findDmn(model) {
     const file = this.dmnFiles.find(candidate => candidate.id === model);
     return file ? file.current : null;
   }
 
-  /** A file that "New DMN..." generated. */
   addDmn(dmn) {
     this.dmnFiles.push({ id: dmn.model, original: null, current: dmn, generated: true });
     this.renderDmn();
     this.renderTabs();
-    this.inscription.render(); // the Decision dropdown offers the new file
+    this.inscription.render();
     this.emit({ type: 'dmn', model: dmn.model, generated: true });
   }
 
@@ -950,7 +886,6 @@ export class DesignerApp {
     this.emit({ type: 'dmn', model: file.id });
   }
 
-  /** A rule was edited: the file is saved, and the runtime gets it with the next evaluation. */
   dmnEdited(file, kind) {
     delete this.lastHits[file.id]; // the marked rule belongs to the table as it was
     if (kind === 'rules') this.renderDmn();
@@ -958,7 +893,6 @@ export class DesignerApp {
       const editor = this.dmnEditors[file.id];
       if (editor) editor.querySelectorAll('tr.hit').forEach(row => { row.classList.remove('hit'); const mark = row.querySelector('.dmn-hit'); if (mark) mark.remove(); });
       this.updateDmnInfo(file);
-      // "Try it" answers for the table as it is now
       if (file.tryEvaluate) file.tryEvaluate();
     }
     this.renderTabs();
@@ -966,7 +900,6 @@ export class DesignerApp {
     this.emit({ type: 'dmn', model: file.id });
   }
 
-  /** One editor per .dmn file: its decision tables, and what the runtime knows of the file. */
   renderDmn() {
     const t = this.t;
     Object.keys(this.dmnEditors).forEach(model => this.dmnEditors[model].remove());
@@ -1002,13 +935,6 @@ export class DesignerApp {
     });
   }
 
-  /**
-   * "Try it" beside a decision table of a file, the one the lesson names in `tryTable`, else the first: a value for
-   * each input column, and the rule that decides them lights up. It evaluates the table as it is in the editor, in the
-   * browser; nothing goes to the runtime. The values stay with the file while the editor is drawn again. The boxes are
-   * in `controls` as "try.<input>", so the walkthrough types into them like into a cell:
-   * 'dmn:invoice-discount:try.orderAmount'.
-   */
   tryStrip(file, controls) {
     const t = this.t;
     const named = this.def.tryTable ? logicOf(file.current, this.def.tryTable) : null;
@@ -1092,7 +1018,6 @@ export class DesignerApp {
     return { node, evaluate };
   }
 
-  /** Next to a table: which version of the file the runtime has, and what happens to an edit. */
   updateDmnInfo(file) {
     if (!file.info) return;
     const t = this.t;
@@ -1118,15 +1043,11 @@ export class DesignerApp {
       t(effect, { version: stored ? stored.version : '', active: active ? active.version : '' })));
   }
 
-  /** Marks the rule that decided in the table of its file. */
   showHits(call) {
     this.lastHits[call.model] = call.matched || {};
     this.renderDmn();
   }
 
-  // ── the decision runtime ───────────────────────────────────────────────────
-
-  /** Everything that shows what the runtime holds: its panel, the readouts next to tables and variables. */
   refreshRuntimeViews() {
     this.arch.update();
     if (this.portal) this.portal.update();
@@ -1135,14 +1056,12 @@ export class DesignerApp {
     if (this.variablesInfo && this.variablesCode) this.updateVariablesInfo();
   }
 
-  /** 'running' | 'slow' | 'stopped': what `docker compose up` and `stop` do to the container. */
   setRuntimeState(state) {
     this.runtime.state = state;
     this.refreshRuntimeViews();
     this.emit({ type: 'runtime', state });
   }
 
-  /** A change on the runtime; what the runtime refuses is shown, nothing else happens. */
   onRuntime(change) {
     try {
       change();
@@ -1162,11 +1081,6 @@ export class DesignerApp {
     this.onRuntime(() => this.runtime.rollback(model));
   }
 
-  /**
-   * What a Rules UI does: a rule owner changes the version that is active on the runtime and
-   * activates the result. The .dmn file of the project is not touched.
-   * @returns {{ dmn, controls, activate(): void, close(): void } | null}
-   */
   editAsRuleOwner(model) {
     const t = this.t;
     const active = this.runtime.active(model);
@@ -1201,8 +1115,6 @@ export class DesignerApp {
     this.ownerDialog = handle;
     return handle;
   }
-
-  // ── language and teardown ──────────────────────────────────────────────────
 
   setLanguage(lang) {
     const next = normalizeLanguage(lang);

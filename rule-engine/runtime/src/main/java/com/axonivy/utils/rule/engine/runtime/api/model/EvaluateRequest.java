@@ -6,9 +6,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-/**
- * Evaluates one decision, or all decisions, of a model with the given inputs.
- */
 @Schema(name = "EvaluateRequest")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record EvaluateRequest(

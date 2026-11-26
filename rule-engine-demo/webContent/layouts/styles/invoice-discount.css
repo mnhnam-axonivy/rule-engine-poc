@@ -1,4 +1,3 @@
-/* The invoice discount demo. Colours come from the theme (light and dark), with fallbacks. */
 .demo-content {
   --ip-text: var(--text-color, #1f2933);
   --ip-muted: var(--text-color-secondary, #5f6b7a);
@@ -94,7 +93,6 @@
   border-radius: 4px;
 }
 
-/* The decision table, drawn like in a DMN editor: inputs, a double line, outputs. */
 .ip-scroll { overflow-x: auto; }
 .ip-dmn { width: 100%; border-collapse: collapse; }
 .ip-dmn th, .ip-dmn td {

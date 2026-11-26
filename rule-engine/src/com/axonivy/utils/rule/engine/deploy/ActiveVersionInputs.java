@@ -11,19 +11,12 @@ import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 
 /**
- * What the active version of a model on the runtime needs, and where it came from.
- *
- * <p>A rule owner may change a model in the Portal so that it needs inputs that the .dmn file of the project does
- * not have, e.g. a new column <code>customerType</code>. That version answers the evaluations, so the Business Rule
- * Task has to send its inputs too. The runtime is asked at most every few seconds per model.</p>
+ * A rule owner may change a model in the Portal so that it needs inputs that the .dmn file of the project does not
+ * have, e.g. a new column <code>customerType</code>. That version answers the evaluations, so the Business Rule Task
+ * has to send its inputs too. The runtime is asked at most every few seconds per model.
  */
 public final class ActiveVersionInputs {
 
-  /**
-   * @param version number of the active version
-   * @param source where it came from: a project, the Portal or the API
-   * @param inputs what the decision needs in this version
-   */
   public record Active(int version, VersionSource source, List<String> inputs) {}
 
   private static final long TTL_MILLIS = 5_000;
@@ -34,10 +27,6 @@ public final class ActiveVersionInputs {
 
   private ActiveVersionInputs() {}
 
-  /**
-   * @param decision the decision to evaluate, or null for all decisions of the model
-   * @return the active version, or empty if the runtime has no model of this name or no active version of it
-   */
   public static Optional<Active> of(RuleEngineClient client, String runtimeModel, String decision) {
     String key = key(client, runtimeModel);
     Cached cached = CACHE.get(key);
@@ -59,12 +48,10 @@ public final class ActiveVersionInputs {
     return Optional.of(new Active(info.activeVersion(), cached.source(), inputs == null ? List.of() : inputs));
   }
 
-  /** Forgets what is known of a model, e.g. after this engine registered a version of it. */
   public static void forget(RuleEngineClient client, String runtimeModel) {
     CACHE.remove(key(client, runtimeModel));
   }
 
-  /** Forgets everything. */
   public static void reset() {
     CACHE.clear();
   }

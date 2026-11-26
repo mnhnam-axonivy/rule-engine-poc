@@ -1,8 +1,7 @@
-/* =============================================
-   Axon Ivy Rules Engine tutorial (dialog Tutorial)
-   The dialog lives inside the Ivy layout, whose theme is full of global rules:
-   everything here is scoped to .re-guide and marked !important to hold its own.
-   ============================================= */
+/*
+ * The dialog lives inside the Ivy layout, whose theme is full of global rules: everything here is scoped to
+ * .re-guide and marked !important to hold its own.
+ */
 
 .re-guide {
   --re-primary: #1a56db;
@@ -23,7 +22,6 @@
 .re-guide a { color: var(--re-primary) !important; text-decoration: none !important; }
 .re-guide a:hover { text-decoration: underline !important; }
 
-/* ── Overview ─────────────────────────────── */
 .re-hero { background: var(--ivy-primary-color, #007095) !important; color: #fff !important; padding: 44px 32px !important; text-align: center !important; border-radius: 12px !important; margin-bottom: 28px !important; }
 .re-hero h1 { font-size: 30px !important; font-weight: 800 !important; margin: 0 0 8px !important; color: #fff !important; }
 .re-hero p { font-size: 16px !important; opacity: 0.88 !important; margin: 0 !important; color: #fff !important; }
@@ -47,7 +45,6 @@
 .re-step-duration { font-size: 12px !important; color: var(--re-muted) !important; }
 .re-step-read { font-size: 14px !important; font-weight: 600 !important; }
 
-/* ── One page ─────────────────────────────── */
 .re-page-layout { display: grid !important; grid-template-columns: 230px minmax(0, 1fr) !important; gap: 32px !important; }
 .re-sidebar { position: sticky !important; top: 20px !important; height: fit-content !important; padding: 20px !important; border: 1px solid var(--re-border) !important; border-radius: 10px !important; background: var(--re-surface) !important; font-size: 13px !important; }
 .re-sidebar h4 { margin: 0 0 10px !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: var(--re-muted) !important; }
@@ -88,8 +85,6 @@
 .re-pager-label { font-size: 12px !important; color: var(--re-muted) !important; }
 .re-pager-title { font-weight: 600 !important; }
 
-/* ── Walkthrough: button next to the page title, simulation in a full-screen dialog.
-   The simulation (js/interactive-runtime.min.js) brings its own styles in a shadow root. */
 .re-md-content .re-title-row { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: 8px 16px !important; margin: 0 0 16px !important; }
 .re-md-content .re-title-row h1 { margin: 0 !important; }
 .re-md-content .re-title-row .re-walkthrough-btn { margin-left: auto !important; }

@@ -7,12 +7,6 @@
   xmlns:p="primefaces"
   xmlns:pt="jakarta.faces.passthrough"
   xmlns:c="jakarta.tags.core">
-<!--
-  The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine.
-  ruleManagementBean: com.axonivy.portal.bean.RuleManagementBean. It reaches the rule engine through
-  com.axonivy.portal.rule.RuleEngineBridge, the Portal has no dependency on it.
-  The DMN editor of Apache KIE runs in the browser: rule-management.js loads it from the rule engine project.
--->
 <cc:interface componentType="IvyComponent">
 </cc:interface>
 
@@ -29,7 +23,6 @@
     pt:data-text-cannot-open="#{ivy.cms.co(cmsPath.concat('Messages/EditorCannotOpen'))}"
     pt:data-text-leave="#{ivy.cms.co(cmsPath.concat('LeaveWithUnsavedChanges'))}">
 
-    <!-- THE RULES -->
     <h:form id="rule-list-form" rendered="#{!ruleManagementBean.editing}">
       <div class="rule-management-header flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
         <div class="rule-management-intro">
@@ -93,7 +86,6 @@
       </p:dataTable>
     </h:form>
 
-    <!-- THE DMN EDITOR -->
     <h:panelGroup id="rule-editor" layout="block" styleClass="rule-editor" rendered="#{ruleManagementBean.editing}">
       <h:form id="rule-editor-form">
         <div class="rule-editor-bar flex flex-wrap align-items-center gap-3">
@@ -141,7 +133,6 @@
     </h:panelGroup>
   </h:panelGroup>
 
-  <!-- THE VERSIONS OF A RULE -->
   <p:dialog id="rule-versions-dialog" widgetVar="ruleVersionsDialog" modal="true" appendTo="@(body)"
     header="#{ivy.cms.co(cmsPath.concat('VersionsOf'), [ruleManagementBean.versionsOf.name])}"
     width="1000" responsive="true" fitViewport="true" closeOnEscape="true" resizable="false"

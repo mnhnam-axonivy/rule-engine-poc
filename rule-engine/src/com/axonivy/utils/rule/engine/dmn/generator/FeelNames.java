@@ -9,9 +9,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Turns field names and field paths into names that are safe in FEEL expressions.
- * <p>The same rules are used when a model is generated and when a decision is evaluated,
- * so inputs and results are mapped by name without any configuration.</p>
+ * The same rules are used when a model is generated and when a decision is evaluated, so inputs and results are mapped
+ * by name without any configuration.
  */
 public final class FeelNames {
 
@@ -20,7 +19,6 @@ public final class FeelNames {
       "and", "between", "else", "every", "external", "false", "for", "function", "if", "in", "instance",
       "not", "null", "of", "or", "return", "satisfies", "some", "then", "true");
 
-  /** Suffix that makes a reserved word a usable name, e.g. <code>function</code> becomes <code>function_</code>. */
   public static final String RESERVED_SUFFIX = "_";
 
   private FeelNames() {}
@@ -29,9 +27,6 @@ public final class FeelNames {
     return name != null && KEYWORDS.contains(name);
   }
 
-  /**
-   * @return a valid FEEL name for the field name: reserved words get a suffix, illegal characters are replaced
-   */
   public static String toFeelName(String fieldName) {
     if (fieldName == null || fieldName.isBlank()) {
       return "_";
@@ -52,9 +47,6 @@ public final class FeelNames {
     return isReserved(result) ? result + RESERVED_SUFFIX : result;
   }
 
-  /**
-   * @return the field name a FEEL name was derived from, e.g. <code>function</code> for <code>function_</code>
-   */
   public static String toFieldName(String feelName) {
     if (feelName != null && feelName.endsWith(RESERVED_SUFFIX)) {
       var stripped = feelName.substring(0, feelName.length() - RESERVED_SUFFIX.length());
@@ -66,13 +58,9 @@ public final class FeelNames {
   }
 
   /**
-   * Names for a list of field paths like <code>in.member.type</code>.
-   * <p>The name is the last segment of the path. If two paths end with the same segment, parent segments are
-   * added until the names differ: <code>in.member.type</code> and <code>in.order.type</code> become
-   * <code>memberType</code> and <code>orderType</code>.</p>
-   *
-   * @param paths field paths, duplicates are ignored
-   * @return the unique FEEL name of every path, in the order of the paths
+   * The name is the last segment of the path. If two paths end with the same segment, parent segments are added until
+   * the names differ: <code>in.member.type</code> and <code>in.order.type</code> become <code>memberType</code> and
+   * <code>orderType</code>.
    */
   public static Map<String, String> uniqueNames(List<String> paths) {
     var distinct = new ArrayList<String>();
@@ -115,10 +103,6 @@ public final class FeelNames {
     return names;
   }
 
-  /**
-   * @return the last segments of a path joined in camel case, e.g. <code>memberType</code> for
-   *         <code>in.member.type</code> and depth 2. The root variable (<code>in</code>) is never part of a name.
-   */
   private static String lastSegments(String path, int depth) {
     String[] segments = segments(path);
     int from = Math.max(0, segments.length - depth);
@@ -130,10 +114,6 @@ public final class FeelNames {
     return name.toString();
   }
 
-  /**
-   * @return the segments of a path without its root variable: <code>[member, type]</code> for
-   *         <code>in.member.type</code>
-   */
   public static String[] segments(String path) {
     String[] all = path.trim().split("\\.");
     if (all.length > 1 && isRoot(all[0])) {

@@ -1,12 +1,3 @@
-/*
- * DMN editor page of the decision runtime: /editor/
- *
- * Shows a model in the Apache KIE DMN editor (lib/dmn-editor.js) and saves it
- *  - on the runtime, as a new version (source PORTAL: a change by a person, which a project deployment never
- *    replaces), as draft or activated, or
- *  - back to the .dmn file it was opened from, so the Ivy project keeps the change.
- * Talks only to the API of this runtime (../api/). Deep links: #<model> or #<model>/<version>.
- */
 (function () {
   'use strict';
 
@@ -19,18 +10,16 @@
 
   const state = {
     models: [],
-    selected: null, // the model whose versions are listed
+    selected: null,
     versions: [],
-    doc: null, // what the editor shows: { kind: 'runtime' | 'file' | 'new', model, version, status, source, fileName, fileHandle, savedAs }
+    doc: null,
     editor: null,
-    ready: false, // the editor in its frame has started and answers
+    ready: false,
     dirty: false,
     busy: false
   };
   let readyFallback = 0;
-  let hinted = false; // the hint how to reach the decision table is shown once
-
-  // ── small helpers ───────────────────────────────────────────────────────────
+  let hinted = false;
 
   const store = {
     get(area, key) {
@@ -57,8 +46,6 @@
   const date = value => (value ? new Date(value).toLocaleString() : '');
   const modelPath = model => 'models/' + encodeURIComponent(model);
 
-  // ── messages ────────────────────────────────────────────────────────────────
-
   function say(kind, text, findings) {
     const box = $('messages');
     box.className = 'messages ' + kind;
@@ -71,8 +58,6 @@
   }
 
   const quiet = () => { $('messages').hidden = true; };
-
-  // ── the API of the runtime ──────────────────────────────────────────────────
 
   let apiKey = store.get('sessionStorage', KEY_STORE);
   let keyPrompt = null;
@@ -139,8 +124,6 @@
   }
 
   const validate = xml => api('validate', { method: 'POST', type: 'application/xml', body: xml });
-
-  // ── models and versions ─────────────────────────────────────────────────────
 
   async function loadModels() {
     const hint = $('runtime-hint');
@@ -260,7 +243,6 @@
     });
   }
 
-  /** Reloads models and versions after a change, and what the toolbar says about the opened version. */
   async function refresh() {
     await loadModels();
     await loadVersions();
@@ -272,8 +254,6 @@
     renderToolbar();
     renderVersions();
   }
-
-  // ── the editor ──────────────────────────────────────────────────────────────
 
   function openDocument(xml, doc) {
     if (!window.DmnEditor) {
@@ -480,8 +460,6 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // ── files and new models ────────────────────────────────────────────────────
-
   async function openFile() {
     if (!confirmDiscard()) return;
     if (!window.showOpenFilePicker) {
@@ -539,8 +517,6 @@
       + 'then "Save and activate".');
   }
 
-  // ── start ───────────────────────────────────────────────────────────────────
-
   function setHash(value) {
     const next = value ? '#' + value : location.pathname + location.search;
     if ((value ? '#' + value : '') !== location.hash) history.replaceState(null, '', next);
@@ -558,7 +534,7 @@
       store.set('localStorage', AUTHOR_STORE, author.value.trim());
       if (author.classList.contains('missing')) {
         author.classList.remove('missing');
-        quiet(); // the warning that asked for the name
+        quiet();
       }
     });
     $('doc-model').addEventListener('input', event => { if (state.doc && state.doc.kind !== 'runtime') state.doc.model = event.target.value.trim(); });

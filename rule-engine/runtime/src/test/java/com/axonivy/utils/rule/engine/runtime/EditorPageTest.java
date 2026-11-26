@@ -8,10 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
 
-/**
- * The page /editor/: the runtime serves it together with the Apache KIE DMN editor, so a rule can be changed
- * in a browser without any other tool.
- */
 @QuarkusTest
 class EditorPageTest {
 

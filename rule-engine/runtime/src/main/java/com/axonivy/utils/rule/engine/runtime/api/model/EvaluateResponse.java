@@ -8,9 +8,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-/**
- * The result of an evaluation and the version that produced it.
- */
 @Schema(name = "EvaluateResponse")
 @JsonInclude(Include.NON_EMPTY)
 public record EvaluateResponse(

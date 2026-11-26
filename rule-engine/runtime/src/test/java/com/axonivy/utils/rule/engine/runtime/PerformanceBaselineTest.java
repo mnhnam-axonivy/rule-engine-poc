@@ -29,10 +29,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 
-/**
- * Performance baseline for a decision table with 1,000 rules (hit policy FIRST).
- * Run with <code>mvn test -Pperformance</code>, the numbers are written to target/performance-baseline.md.
- */
 @QuarkusTest
 @Tag("performance")
 class PerformanceBaselineTest {
@@ -75,7 +71,6 @@ class PerformanceBaselineTest {
     report.add(row("Validate (schema, model, compilation)", millis(validated - start)));
     report.add(row("Compile (load a version)", millis(compiled - validated)));
 
-    // in the engine, without HTTP
     for (int i = 0; i < WARMUP; i++) {
       evaluator.evaluate(model, null, input(i % RULES));
     }
@@ -91,7 +86,6 @@ class PerformanceBaselineTest {
     var last = evaluator.evaluate(model, null, input(RULES - 1));
     assertThat(last.results().get("band").toString()).isEqualTo(String.valueOf(RULES - 1));
 
-    // through the REST API
     given().contentType(ContentType.XML).body(dmn).post("/api/models/perf-large/versions").then().statusCode(201);
     var http = HttpClient.newHttpClient();
     Callable<Object> call = () -> post(http, RULES - 1);

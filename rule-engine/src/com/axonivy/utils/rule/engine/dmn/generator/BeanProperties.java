@@ -11,15 +11,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Reads the properties of a data class with plain reflection: fields with a public getter, in declaration order.
- */
 public final class BeanProperties {
 
-  /**
-   * @param name property name, e.g. <code>purchaseAmount</code>
-   * @param type declared type including generics, e.g. <code>List&lt;String&gt;</code>
-   */
   public record Property(String name, Type type, Method getter, Method setter) {
 
     public Object read(Object bean) {
@@ -60,7 +53,6 @@ public final class BeanProperties {
             .ifPresent(getter -> properties.putIfAbsent(field.getName(), property(beanClass, field.getName(), getter)));
       }
     }
-    // then properties that only exist as getter
     for (Method method : beanClass.getMethods()) {
       propertyName(method).ifPresent(name -> properties.putIfAbsent(name, property(beanClass, name, method)));
     }
@@ -104,7 +96,6 @@ public final class BeanProperties {
           return Optional.of(method);
         }
       } catch (NoSuchMethodException ex) {
-        // try next prefix
       }
     }
     return Optional.empty();

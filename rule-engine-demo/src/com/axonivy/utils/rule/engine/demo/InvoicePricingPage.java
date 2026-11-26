@@ -7,15 +7,11 @@ import com.axonivy.utils.rule.engine.demo.InvoicePricingDialog.InvoicePricingDia
 import ch.ivyteam.ivy.environment.Ivy;
 import ch.ivyteam.ivy.scripting.objects.List;
 
-/**
- * What the page of the demo shows besides the priced invoice: the version that decided, its table, and the rule that
- * matched. In Java, because IvyScript initializes a field it reads: a version that is not set would read as 0.
- */
+/** In Java, because IvyScript initializes a field it reads: a version that is not set would read as 0. */
 public final class InvoicePricingPage {
 
   private InvoicePricingPage() {}
 
-  /** After the callable priced the invoice. */
   public static void priced(InvoicePricingDialogData data) {
     boolean decided = data.getErrorCode() == null || data.getErrorCode().isBlank();
     data.setRuleVersion(decided ? RuleVersion.ofCase(DiscountTable.MODEL) : null);

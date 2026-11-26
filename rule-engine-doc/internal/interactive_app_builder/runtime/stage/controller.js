@@ -1,25 +1,8 @@
-/**
- * Mouse, touch and keyboard interaction with the process canvas: select, open, drag elements,
- * pan and zoom. Works with either stage through clientToWorld / panBy / zoomAt.
- */
 import { hitTest } from './layout.js';
 
 const DRAG_THRESHOLD = 4;
 const GRID = 8;
 
-/**
- * @param {Object} stage
- * @param {Object} handlers
- * @param {() => Object} handlers.model
- * @param {(el: Object|null) => void} handlers.select
- * @param {(el: Object) => void} handlers.open            double click / Enter
- * @param {(el: Object|null) => void} handlers.hover
- * @param {(el: Object) => void} handlers.moved           an element was dragged
- * @param {() => boolean} handlers.wheelZooms             true when a plain wheel may zoom
- * @param {() => void} handlers.wheelBlocked              plain wheel ignored (show a hint)
- * @param {(key: string, event: KeyboardEvent) => boolean} handlers.key
- * @returns {() => void} detach function
- */
 export function attachController(stage, handlers) {
   const canvas = stage.canvas;
   canvas.tabIndex = 0;

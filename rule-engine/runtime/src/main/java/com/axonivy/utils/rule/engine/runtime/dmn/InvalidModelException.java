@@ -5,9 +5,6 @@ import java.util.stream.Collectors;
 
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
 
-/**
- * The DMN content cannot be loaded: it is not valid XML, breaks the DMN schema or does not compile.
- */
 public class InvalidModelException extends RuntimeException {
 
   private static final long serialVersionUID = 1L;

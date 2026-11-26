@@ -1,85 +1,3 @@
-/**
- * The walkthrough: the simulator plays a lesson by itself, like an explainer video. It runs
- * the process, opens the inscription view, types changes and switches tabs, and shows one
- * note at a time next to the thing the note explains. Afterwards the learner is left with
- * the editable simulator.
- *
- * A feature defines the lesson as chapters:
- *   tour: { chapters: [{ id, play: async d => { … } }] }
- * with the texts `tour.intro.*`, `tour.chapter.<id>` and `tour.<note>.title` / `.text` in its
- * strings. Every chapter opens with a title screen showing only its name, which should be the
- * heading of the tutorial section it belongs to, so learners can find it in the text. `d` is the director handed to `play`:
- *
- *   d.note(key, { target, params, quote, wait, extra })
- *                                                  show a note and wait until it has been read;
- *                                                  quote: text, or lines [{ text, wrong }] where
- *                                                  the wrong ones are shown in red and flagged;
- *                                                  extra: more time than the text alone needs,
- *                                                  for a note whose target has to be read too
- *   d.focus(target) / d.clear()                    spotlight something without a note
- *   d.run({ fast, on, start })                     run the process; `on` hooks into the run,
- *                                                  `start` names the start element to begin at
- *   d.stop()                                       end the run from inside one of its hooks
- *   d.reset()                                      back to the project as the tutorial ships it
- *   d.open(elementId, tab) / d.close()             inscription view of an element
- *   d.panel('log' | 'runtime' | 'data' | null)     bottom panel
- *   d.tab('process' | 'dmn:<model>' | 'variables' | 'arch')
- *                                                  editor tab: the process, a .dmn file,
- *                                                  variables.yaml, the architecture
- *   d.arch({ lit, flow, label } | null)            on the tab "Architecture": light blocks
- *                                                  (['connector', 'api']), let links flow
- *                                                  (['http>'] to the runtime, ['http<'] back,
- *                                                  'ui>', 'store>', 'code') and quote on a
- *                                                  link ({ http: 'POST …' }); null ends it
- *   d.edit(target, value | old => value)           type a change: 'f4.inputs', 'f2.code', 'vars',
- *                                                  'dmn:discount:discount.r1.o1' (a cell of a
- *                                                  decision table: file, decision, rule, input
- *                                                  or output column), 'owner:discount.r1.o1'
- *                                                  (the same in the rule owner's dialog).
- *                                                  The spotlight goes to the characters that
- *                                                  change, then they are typed one by one
- *   d.runtime(state)                               'running' | 'slow' | 'stopped': the container
- *   d.activate(model, version) / d.rollback(model) what a rule owner does on the runtime
- *   d.owner(model) / d.ownerActivate()             open the rule owner's dialog on the active
- *                                                  version; activate what was changed in it
- *   d.tab('portal'), d.click('portal@<part>')      the Portal at Admin Settings › Rule Management:
- *                                                  press a button of it, e.g. 'portal@edit:order-approval',
- *                                                  'portal@addRule', 'portal@check', 'portal@activate'
- *   d.portalInput(name, type)                      a new input of the model in the Portal's editor
- *   d.edit('portal:route.r2.i1', value)            type into a cell of the Portal's editor, or into
- *                                                  'portal:description' (What changed?)
- *   d.wait(ms)
- *
- * Targets of notes and spotlights:
- *   'el:f4'                        an element on the canvas
- *   'field:f4.decision'            a field of the open inscription view
- *   'field:f2.code@purchaseAmount' the line of a code field that contains the text
- *   'field:f4.inputs@in.amount'    in any other field: exactly that text
- *   'vars' / 'vars@Url'            variables.yaml, or one of its lines
- *   'dmn:discount'                 the open editor of a .dmn file
- *   'dmn:discount@rule1'           a rule of its table; '@r1.o1' a cell, '@side' the readout
- *                                  next to the table, '@inputs' the inputs of the model
- *   'runtime:call'                 the Decision runtime panel: the last call; ':matched' the
- *                                  rule that decided, ':versions' the versions, ':v2' one of
- *                                  them, ':state' the container switch, ':rollback', ':owner'
- *   'owner' / 'owner@r1.o1'        the rule owner's dialog, or a cell of it
- *   'portal@check'                 a part of the Portal tab (see runtime/ui/portal.js), a rule
- *                                  of its table ('portal@rule2') or a cell ('portal@r2.i1')
- *   'log:last'                     the newest line of the Runtime Log
- *   'data:member'                  a field in the Process data view
- *   'side'                         the readout next to variables.yaml
- *   'arch:connector'               a block of the tab "Architecture": ivy, demo, connector, core,
- *                                  container, api, editor, engine, db, shared, browser, volume;
- *                                  or the label of a link: http, code, ui, store. The camera
- *                                  of the diagram zooms to it and what is lit, on one side
- *                                  of the tab, and the note stands on the other side
- *   (none)                         the note docks in the bottom left corner of the canvas
- *
- * Hooks of d.run: 'enter:<id>' (the token has arrived, the element has not run yet),
- * 'after:<id>' (the element has run, the token is about to move on), 'pause:<id>' (a task
- * waits for its user; the run carries on when the hook returns) and 'rule:<phase>' (created,
- * request, registered, thinking, response, mapped, unmapped, failed, end).
- */
 import { h, append, clear } from '../util.js';
 import { icon } from './icons.js';
 import { elementById, ruleConfig } from '../model/process.js';
@@ -90,7 +8,6 @@ const FAST = 2.5;
 const SIDES = { portal: ['bottom', 'top', 'right', 'left'], arch: ['right', 'left', 'bottom', 'top'], el: ['bottom', 'top', 'left', 'right'], field: ['left', 'bottom', 'top'], vars: ['bottom', 'top'], src: ['bottom', 'top'], dmn: ['bottom', 'top', 'left'], owner: ['bottom', 'top', 'left'], runtime: ['top', 'bottom'], log: ['top', 'bottom'], data: ['top', 'bottom'], side: ['left', 'top', 'bottom'] };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-/** Text with `code` spans. */
 function rich(text) {
   return String(text).split('`').map((part, i) => (i % 2 ? h('code', null, part) : part));
 }
@@ -105,7 +22,6 @@ export function readingTime(text) {
   return clamp(600 + units * 26, 1800, 6000);
 }
 
-/** A quoted value cut to what fits a note, with an ellipsis when something is left out. */
 function excerpt(text) {
   const full = String(text);
   let out = full.split('\n').slice(0, 8).join('\n');
@@ -115,7 +31,6 @@ function excerpt(text) {
 
 const quoteText = quote => (Array.isArray(quote) ? quote.map(l => l.text).join('\n') : String(quote || ''));
 
-/** The chapter title screen only needs a glance. */
 const titleTime = text => clamp(1100 + String(text).length * 25, 1500, 2600);
 
 /** Time per typed step: a few characters go slowly enough to follow, a long text takes about as long in total. */
@@ -132,7 +47,6 @@ function findPart(scope, part, suffix = '') {
   return root ? root.querySelector('[data-tour="' + part.slice(slash + 1) + '"]' + suffix) : null;
 }
 
-/** The key of a part without its table: 'r6.o1' for 'discount/r6.o1'. */
 const partKey = part => String(part || '').slice(String(part || '').indexOf('/') + 1);
 
 function parseTarget(target) {
@@ -140,25 +54,23 @@ function parseTarget(target) {
   return m ? { kind: m[1], name: m[2] || '', line: m[3] || '' } : null;
 }
 
-/** Index of the first line of a code editor that contains `text`, or -1. */
 const lineIndex = (editor, text) => editor.textarea.value.split('\n').findIndex(l => l.includes(text));
 
 export class Tour {
-  /** @param {Object} app  the DesignerApp  @param {{chapters: {id:string, play:Function}[]}} [definition] */
   constructor(app, definition) {
     this.app = app;
     this.chapters = (definition && definition.chapters) || [];
     this.pace = Number(app.options.tourPace) > 0 ? Number(app.options.tourPace) : 1;
-    this.state = 'idle'; // 'idle' | 'intro' | 'playing' | 'done'
+    this.state = 'idle';
     this.index = 0;
     this.paused = false;
     this.gen = 0;
     this.playing = Promise.resolve();
-    this.abort = null; // ends the wait in progress
-    this.advance = false; // "Next" was pressed
-    this.notes = 0; // notes shown in the current chapter
-    this.current = null; // the note on screen
-    this.title = null; // id of the chapter whose title screen is showing
+    this.abort = null;
+    this.advance = false;
+    this.notes = 0;
+    this.current = null;
+    this.title = null;
     this.target = null;
     this.cardKind = null;
     this.tracking = 0;
@@ -178,8 +90,6 @@ export class Tour {
 
   get available() { return this.chapters.length > 0; }
 
-  // ── screens ────────────────────────────────────────────────────────────────
-
   #card(kind, children) {
     this.cardKind = kind;
     clear(this.cover).append(h('div.tour-card', { role: 'dialog', 'aria-label': this.app.t('tour.kicker') }, children));
@@ -193,7 +103,6 @@ export class Tour {
     clear(this.cover);
   }
 
-  /** The first thing a learner sees: what the walkthrough covers, and one button. */
   showIntro() {
     const t = this.app.t;
     this.state = 'intro';
@@ -219,9 +128,6 @@ export class Tour {
         h('button.link-btn', { type: 'button', onclick: () => this.start(0) }, icon('reset', 13), t('tour.replay.all')))]);
   }
 
-  // ── transport ──────────────────────────────────────────────────────────────
-
-  /** Plays from the given chapter to the end. Whatever was playing is stopped first. */
   async start(index = 0) {
     await this.#halt();
     const gen = this.gen;
@@ -254,7 +160,6 @@ export class Tour {
     if (gen === this.gen) this.#finish(true);
   }
 
-  /** The screen between chapters: the name of the tutorial section that comes next. */
   async #titleScreen(gen, chapter) {
     const t = this.app.t;
     this.title = chapter.id;
@@ -290,7 +195,6 @@ export class Tour {
     app.setPanelOpen(false);
   }
 
-  /** The animation engines of all canvases. */
   #effects() {
     return Object.keys(this.app.stages).map(doc => this.app.stages[doc].effects);
   }
@@ -319,7 +223,6 @@ export class Tour {
     if (withCard) this.#showEnd();
   }
 
-  /** Leaves the walkthrough for the editable simulator. */
   async skip() {
     await this.#halt();
     this.#finish(false);
@@ -338,14 +241,12 @@ export class Tour {
     if (this.state === 'playing') this.setPaused(!this.paused);
   }
 
-  /** Ends the current note right away. */
   next() {
     if (this.state !== 'playing') return;
     this.advance = true;
     if (this.paused) this.setPaused(false);
   }
 
-  /** Replays the chapter; from its very beginning, goes to the previous one. */
   back() {
     if (this.state !== 'playing') return;
     this.start(this.notes <= 1 && this.index > 0 ? this.index - 1 : this.index);
@@ -373,7 +274,6 @@ export class Tour {
       h('button.tour-exit', { type: 'button', onclick: () => this.skip() }, h('span', null, t('tour.exit')), icon('close', 12)));
   }
 
-  /** Rebuilds everything that carries text (language switch). */
   render() {
     this.renderPlayer();
     if (this.cardKind === 'intro') this.showIntro();
@@ -381,8 +281,6 @@ export class Tour {
     if (this.title) this.#fillTitle();
     if (this.current) this.#fill(this.current);
   }
-
-  // ── the director handed to a chapter ───────────────────────────────────────
 
   #director(gen) {
     const { app } = this;
@@ -434,7 +332,6 @@ export class Tour {
         await this.#sleep(gen, 400);
       },
       portalInput: async (name, type = 'string') => {
-        // "+ Input" of the Portal's editor: an input data node and a column, as the KIE editor makes them
         alive();
         const spot = { kind: 'portal', name: '', line: 'addInput' };
         this.#show(null, spot);
@@ -444,7 +341,6 @@ export class Tour {
         await this.#sleep(gen, 400);
       },
       click: async target => {
-        // presses a button of the DMN editor or of the Decision runtime panel, e.g. 'dmn:discount@addRule'
         alive();
         const parsed = parseTarget(target);
         const scope = parsed ? this.#scope(parsed) : null;
@@ -492,7 +388,6 @@ export class Tour {
     };
   }
 
-  /** Brings the whole process back into view after the canvas changed size. */
   #refit() {
     const stage = this.app.stages[this.app.state.tab];
     if (!stage) return Promise.resolve();
@@ -524,11 +419,6 @@ export class Tour {
     return result || { status: 'cancelled', ruleCalls: [] };
   }
 
-  /**
-   * Types a change into a field. The spotlight first rests on the characters that are about
-   * to go (or on the place where text will be added), then they are removed and the new ones
-   * written, one step at a time, with the spotlight following.
-   */
   async #edit(gen, target, change) {
     const { app } = this;
     if (gen !== this.gen) throw CANCELLED;
@@ -548,7 +438,6 @@ export class Tour {
       control = () => app.sourceCode[id];
       spot = { kind: 'src', name: id, line: '' };
     } else if (target.startsWith('portal:')) {
-      // in the Portal's editor: a cell of the decision table, 'portal:route.r1.i1', or 'portal:description'
       const key = target.slice(7);
       const field = key === 'description';
       control = () => (app.portal ? (field ? app.portal.description : app.portal.controls[key]) : null);
@@ -557,11 +446,10 @@ export class Tour {
         const input = control();
         if (!input) return;
         input.setValue(v);
-        input.dispatchEvent(new Event('input')); // typed the way a learner types
+        input.dispatchEvent(new Event('input'));
       };
       spot = { kind: 'portal', name: '', line: field ? 'description' : key.replace('.', '/') };
     } else if (target.startsWith('dmn:') || target.startsWith('owner:')) {
-      // a cell of a decision table: 'dmn:<model>:<decision>.r1.o1', or the same in the rule owner's dialog
       const owner = target.startsWith('owner:');
       const key = target.slice(owner ? 6 : 4);
       const cell = key.slice(key.indexOf('.') + 1);
@@ -571,7 +459,7 @@ export class Tour {
         const input = control();
         if (!input) return;
         input.setValue(v);
-        input.dispatchEvent(new Event('input')); // the table is edited the way a learner edits it
+        input.dispatchEvent(new Event('input'));
       };
       const table = key.slice(key.indexOf(':') + 1, key.indexOf('.'));
       spot = owner ? { kind: 'owner', name: '', line: cell } : { kind: 'dmn', name: key.slice(0, key.indexOf(':')), line: table + '/' + cell };
@@ -587,7 +475,6 @@ export class Tour {
           if (control()) control().setValue(v);
         };
       } else if (key === 'tags') {
-        // the tags of an element, as a comma-separated list
         get = () => (el.tags || []).join(',');
         set = v => {
           app.changeElement(el, e => { e.tags = v ? String(v).split(',') : []; }, 'tags');
@@ -600,7 +487,6 @@ export class Tour {
           if (control()) control().setValue(v);
         };
       } else {
-        // a setting of any other element, e.g. the signature of a sub-process start
         get = () => el.config[key] || '';
         set = v => {
           app.changeElement(el, e => { e.config[key] = v; }, key);
@@ -649,8 +535,6 @@ export class Tour {
     await this.#sleep(gen, 600);
   }
 
-  // ── notes ──────────────────────────────────────────────────────────────────
-
   async #note(gen, key, { target = null, params = null, quote = '', wait = null, extra = 0 } = {}) {
     if (gen !== this.gen) throw CANCELLED;
     this.notes++;
@@ -680,7 +564,6 @@ export class Tour {
       h('div.tour-note-bar', null, this.bar)]);
   }
 
-  /** @param {Object|null} target  a parsed target; with `range`, characters [start, end) of the field's value */
   #show(note, target) {
     this.current = note;
     this.target = target;
@@ -716,11 +599,6 @@ export class Tour {
     return node ? node.querySelector('.code') : null;
   }
 
-  /**
-   * The characters of a field's value that the target means, as [start, end), or null when
-   * it means the whole field or a line: a range given by #edit, or the text after "@" in a
-   * field that is not a code editor.
-   */
   #range(target) {
     if (target.range) return target.range;
     if (target.kind !== 'field' || !target.line) return null;
@@ -731,7 +609,6 @@ export class Tour {
     return at < 0 ? null : [at, at + target.line.length];
   }
 
-  /** Where those characters are on screen, or null. */
   #textRect(target) {
     const range = this.#range(target);
     if (!range) return null;
@@ -744,7 +621,6 @@ export class Tour {
     return r && r.height > 0 ? { left: r.left, top: r.top, width: r.width, height: r.height, exact: true } : null;
   }
 
-  /** The part of the screen a 'dmn', 'owner' or 'runtime' target lives in. */
   #scope(target) {
     const { app } = this;
     if (target.kind === 'dmn') return app.state.tab === 'dmn:' + target.name ? app.dmnEditors[target.name] || null : null;
@@ -753,14 +629,12 @@ export class Tour {
     return app.state.panelOpen && app.state.panelTab === 'runtime' ? app.panel.runtimeView : null;
   }
 
-  /** The input of the table cell a 'dmn' or 'owner' target names with r<rule>.<i|o><column>, or null. */
   #cell(target) {
     const scope = this.#scope(target);
     const node = scope && /^r\d+\.(?:[io]\d+|n)$/.test(partKey(target.line)) ? findPart(scope, target.line, ' input') : null;
     return node || null;
   }
 
-  /** Scrolls the target into view inside its own scroll container (never the page). */
   #reveal() {
     const { app } = this;
     const target = this.target;
@@ -809,7 +683,6 @@ export class Tour {
     }
   }
 
-  /** The target's box on screen, or null when there is nothing to point at. */
   #rect(target) {
     const { app } = this;
     const box = r => (r && r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, width: r.width, height: r.height } : null);
@@ -826,7 +699,7 @@ export class Tour {
     switch (target.kind) {
       case 'el': {
         const el = elementById(app.model, target.name);
-        const stage = el ? app.stages[el.doc] : null; // the canvas of the element's file, when it is the open tab
+        const stage = el ? app.stages[el.doc] : null;
         if (!el || app.state.tab !== el.doc || !stage.width) return null;
         const b = elementBounds(el);
         const a = stage.worldToClient(b.x, b.y);
@@ -855,7 +728,6 @@ export class Tour {
         const row = app.panel.dataView.querySelector('[data-field="' + target.name + '"]');
         const view = app.panel.dataView.getBoundingClientRect();
         if (!row) return box(view);
-        // only the part of the row that the panel shows
         const r = row.getBoundingClientRect();
         const top = Math.max(r.top, view.top);
         return box({ left: r.left, top, width: r.width, height: Math.min(r.bottom, view.bottom) - top });
@@ -864,14 +736,12 @@ export class Tour {
       case 'owner':
       case 'portal':
       case 'runtime': {
-        // a named part of the DMN editor, the rule owner's dialog or the Decision runtime panel
         const scope = this.#scope(target);
         if (!scope) return null;
         const part = target.kind === 'runtime' ? target.name : target.line;
         const node = part ? findPart(scope, part) : scope;
         if (!node) return box(scope.getBoundingClientRect());
         const rect = this.#textRect(target) || box(node.getBoundingClientRect());
-        // a rule or a cell of a decision table: where the table ends, and whether it is a whole rule
         const table = rect && typeof node.closest === 'function' ? node.closest('.dmn-scroll') : null;
         if (table) {
           rect.tableBottom = table.getBoundingClientRect().bottom;
@@ -884,7 +754,7 @@ export class Tour {
       case 'arch': {
         const node = app.state.tab === 'arch' ? app.arch.node(target.name) : null;
         const rect = node ? box(node.getBoundingClientRect()) : null;
-        if (rect) rect.under = app.arch.bottom(); // where the diagram ends
+        if (rect) rect.under = app.arch.bottom();
         return rect;
       }
       default:
@@ -892,7 +762,6 @@ export class Tour {
     }
   }
 
-  /** Puts the spotlight on the target and the note beside it. */
   #place() {
     const { app } = this;
     const layer = app.layer.getBoundingClientRect();
@@ -904,7 +773,7 @@ export class Tour {
     const r = this.target ? this.#rect(this.target) : null;
     const spot = this.spotEl;
     if (r) {
-      const exact = Boolean(r.exact); // around characters, not around a field
+      const exact = Boolean(r.exact);
       const pad = exact ? 3 : this.target.line ? 2 : 5;
       const side = exact ? 1 : pad; // the frame must not cover the neighbouring characters
       spot.classList.toggle('text', exact);
@@ -960,7 +829,6 @@ export class Tour {
       }
       const framed = this.target.kind === 'arch' && app.state.tab === 'arch' ? app.arch.framed() : null;
       if (framed) {
-        // beside all the camera frames, on the side it keeps free, level with the block the note is about
         side = framed.side;
         x = side === 'right' ? framed.rect.right - layer.left + gap : framed.rect.left - layer.left - gap - w;
         x = clamp(x, 8, Math.max(8, layer.width - w - 8));
@@ -984,8 +852,6 @@ export class Tour {
     note.style.setProperty('--arrow', Math.round(arrow) + 'px');
     note.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
   }
-
-  // ── time ───────────────────────────────────────────────────────────────────
 
   /**
    * Waits `ms` of playing time: paused time does not count. `skippable` waits end when

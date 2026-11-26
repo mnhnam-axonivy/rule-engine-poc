@@ -1,16 +1,6 @@
 /**
- * Stand-in for the decision runtime, the container of the Axon Ivy Rules Engine. It keeps the
- * versions of every model and evaluates decisions, following the rules of the real runtime
- * (rule-engine/runtime: VersionStore, VersionService):
- *
- *   - content that is already stored does not create another version
- *   - the first version of a model goes live at once
- *   - a version from a project goes live as long as the active version also came from a project
- *   - a version that was activated from the Portal is never replaced by a deployment
- *   - exactly one version of a model is active; a rollback activates the one before it
- *
- * Error codes are the ones of the runtime API: MODEL_NOT_FOUND, NO_ACTIVE_VERSION,
- * DECISION_NOT_FOUND, EVALUATION_FAILED, INVALID_STATE.
+ * Stand-in for the decision runtime: it follows the rules of the real one (rule-engine/runtime: VersionStore,
+ * VersionService).
  */
 import { decisionOf, evaluationOrder, requiredInputs, fingerprint, cloneDmn } from './dmn.js';
 import { evaluateTable, evaluateExpression, FeelError, FeelDate, splitList, literal, same } from './feel.js';
@@ -18,7 +8,6 @@ import { evaluateTable, evaluateExpression, FeelError, FeelDate, splitList, lite
 export const RUNTIME_URL = 'http://localhost:8090';
 
 export class RuntimeError extends Error {
-  /** @param {string} code  error code of the runtime API  @param {number} status  HTTP status */
   constructor(code, status, message) {
     super(message);
     this.name = 'RuntimeError';
@@ -34,11 +23,6 @@ const stripPrefix = (dmn, type) => {
   return colon > 0 && !(dmn.types || {})[name] ? name.slice(colon + 1) : name;
 };
 
-/**
- * The value of an input as the DMN engine sees it, checked against its declared type (rule.engine.type-check):
- * a date becomes a FEEL date, an item definition restricts the allowed values, a structure checks its
- * components, a collection each element. A value that is not allowed throws, as the runtime does.
- */
 function typed(dmn, type, value, depth = 0) {
   const name = stripPrefix(dmn, type);
   const item = (dmn.types || {})[name];
@@ -91,16 +75,14 @@ function typedItem(dmn, item, value, depth) {
   return checked;
 }
 
-/** A result as JSON: dates as their text. */
 const plain = value => (value instanceof FeelDate ? value.iso : Array.isArray(value) ? value.map(plain)
   : value !== null && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, plain(entry)])) : value);
 
 export class DecisionRuntime {
   constructor({ url = RUNTIME_URL } = {}) {
     this.url = url;
-    /** 'running' | 'slow' (answers too late) | 'stopped' (the container is down) */
     this.state = 'running';
-    this.models = new Map(); // name → [{ version, status, source, author, dmn, hash, previousVersion }]
+    this.models = new Map();
   }
 
   versions(model) {
@@ -115,13 +97,6 @@ export class DecisionRuntime {
     return this.versions(model).find(version => version.status === 'ACTIVE') || null;
   }
 
-  /**
-   * POST /api/models/{model}/versions
-   * @param {Object} dmn  the model as read by parseDmn
-   * @param {{ source?: 'PROJECT'|'PORTAL'|'API', author?: string, activate?: boolean }} [options]
-   *   `activate` not set: the runtime decides by the source of truth rule
-   * @returns {{ entry: Object, created: boolean }}
-   */
   register(model, dmn, { source = 'API', author = '', activate } = {}) {
     const hash = fingerprint(dmn);
     const versions = this.versions(model);
@@ -158,14 +133,12 @@ export class DecisionRuntime {
     return entry;
   }
 
-  /** POST /api/models/{model}/versions/{version}/activate */
   activate(model, version) {
     const entry = this.#require(model, version);
     this.#activate(entry, false);
     return entry;
   }
 
-  /** POST /api/models/{model}/rollback */
   rollback(model) {
     if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "Model '" + model + "' is not loaded.");
     const active = this.active(model);
@@ -178,14 +151,6 @@ export class DecisionRuntime {
     return previous;
   }
 
-  /**
-   * POST /api/models/{model}/evaluate
-   * @param {string|null} decision  the decision to evaluate, or null for all decisions of the model
-   * @param {Object} input          values by the name of the DMN input
-   * @returns {{ model, version, decision, results, matched, calls }}  `matched`: by decision name, the indexes of
-   *   the rules that hit; `calls`: by function name, one entry per call: its arguments and the rules that hit
-   * @throws {RuntimeError}
-   */
   evaluate(model, decision, input) {
     if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "Model '" + model + "' is not loaded.");
     const active = this.active(model);
@@ -208,7 +173,6 @@ export class DecisionRuntime {
         throw failed("the value '" + (shown.length > 60 ? shown.slice(0, 57) + '...' : shown) + "' of '" + name + "' is not allowed by the declared type (" + declared.type + ')');
       }
     });
-    // the functions of the model, callable from every decision; each call is recorded for the explanation
     const calls = {};
     // a decision may call a function twice with the same arguments (pricedLines asks for the percent and for the
     // reason): that is one call for the explanation

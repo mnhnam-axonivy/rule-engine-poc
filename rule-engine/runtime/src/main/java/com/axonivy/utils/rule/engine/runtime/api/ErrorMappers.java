@@ -14,9 +14,6 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-/**
- * Every failure answers with the same JSON shape: code, message and the findings of the DMN engine.
- */
 public class ErrorMappers {
 
   private static final Logger LOG = Logger.getLogger(ErrorMappers.class);

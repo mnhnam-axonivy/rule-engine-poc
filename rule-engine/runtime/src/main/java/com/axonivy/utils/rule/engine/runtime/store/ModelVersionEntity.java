@@ -18,9 +18,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
-/**
- * One stored version of a DMN model.
- */
 @Entity
 @Table(name = "model_version")
 public class ModelVersionEntity extends PanacheEntityBase {
@@ -72,7 +69,6 @@ public class ModelVersionEntity extends PanacheEntityBase {
   @Column(name = "activated_by")
   public String activatedBy;
 
-  /** The version that was active before this one was activated. Target of a rollback. */
   @Column(name = "previous_version")
   public Integer previousVersion;
 

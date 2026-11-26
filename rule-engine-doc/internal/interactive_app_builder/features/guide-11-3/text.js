@@ -1,6 +1,6 @@
 /**
- * Guide 11, part 3 — texts of the walkthrough. tour.chapter.<id> are the questions of the part
- * "When rules change" of the page Frequently asked questions, word for word.
+ * tour.chapter.<id> are the questions of the part "When rules change" of the page Frequently asked questions,
+ * word for word.
  */
 import { LAST_WORD_STRINGS } from '../shared/portal-chapters.js';
 

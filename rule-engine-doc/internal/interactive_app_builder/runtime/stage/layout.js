@@ -1,7 +1,6 @@
 /**
- * Geometry of the process diagram: label wrapping, element bounds, connector routes and hit
- * testing. Coordinates are Ivy process coordinates (pixels, y pointing down); an element's
- * x/y is its centre, as in the *.p.json files.
+ * Coordinates are Ivy process coordinates (pixels, y pointing down); an element's x/y is its centre, as in
+ * the *.p.json files.
  */
 import { theme } from '../theme.js';
 import { connectors } from '../model/process.js';
@@ -11,7 +10,6 @@ export const MAX_ZOOM = 3;
 
 let measurer = null;
 
-/** Tests can replace the canvas-based text measurement. */
 export function setMeasurer(fn) { measurer = fn; }
 
 function measure(text, font) {
@@ -57,10 +55,6 @@ const union = (a, b) => {
   return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
 };
 
-/**
- * Layout of one element in its own coordinate system (origin = element centre).
- * @returns {{ body:{x,y,w,h}, lines:string[], label:{x,y,w,h}|null, textX:number, textY:number, icon:{x,y,size}|null, sprite:{x,y,w,h} }}
- */
 export function layoutElement(el) {
   const font = labelFont();
   const body = { x: -el.w / 2, y: -el.h / 2, w: el.w, h: el.h };
@@ -105,7 +99,6 @@ export function layoutElement(el) {
   return { body, lines, label, textX, textY, icon, sprite };
 }
 
-/** Body plus label of an element in process coordinates. */
 export function elementBounds(el) {
   const l = layoutElement(el);
   const r = l.label ? union(l.body, l.label) : l.body;
@@ -121,7 +114,6 @@ export function modelBounds(model) {
   return bounds || { x: 0, y: 0, w: 100, h: 100 };
 }
 
-/** Where a ray from the element's centre towards (tx, ty) leaves the element's outline. */
 export function boundaryPoint(el, tx, ty) {
   const dx = tx - el.x;
   const dy = ty - el.y;
@@ -140,7 +132,6 @@ export function boundaryPoint(el, tx, ty) {
   return { x: el.x + dx * k, y: el.y + dy * k };
 }
 
-/** Polyline of a connector: border of the source → bend points → border of the target. */
 export function connectorPath(connector) {
   const via = connector.via || [];
   const first = via[0] || connector.to;
@@ -154,7 +145,6 @@ export function pathLength(points) {
   return total;
 }
 
-/** Point at fraction t (0..1) of the polyline's length. */
 export function pointAt(points, t) {
   const total = pathLength(points);
   if (total === 0) return { x: points[0].x, y: points[0].y };
@@ -170,7 +160,6 @@ export function pointAt(points, t) {
   return { x: points[points.length - 1].x, y: points[points.length - 1].y };
 }
 
-/** Topmost element whose body or label contains the point, or null. */
 export function hitTest(model, x, y, tolerance = 3) {
   for (let i = model.elements.length - 1; i >= 0; i--) {
     const el = model.elements[i];
@@ -187,7 +176,6 @@ export function hitTest(model, x, y, tolerance = 3) {
   return null;
 }
 
-/** Every connector with its route, in drawing order. */
 export function connectorRoutes(model) {
   return connectors(model).map(c => ({ ...c, points: connectorPath(c) }));
 }

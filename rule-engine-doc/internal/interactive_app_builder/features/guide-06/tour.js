@@ -1,7 +1,3 @@
-/**
- * Guide 06 — the walkthrough. Four chapters, each starting from the project as the tutorial
- * ships it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do.
- */
 import { ELEMENTS, MODEL, DECISION, discountText } from '../shared/project.js';
 
 const { RULE_TASK } = ELEMENTS;
@@ -34,7 +30,6 @@ function seedTwoVersions(app) {
   app.refreshRuntimeViews();
 }
 
-/** 1 — edit the file, run again: the new rule decides. */
 async function save(d) {
   await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('before', { quote: discountText(call) }) } });
   await d.tab(DMN);
@@ -53,7 +48,6 @@ async function save(d) {
   });
 }
 
-/** 2 — what the runtime keeps. */
 async function versions(d) {
   seedTwoVersions(d.app);
   await d.panel('runtime');
@@ -63,7 +57,6 @@ async function versions(d) {
   await d.panel(null);
 }
 
-/** 3 — which version decided: every answer names it, and the case keeps it. */
 async function version(d) {
   await d.run();
   await d.panel('runtime');
@@ -73,7 +66,6 @@ async function version(d) {
   await d.note('onTheCase');
 }
 
-/** 4 — one click back to the version before. */
 async function rollback(d) {
   seedTwoVersions(d.app);
   await d.panel('runtime');

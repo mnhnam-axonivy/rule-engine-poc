@@ -1,15 +1,8 @@
-/**
- * Guide 11, part 3 — the walkthrough of the questions about rules that change. Five chapters, one per
- * question, each starting from the project as the tutorial ships it; the notes are in text.js. See
- * runtime/ui/tour.js for what the director `d` can do, and runtime/ui/portal.js for the parts of the
- * Portal tab. The runs play at the normal speed: they are what the answers are about.
- */
 import { ELEMENTS, MODEL, discountText, errorText } from '../shared/project.js';
 import { seedPortalVersion, raiseSilver, lastWord } from '../shared/portal-chapters.js';
 
 const { RULE_TASK, BOUNDARY, NOT_PRICED } = ELEMENTS;
 
-/** Do I have to change the process when a rule changes? */
 async function noChange(d) {
   await d.run({ on: { 'rule:mapped': ({ call }) => d.note('before', { target: 'el:' + RULE_TASK, quote: discountText(call) }) } });
   await raiseSilver(d, 'ruleChanged');
@@ -22,7 +15,6 @@ async function noChange(d) {
   await d.note('sameProcess', { target: 'el:' + RULE_TASK });
 }
 
-/** A rule owner added an input in the Portal. Does the process need a change? */
 async function portalInput(d) {
   seedPortalVersion(d.app);
   await d.tab('portal');
@@ -42,7 +34,6 @@ async function portalInput(d) {
   await d.note('withoutField');
 }
 
-/** How do I go back to the version before? */
 async function rollBack(d) {
   seedPortalVersion(d.app);
   await d.tab('portal');
@@ -56,7 +47,6 @@ async function rollBack(d) {
   await d.run({ on: { 'rule:mapped': ({ call }) => d.note('backAgain', { target: 'el:' + RULE_TASK, quote: discountText(call) }) } });
 }
 
-/** What happens when the decision runtime is down? */
 async function down(d) {
   await d.panel('runtime');
   await d.runtime('stopped');
@@ -75,7 +65,6 @@ export const tour = {
   chapters: [
     { id: 'noChange', play: noChange },
     { id: 'portalInput', play: portalInput },
-    // I changed the .dmn file, but the old result comes back. Why?
     { id: 'oldResult', play: lastWord },
     { id: 'rollBack', play: rollBack },
     { id: 'down', play: down }

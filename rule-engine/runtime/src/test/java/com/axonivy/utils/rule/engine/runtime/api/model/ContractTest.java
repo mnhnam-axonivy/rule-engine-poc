@@ -30,7 +30,6 @@ class ContractTest {
     assertThat(constants(CONNECTOR, name)).as("constants of " + name + " in the connector").isEqualTo(constants(RUNTIME, name));
   }
 
-  /** Name and type of every field; the types of the own package by their simple name. */
   private static List<String> fields(String packageName, String name) throws ClassNotFoundException {
     return Arrays.stream(Class.forName(packageName + name).getRecordComponents())
         .map(field -> field.getName() + ": " + field.getGenericType().getTypeName().replace(packageName, ""))

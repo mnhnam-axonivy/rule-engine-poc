@@ -3,9 +3,6 @@ package com.axonivy.portal.rule;
 import java.util.List;
 import java.util.Map;
 
-/**
- * What the rule engine answered: a result made of JDK types, or an error.
- */
 public record RuleEngineAnswer(Object result, RuleEngineError error) {
 
   static RuleEngineAnswer failure(String code, String message) {

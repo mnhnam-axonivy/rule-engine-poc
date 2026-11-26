@@ -30,24 +30,12 @@ import ch.ivyteam.ivy.application.app.Application;
 import ch.ivyteam.ivy.environment.Ivy;
 
 /**
- * What the tab "Rule Management" of the Axon Ivy Portal shows and changes. The Portal calls it through the
- * callable sub process <code>Portal/RuleManagement</code> of this project.
- *
- * <p>The Portal has no dependency on the rule engine. It finds the callable by its signatures in the security
- * context, the way it finds Smart Workflow, and shows the tab only if it is there. So everything that crosses
- * is a JDK type: String, Integer, Boolean, List and Map.</p>
- *
- * <p>Every call answers with a <code>result</code> and an <code>error</code>. On success the error is null.
- * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code of the
- * runtime such as INVALID_MODEL or MODEL_NOT_FOUND, or FAILED), <code>message</code> and <code>details</code>
- * (the findings of the DMN engine, as text).</p>
- *
- * <p>Model names are the names of the .dmn files, as in the Business Rule Task: the prefix of
- * <code>RuleEngine.ModelPrefix</code> is added and removed here.</p>
+ * The Portal has no dependency on the rule engine: it finds the callable sub process <code>Portal/RuleManagement</code>
+ * by its signatures in the security context. So everything that crosses is a JDK type: String, Integer, Boolean, List
+ * and Map.
  */
 public final class RuleManagement {
 
-  /** Path of {@link DmnEditorScript} under the REST API of the application. */
   public static final String REST_PATH = "rule-engine/dmn-editor";
   public static final String EDITOR_SCRIPT = "dmn-editor.js";
 
@@ -58,10 +46,6 @@ public final class RuleManagement {
 
   private RuleManagement() {}
 
-  /**
-   * @return runtimeUrl, reachable, editorScript (the link of the DMN editor script, served by this engine)
-   *         and modelPrefix
-   */
   public static RuleManagementAnswer info() {
     var config = RuleEngineConfig.fromVariables();
     var info = new LinkedHashMap<String, Object>();
@@ -78,11 +62,6 @@ public final class RuleManagement {
     return new RuleManagementAnswer(info, null);
   }
 
-  /**
-   * @return the models of the runtime and the .dmn files of the projects of this application that the runtime
-   *         does not know yet, by name. A model has name, onRuntime, activeVersion, latestVersion, versionCount,
-   *         decisions (names), and project and file if a project has a .dmn file of that name.
-   */
   public static RuleManagementAnswer models() {
     return answer(() -> {
       var config = RuleEngineConfig.fromVariables();
@@ -118,7 +97,6 @@ public final class RuleManagement {
     });
   }
 
-  /** @return the versions of a model, newest first: see {@link #version(ModelVersion, String)} */
   public static RuleManagementAnswer versions(String model) {
     return answer(() -> {
       var config = RuleEngineConfig.fromVariables();
@@ -130,10 +108,8 @@ public final class RuleManagement {
   }
 
   /**
-   * @param version the version to open, or null for the active one (the newest, if none is active). A model that
-   *          is not on the runtime yet is read from the .dmn file of its project. 0 counts as null: the parameter
-   *          mapping of a callable sub process turns a null Integer into 0, and versions start at 1.
-   * @return model, version (null for a project file), dmn and project (for a project file)
+   * A version of 0 counts as null: the parameter mapping of a callable sub process turns a null Integer into 0, and
+   * versions start at 1.
    */
   public static RuleManagementAnswer content(String model, Integer version) {
     return answer(() -> {
@@ -165,7 +141,6 @@ public final class RuleManagement {
     });
   }
 
-  /** @return valid and messages: the findings of the DMN engine, as text */
   public static RuleManagementAnswer validate(String dmn) {
     return answer(() -> {
       var result = client(RuleEngineConfig.fromVariables()).validate(dmn);
@@ -176,15 +151,6 @@ public final class RuleManagement {
     });
   }
 
-  /**
-   * Stores a changed model as a new version from the Portal. The runtime checks it first and refuses a model with
-   * errors (code INVALID_MODEL, the findings in the details). A version activated from the Portal is never
-   * replaced by a project deployment.
-   *
-   * @param activate true: go live now; false: keep it as a draft
-   * @return the version, see {@link #version(ModelVersion, String)}. Its <code>created</code> is false if the runtime
-   *         had exactly this content already.
-   */
   public static RuleManagementAnswer save(String model, String dmn, String author, String description, Boolean activate) {
     return answer(() -> {
       if (StringUtils.isBlank(model) || StringUtils.isBlank(dmn)) {
@@ -203,7 +169,6 @@ public final class RuleManagement {
     });
   }
 
-  /** Makes a version live at once. The version that was active is retired. */
   public static RuleManagementAnswer activate(String model, Integer version, String author) {
     return answer(() -> {
       if (version == null || version.intValue() <= 0) {
@@ -216,7 +181,6 @@ public final class RuleManagement {
     });
   }
 
-  /** Activates the version that was active before the current one. */
   public static RuleManagementAnswer rollback(String model, String author) {
     return answer(() -> {
       var config = RuleEngineConfig.fromVariables();
@@ -224,10 +188,6 @@ public final class RuleManagement {
     });
   }
 
-  /**
-   * @return model, version, status, source, author, description, createdAt, activatedAt, activatedBy,
-   *         effectiveDate, previousVersion and created. Times are ISO-8601 texts, enums their names.
-   */
   static Map<String, Object> version(ModelVersion version, String prefix) {
     var map = new LinkedHashMap<String, Object>();
     String model = version.model();
@@ -246,10 +206,6 @@ public final class RuleManagement {
     return map;
   }
 
-  /**
-   * @return the link of the DMN editor script on this engine, relative to the server, or null outside of a
-   *         request
-   */
   static String editorScriptLink() {
     try {
       String base = Ivy.html().appBaseLink().getRelative();

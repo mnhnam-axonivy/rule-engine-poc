@@ -26,20 +26,15 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-/**
- * A stand-in for the decision runtime that tests can program. It speaks the API of the runtime
- * and records every request, so tests can check what the connector sends.
- */
 @Path(MockRuntime.PATH)
 @PermitAll // the connector calls without an Ivy session
-@Hidden // not part of the API of this application
+@Hidden
 @SuppressWarnings("all")
 public class MockRuntime {
 
   public static final String PATH = "ruleMock";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  /** A request the mock received. */
   public record Call(String operation, String model, JsonNode body, String apiKey) {}
 
   private static final List<Call> CALLS = new CopyOnWriteArrayList<>();
@@ -54,7 +49,6 @@ public class MockRuntime {
   private static volatile Function<Call, Response> validate;
   private static volatile String editorScript;
 
-  /** @return the URL of the mock, to be used as variable RuleEngine.Url */
   public static String url() {
     return Ivy.rest().client("mockRuntime").getUri().toASCIIString();
   }
@@ -75,7 +69,6 @@ public class MockRuntime {
     validate = call -> json(200, "{\"valid\":true,\"messages\":[]}");
   }
 
-  /** Describes a model the way the runtime does: its decisions and the inputs they need. */
   public static void model(String name, String decision, String... inputs) {
     var inputNames = new ArrayList<String>();
     var inputList = new ArrayList<String>();
@@ -88,27 +81,22 @@ public class MockRuntime {
         + "]}],\"inputs\":[" + String.join(",", inputList) + "]}");
   }
 
-  /** Which version of a model is active: 1 unless said otherwise. */
   public static void activeVersion(String model, int version) {
     MODELS.computeIfPresent(model, (name, json) -> json.replaceFirst("\"activeVersion\":\\d+","\"activeVersion\":" + version));
   }
 
-  /** Where the active version of a model came from: PROJECT (the default), PORTAL or API. */
   public static void activeSource(String model, String source) {
     SOURCES.put(model, source);
   }
 
-  /** The versions of a model, as the runtime lists them: a JSON array. */
   public static void versions(String model, String versionsJson) {
     VERSIONS.put(model, versionsJson);
   }
 
-  /** The DMN file of a version. */
   public static void content(String model, int version, String dmn) {
     CONTENTS.put(model + ":" + version, dmn);
   }
 
-  /** The script of the DMN editor that the runtime serves at /editor/lib/dmn-editor.js; null = none. */
   public static void editorScript(String script) {
     editorScript = script;
   }
@@ -133,7 +121,6 @@ public class MockRuntime {
     validate = handler;
   }
 
-  /** An error answer of the runtime with findings of the DMN engine. */
   public static Response error(int status, String code, String message, String... findings) {
     var details = new ArrayList<String>();
     for (String finding : findings) {
@@ -159,7 +146,6 @@ public class MockRuntime {
     return json(status, "{\"code\":\"" + code + "\",\"message\":\"" + message.replace("\"", "'") + "\"}");
   }
 
-  /** An evaluation answer of the runtime with the given results as JSON object. */
   public static Response results(int version, String resultsJson) {
     return json(200, "{\"model\":\"mock\",\"version\":" + version + ",\"results\":" + resultsJson + "}");
   }

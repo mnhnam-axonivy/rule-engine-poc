@@ -11,12 +11,8 @@ import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.process.program.ui.ProgramUiBuilder;
 import ch.ivyteam.ivy.process.program.ui.select.SelectItem;
 
-/**
- * The inscription mask of the Business Rule Task.
- */
 public class RuleTaskEditor {
 
-  /** The entry of the dropdown that generates a .dmn file from the fields of the group New DMN. */
   public static final String NEW_DMN = "New DMN...";
 
   public void editor(ProgramUiBuilder ui) {

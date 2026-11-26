@@ -1,9 +1,3 @@
-/**
- * The inscription view: the panel on the right where an element is configured.
- *
- * Tabs, group titles and field labels follow the real Designer. For the Business Rule Task
- * they are taken from the connector's RuleTaskEditor, including the emoji in the group titles.
- */
 import { h, clear } from '../util.js';
 import { icon, elementGlyph } from './icons.js';
 import { section, field, note, textBox, checkbox, scriptInput, codeEditor, multiSelect } from './fields.js';
@@ -17,16 +11,14 @@ import { CREATE_NEW } from '../model/runner.js';
 const DEFAULT_TAB = { rule: 'configuration', script: 'output', start: 'request', task: 'task', gateway: 'condition', boundary: 'error', usertask: 'dialog' };
 
 export class Inscription {
-  /** @param {Object} app  the DesignerApp  @param {HTMLElement} root */
   constructor(app, root) {
     this.app = app;
     this.root = root;
     this.checks = [];
-    this.controls = {}; // the inputs the walkthrough types into, by config key
+    this.controls = {};
     this.title = null;
   }
 
-  /** Rebuilds the whole view for the current selection. */
   render() {
     const { app } = this;
     const t = app.t;
@@ -71,7 +63,6 @@ export class Inscription {
     if (this.title && el) this.title.textContent = el.typeLabel + (el.name ? ' - ' + el.name.replace(/\n/g, ' ') : '');
   }
 
-  /** Re-runs the field checks (validation messages) without rebuilding anything. */
   validate() {
     this.checks.forEach(fn => fn());
   }
@@ -118,8 +109,6 @@ export class Inscription {
     return { open: stored === undefined ? fallback : stored, onToggle: open => { this.app.state.sections[key] = open; } };
   }
 
-  // ── tabs shared by all elements ────────────────────────────────────────────
-
   general(el, body) {
     const { app } = this;
     const description = field('Description', textBox({ value: el.description, rows: 2, onInput: v => app.changeElement(el, e => { e.description = v; }) }));
@@ -134,8 +123,6 @@ export class Inscription {
         description),
       section({ title: 'Tags', ...this.sectionState(el, 'tags', tags.length > 0) }, ...tagList));
   }
-
-  // ── script ─────────────────────────────────────────────────────────────────
 
   scriptOutput(el, body) {
     const { app } = this;
@@ -170,8 +157,6 @@ export class Inscription {
       checkbox({ label: 'Disable Permission Checks (Execute this Script Step as SYSTEM)', disabled: true }));
   }
 
-  // ── start and task ─────────────────────────────────────────────────────────
-
   startTab(el, body) {
     body.append(
       section({ title: 'Signature', ...this.sectionState(el, 'signature', true) },
@@ -190,8 +175,6 @@ export class Inscription {
         field('Category', textBox({ value: request.category || '', readOnly: true })),
         note(this.app.t('inscription.orientation'))));
   }
-
-  // ── callable sub-process start: a tool, when it carries the tag "tool" ──────
 
   paramTable(params, tour) {
     return h('table.mapping', { 'data-tour': tour },
@@ -227,8 +210,6 @@ export class Inscription {
       section({ title: 'Mapping', ...this.sectionState(el, 'resultMapping', true) }, this.mapTable(result.map, 'resultMap')));
   }
 
-  // ── error boundary event ───────────────────────────────────────────────────
-
   boundaryErrorTab(el, body) {
     const { app } = this;
     const code = textBox({ value: el.config.errorCode || '', mono: true, onInput: v => app.changeElement(el, e => { e.config.errorCode = v; }, 'errorCode') });
@@ -247,8 +228,6 @@ export class Inscription {
         this.codeField(el, () => text((el.config.output || {}).code), (e, v) => { e.config.output = { ...(e.config.output || {}), code: v }; }, { error: {} }),
         note(this.app.t('boundary.mapping'))));
   }
-
-  // ── gateway ────────────────────────────────────────────────────────────────
 
   conditionTab(el, body) {
     const { app } = this;
@@ -269,7 +248,6 @@ export class Inscription {
       note(app.t('condition.order'))));
   }
 
-  /** A code field of an element: editable, checked like a script step. `vars` names what the code may use besides in/out. */
   codeField(el, read, write, vars) {
     const { app } = this;
     const editor = codeEditor({ value: read(), language: 'ivyscript', label: 'Code', onInput: v => app.changeElement(el, e => write(e, v), 'code') });
@@ -291,8 +269,6 @@ export class Inscription {
     return codeField;
   }
 
-  // ── user task ──────────────────────────────────────────────────────────────
-
   dialogTab(el, body) {
     const dialog = field('Dialog', textBox({ value: el.config.dialog || '', readOnly: true, mono: true }));
     dialog.setAttribute('data-tour', 'dialog');
@@ -309,8 +285,6 @@ export class Inscription {
       section({ title: 'Code', ...this.sectionState(el, 'code', true) },
         this.codeField(el, () => text((el.config.output || {}).code), (e, v) => { e.config.output = { ...(e.config.output || {}), code: v }; }, { result: {} })));
   }
-
-  // ── error end ──────────────────────────────────────────────────────────────
 
   errorEndTab(el, body) {
     const text = value => (Array.isArray(value) ? value.join('\n') : value || '');
@@ -346,8 +320,6 @@ export class Inscription {
         checkbox({ label: 'Delay', disabled: true })));
   }
 
-  // ── Business Rule Task ─────────────────────────────────────────────────────
-
   javaBean(el, body) {
     body.append(
       section({ title: 'Java Class', ...this.sectionState(el, 'class', true) },
@@ -377,7 +349,6 @@ export class Inscription {
     const set = (key, value) => app.setRuleConfig(el, key, value);
     const tagged = (node, name) => { node.setAttribute('data-tour', name); return node; };
 
-    // ⚖️ Decision
     const decisionSelect = multiSelect({
       values: configList(cfg.decision), options: this.decisionOptions(), layer, placeholder: t('decision.placeholder'),
       onChange: v => set('decision', v.join(','))
@@ -416,7 +387,6 @@ export class Inscription {
       else newModelField.setMessage('', '');
     });
 
-    // ✨ New DMN: the name above, then the fields the new file is made of
     const selectionCheck = (fieldEl, key, emptyKey) => () => {
       const selection = parseFieldSelection(cfg[key]);
       const noPath = selection.find(item => !isFieldPath(item.expression));
@@ -469,7 +439,7 @@ export class Inscription {
     try {
       dmn = this.app.findDmn(modelNameFor(cfg.newModel));
     } catch (e) {
-      return; // no name yet
+      return;
     }
     if (!dmn || !dmn.decisions.length || !generatedFrom(dmn, inputs, outputs)) return;
     const wanted = outputs.length === 1 ? outputs[0].name : dmn.model;
@@ -508,7 +478,6 @@ export class Inscription {
     return options;
   }
 
-  /** The fields of the process data as paths, nested data classes included (in.member.type). */
   fieldPaths() {
     const { model } = this.app;
     const paths = [];

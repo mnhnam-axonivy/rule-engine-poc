@@ -5,14 +5,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * What to generate: a model with one decision table that takes the inputs and produces the outputs.
- *
- * @param modelName name of the model, usually the file name without <code>.dmn</code>
- * @param inputs fields the decision reads, each becomes an input node and a column of the table
- * @param outputs fields the decision produces, each becomes an output column of the table
- * @param description text of the model, e.g. what it was generated from; null for none
- */
 public record DmnSpec(String modelName, List<DmnField> inputs, List<DmnField> outputs, String description) {
 
   public DmnSpec(String modelName, List<DmnField> inputs, List<DmnField> outputs) {
@@ -36,10 +28,8 @@ public record DmnSpec(String modelName, List<DmnField> inputs, List<DmnField> ou
   }
 
   /**
-   * The name of the generated decision.
-   * <p>With a single output the decision is named like the output field, so its result is mapped by name.
-   * With several outputs the decision is named like the model and returns a structure with one entry per
-   * output field.</p>
+   * With a single output the decision is named like the output field, so its result is mapped by name. With several
+   * outputs the decision is named like the model and returns a structure with one entry per output field.
    */
   public String decisionName() {
     String name = outputs.size() == 1

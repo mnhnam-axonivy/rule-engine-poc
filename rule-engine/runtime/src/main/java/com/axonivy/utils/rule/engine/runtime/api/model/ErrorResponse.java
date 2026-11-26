@@ -7,9 +7,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-/**
- * The answer of the runtime to a request it cannot fulfil.
- */
 @Schema(name = "Error")
 @JsonInclude(Include.NON_EMPTY)
 public record ErrorResponse(

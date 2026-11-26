@@ -1,28 +1,21 @@
-/**
- * Guide 08 — the walkthrough. Four chapters, each starting from the project as the tutorial
- * ships it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do.
- */
 import { ELEMENTS } from '../shared/project.js';
 
 const { RULE_TASK, BOUNDARY, NOT_PRICED } = ELEMENTS;
 
 const errorOf = call => call.errorCode + '\n' + call.error;
 
-/** Shows the Runtime Log with its newest line, then closes the panel again. */
 async function showLog(d, note) {
   await d.panel('log');
   await d.note(note, { target: 'log:last' });
   await d.panel(null);
 }
 
-/** 1 — the container is down: the element throws, the boundary event catches. */
 async function unreachable(d) {
   await d.panel('runtime');
   await d.note('running', { target: 'runtime:state' });
   await d.runtime('stopped');
   await d.note('stopped', { target: 'runtime:state' });
   await d.panel(null);
-  // what that means for the parts: the engine is fine, the container is gone
   await d.tab('arch');
   d.arch({ lit: ['connector', 'container', 'http'] });
   await d.note('cut', { target: 'arch:http' });
@@ -38,7 +31,6 @@ async function unreachable(d) {
   await showLog(d, 'logged');
 }
 
-/** 2 — what the boundary event catches, and what happens when it does not fit. */
 async function catchError(d) {
   const field = 'field:' + BOUNDARY + '.errorCode';
   await d.open(BOUNDARY, 'error');
@@ -56,7 +48,6 @@ async function catchError(d) {
   await showLog(d, 'unhandledLog');
 }
 
-/** 3 — a project that does not bring its models along. */
 async function missing(d) {
   await d.tab('variables');
   await d.note('autoDeploy', { target: 'vars@AutoDeploy' });
@@ -71,7 +62,6 @@ async function missing(d) {
   await d.note('refused', { target: 'el:' + BOUNDARY });
 }
 
-/** 4 — a runtime that answers too late. */
 async function timeout(d) {
   await d.tab('variables');
   await d.note('timeoutVar', { target: 'vars@TimeoutSeconds' });

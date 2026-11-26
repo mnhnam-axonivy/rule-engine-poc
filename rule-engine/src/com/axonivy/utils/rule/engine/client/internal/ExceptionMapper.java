@@ -14,16 +14,10 @@ import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableException;
 
-/**
- * Turns the failures of a call of the runtime into the exceptions of the rule engine client.
- */
 public final class ExceptionMapper {
 
   private ExceptionMapper() {}
 
-  /**
-   * @param ex what the REST element threw: its cause is the failure of the connection, e.g. a timeout
-   */
   public static RuntimeException map(String baseUrl, Exception ex) {
     if (ex instanceof RuleEngineException known) {
       return known;
@@ -50,10 +44,6 @@ public final class ExceptionMapper {
     return new RuleEngineException("The call to the rule engine at " + baseUrl + " failed: " + ex.getMessage(), ex);
   }
 
-  /**
-   * @param status a client (4XX) or server (5XX) error
-   * @param body the answer, an {@link ErrorResponse} if it comes from the runtime
-   */
   public static RuleEngineApiException answer(int status, String body) {
     try {
       ErrorResponse error = Json.fromJson(body, ErrorResponse.class);

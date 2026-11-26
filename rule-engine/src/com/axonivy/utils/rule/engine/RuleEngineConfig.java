@@ -7,9 +7,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 
 import ch.ivyteam.ivy.environment.Ivy;
 
-/**
- * The settings of the rule engine connector, read from the variables <code>RuleEngine.*</code>.
- */
 public record RuleEngineConfig(
     String url,
     String apiKey,
@@ -47,15 +44,10 @@ public record RuleEngineConfig(
     return new RuleEngineConfig(url, apiKey, newTimeout, connectTimeout, autoDeploy, modelPrefix, logRequests);
   }
 
-  /** @return the name of a model on the runtime: the name of the .dmn file with the configured prefix */
   public String runtimeModel(String model) {
     return modelPrefix + model;
   }
 
-  /**
-   * @param runtimeUrl the value of {@link Var#URL}
-   * @return the DMN editor page that the decision runtime serves, e.g. http://localhost:8090/editor/
-   */
   public static String editorUrl(String runtimeUrl) {
     String base = StringUtils.trimToEmpty(runtimeUrl);
     while (base.endsWith("/")) {

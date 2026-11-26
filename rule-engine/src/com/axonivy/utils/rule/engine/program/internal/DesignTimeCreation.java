@@ -21,11 +21,9 @@ import ch.ivyteam.ivy.java.project.ProjectClassLoader;
 import tools.jackson.databind.JsonNode;
 
 /**
- * "New DMN..." at design time.
- * <p>The inscription API offers no button and no change event yet. So the selection of the dropdown entry is
- * picked up when the inscription mask is opened the next time: every Business Rule Task of the project that
- * asks for a new DMN gets its file, and its configuration switches to the generated decision.
- * Without a Designer the file is generated when the element is executed for the first time.</p>
+ * The inscription API offers no button and no change event yet. So the selection of "New DMN..." is picked up when the
+ * inscription mask is opened the next time. Without a Designer the file is generated when the element is executed for
+ * the first time.
  */
 public final class DesignTimeCreation {
 
@@ -36,13 +34,7 @@ public final class DesignTimeCreation {
 
   private DesignTimeCreation() {}
 
-  /**
-   * Generates the .dmn file of every Business Rule Task in the project that selected "New DMN...".
-   * Never fails: a problem is logged and the element reports it when it is executed. An element without a name or
-   * without fields is skipped: running it says what is missing.
-   *
-   * @return the generated files
-   */
+  /** Never fails: a problem is logged and the element reports it when it is executed. */
   public static List<DmnCreator.Created> createPending(Project project) {
     var created = new ArrayList<DmnCreator.Created>();
     if (project == null || project.directory() == null || !Files.isWritable(project.directory())) {
@@ -73,13 +65,6 @@ public final class DesignTimeCreation {
     return created;
   }
 
-  /**
-   * Once the file of "New DMN..." exists, the element refers to its decision like to any other. Another file of the
-   * same name is not selected: running the element reports it.
-   *
-   * @param config the configuration of a Business Rule Task
-   * @return the configuration with the generated decision selected, or the unchanged configuration
-   */
   public static Map<String, String> selectCreated(Project project, Map<String, String> config) {
     if (project == null || !Conf.CREATE_NEW.equals(config.get(Conf.DECISION))) {
       return config;

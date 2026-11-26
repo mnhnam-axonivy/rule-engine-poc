@@ -4,10 +4,6 @@ import java.math.BigDecimal;
 
 import ch.ivyteam.ivy.scripting.objects.List;
 
-/**
- * The invoice the demo starts with: a Silver customer, an order of 9,200. A fifth laptop brings it to 10,400, where
- * another rule of the table decides.
- */
 public final class InvoiceSamples {
 
   private InvoiceSamples() {}

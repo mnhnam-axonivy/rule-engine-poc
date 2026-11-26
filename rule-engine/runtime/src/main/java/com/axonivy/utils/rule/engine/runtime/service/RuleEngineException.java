@@ -5,9 +5,6 @@ import java.util.List;
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
 
 
-/**
- * A failure with a stable error code that API clients can react to.
- */
 public class RuleEngineException extends RuntimeException {
 
   private static final long serialVersionUID = 1L;

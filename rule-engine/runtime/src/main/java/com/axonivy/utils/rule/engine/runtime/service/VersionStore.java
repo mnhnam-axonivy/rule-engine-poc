@@ -12,12 +12,6 @@ import com.axonivy.utils.rule.engine.runtime.store.ModelVersionEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
-/**
- * Transactional access to the stored versions. Enforces the life cycle rules:
- * exactly one active version per model, and a project deployment never replaces a version
- * that was activated from the Portal or another API client.
- * <p>Changes are serialized by {@link VersionService}, which is the only caller that writes.</p>
- */
 @ApplicationScoped
 public class VersionStore {
 
@@ -122,9 +116,6 @@ public class VersionStore {
     return entity;
   }
 
-  /**
-   * Activates the version that was active before the current one.
-   */
   @Transactional
   public ModelVersionEntity rollback(String model, String user) {
     requireModel(model);
@@ -139,10 +130,6 @@ public class VersionStore {
     return previous;
   }
 
-  /**
-   * Activates approved versions whose effective date has been reached.
-   * @return the versions that went live
-   */
   @Transactional
   public List<ModelVersionEntity> activateDueVersions() {
     var activated = new ArrayList<ModelVersionEntity>();

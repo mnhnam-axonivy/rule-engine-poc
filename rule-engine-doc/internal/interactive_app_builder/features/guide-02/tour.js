@@ -1,17 +1,9 @@
-/**
- * Guide 02 — the walkthrough of the architecture. Four chapters on the tab "Architecture";
- * the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do, and
- * runtime/ui/architecture.js for the blocks and links it can light.
- */
-
 import { MODEL, DECISION } from '../shared/project.js';
 
-/** What the demo process has in its process data when it reaches the Business Rule Task: the inputs of the model. */
 const INPUT = { customerTier: 'Silver', orderAmount: 9200 };
 
 const lines = values => Object.keys(values).map(name => name + ' = ' + JSON.stringify(values[name])).join('\n');
 
-/** 1 — two sides and one connection. */
 async function parts(d) {
   await d.tab('arch');
   d.arch({ lit: ['ivy'] });
@@ -25,7 +17,6 @@ async function parts(d) {
   d.arch(null);
 }
 
-/** 2 — the two Ivy projects and what each is for, and the Portal beside them. */
 async function projects(d) {
   await d.tab('arch');
   d.arch({ lit: ['demo'] });
@@ -39,7 +30,6 @@ async function projects(d) {
   d.arch(null);
 }
 
-/** 3 — what is in the image the container runs. */
 async function image(d) {
   await d.tab('arch');
   d.arch({ lit: ['container'] });
@@ -55,7 +45,6 @@ async function image(d) {
   d.arch(null);
 }
 
-/** 4 — one decision on its way through the blocks, then the same run on the canvas. */
 async function flow(d) {
   const { app } = d;
   await d.tab('arch');
@@ -66,7 +55,6 @@ async function flow(d) {
 
   d.arch({ lit: ['connector', 'api'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/versions' } });
   await d.note('flowRegister', { target: 'arch:http' });
-  // the simulated runtime does what the container does with the file
   app.runtime.register(MODEL, app.findDmn(MODEL), { source: 'PROJECT', author: 'rule-engine-demo' });
   app.refreshRuntimeViews();
   d.arch({ lit: ['api', 'engine', 'db', 'volume'], flow: ['store>'] });

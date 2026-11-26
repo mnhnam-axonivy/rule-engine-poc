@@ -29,9 +29,6 @@ import ch.ivyteam.ivy.scripting.objects.Duration;
 import ch.ivyteam.ivy.scripting.objects.Time;
 import tools.jackson.databind.JsonNode;
 
-/**
- * The Business Rule Task in a process. The decision runtime is replaced by {@link MockRuntime}.
- */
 @IvyProcessTest(enableWebServer = true)
 class TestBusinessRuleTask {
 
@@ -88,7 +85,6 @@ class TestBusinessRuleTask {
     assertThat(result.getDiscount()).as("a null result clears the field").isNull();
   }
 
-  /** Input fields and Output fields only describe a new DMN. For an existing decision everything goes by name. */
   @Test
   void inputAndOutputFields_areNotUsedForAnExistingDecision(BpmClient client) {
     // the element says "total = in.amount, in.customer.name, in.customer.address.city" and "in.points"
@@ -285,7 +281,6 @@ class TestBusinessRuleTask {
     assertThat(input.get("type").asString()).isEqualTo("Gold");
   }
 
-  /** A rule owner added a column in the Portal: the file does not know it, the version that answers needs it. */
   @Test
   void versionFromThePortal_getsTheInputsItNeeds(BpmClient client) {
     MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
@@ -302,13 +297,12 @@ class TestBusinessRuleTask {
     assertThat(input.get("segment").asString()).as("found in the process data by its name").isEqualTo("GOLD");
   }
 
-  /** The runtime was asked a moment ago, then a rule owner activated a version: the answer says so, it is asked again. */
   @Test
   void versionActivatedInThePortalAMomentAgo_getsItsInputs(BpmClient client) {
     MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
     MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
-    run(client, "demoDiscount", sampleData()); // registers the file
-    run(client, "demoDiscount", sampleData()); // knows the active version: one from the project
+    run(client, "demoDiscount", sampleData());
+    run(client, "demoDiscount", sampleData());
     MockRuntime.activeVersion("discount", 2);
     MockRuntime.activeSource("discount", "PORTAL");
     MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"discount\":20}"));
@@ -323,7 +317,6 @@ class TestBusinessRuleTask {
         .contains("segment");
   }
 
-  /** A version from the project is replaced by the file: the file says what is needed. */
   @Test
   void versionFromTheProject_isReplaced_theFileDecidesTheInputs(BpmClient client) {
     MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
@@ -385,7 +378,6 @@ class TestBusinessRuleTask {
         .execute();
   }
 
-  /** @return the version that decided, as the Business Rule Task stores it on the case */
   static Integer decidedBy(ExecutionResult execution, String model) {
     String version = execution.workflow().activeCase().customFields()
         .stringField(RuleTaskExecutor.VERSION_FIELD_PREFIX + model).getOrNull();

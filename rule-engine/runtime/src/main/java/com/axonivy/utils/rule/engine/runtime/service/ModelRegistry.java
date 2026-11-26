@@ -18,9 +18,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
 /**
- * The executable models held in memory.
- * <p>The active version of every model is loaded at startup and replaced whenever another version becomes active.
- * A replacement only swaps a reference: evaluations that are running keep the version they started with.</p>
+ * A replacement of the active version only swaps a reference: evaluations that are running keep the version they
+ * started with.
  */
 @ApplicationScoped
 public class ModelRegistry {
@@ -46,9 +45,6 @@ public class ModelRegistry {
     LOG.infof("Rules engine started with %d active model(s): %s", active.size(), active.keySet());
   }
 
-  /**
-   * Aligns the models in memory with the active versions in the store.
-   */
   public synchronized void sync() {
     var refs = store.activeRefs();
     var models = new HashSet<String>();
@@ -83,9 +79,6 @@ public class ModelRegistry {
     return Optional.ofNullable(active.get(model));
   }
 
-  /**
-   * @return a specific version, compiled on demand. Used for test runs of versions that are not active.
-   */
   public CompiledModel version(String model, int version) {
     var current = active.get(model);
     if (current != null && current.version() == version) {
@@ -110,9 +103,6 @@ public class ModelRegistry {
     return compiled;
   }
 
-  /**
-   * Forgets everything about a model that was deleted.
-   */
   public synchronized void evict(String model) {
     active.remove(model);
     failures.remove(model);

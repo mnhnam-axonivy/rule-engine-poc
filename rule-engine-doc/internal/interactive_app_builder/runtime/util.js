@@ -1,5 +1,3 @@
-/** Small DOM and event helpers shared by the UI modules. */
-
 /**
  * Creates an element: h('button.icon-btn', { title: 'Run', onclick: fn }, 'Run').
  * Keys with a dash, `role` and `for` become attributes; everything else a property.
@@ -102,13 +100,11 @@ export function openPopover(layer, anchor, content, { align = 'left', onClose } 
   return Object.assign(close, { reposition: place, box });
 }
 
-/** A tool call as one line: lookupApprovalPolicy(amount: "10560.00"). */
 export function toolCallText(step) {
   const args = step.arguments || {};
   return step.name + '(' + Object.keys(args).map(key => key + ': ' + JSON.stringify(args[key])).join(', ') + ')';
 }
 
-/** A value in a few characters: a list as its number of elements, a structure by its entries, anything else as JSON. */
 export function brief(value) {
   if (Array.isArray(value)) return '[' + value.length + (value.length === 1 ? ' element]' : ' elements]');
   if (value !== null && typeof value === 'object') {

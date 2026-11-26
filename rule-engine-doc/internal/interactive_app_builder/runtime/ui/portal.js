@@ -1,20 +1,3 @@
-/**
- * The tab "Portal": the Axon Ivy Portal of the application, at Admin Settings › Rule Management,
- * the way a Portal administrator sees it. It works on the simulated decision runtime the way the
- * real tab works on the real one, through the callable sub process Portal/RuleManagement of the
- * connector:
- *
- *   the rules      the models of the runtime, and the .dmn files of the project it does not know yet
- *   the editor     the DMN editor of Apache KIE; here its decision table, with its input data
- *   Check          the DMN engine checks the model, nothing is stored
- *   Save …         a new version with the source PORTAL and the Portal user as author, as draft or live
- *   versions       every version of a model: open, activate, roll back
- *
- * Parts carry data-tour="…", which is what the walkthrough points at ('portal@check'):
- *   tab, state, list, row:<model>, edit:<model>, versions:<model>, editor, back, title, inputs,
- *   addInput, kie, description, check, draft, activate, message, dialog, v<version>, rollback, close
- * and, from the decision table, rule<n>, r<n>.i<n>, r<n>.o<n>, r<n>.n, addRule.
- */
 import { h, clear } from '../util.js';
 import { icon } from './icons.js';
 import { textBox } from './fields.js';
@@ -29,33 +12,28 @@ const PORTAL_USER_NAME = 'Portal Admin User';
 const OTHER_TABS = ['portal.tab.settings', 'portal.tab.announcements', 'portal.tab.roles', 'portal.tab.passwords'];
 
 export class PortalView {
-  /** @param {Object} app  the DesignerApp  @param {HTMLElement} host  the editor of the tab */
   constructor(app, host) {
     this.app = app;
     this.host = host;
     this.root = null;
-    this.edit = null; // the rule that is open: { model, version, status, project, dmn, dirty }
-    this.versionsOf = null; // the model whose versions the dialog shows
-    this.messages = []; // { tone: 'info' | 'error' | 'warn', text }
-    this.controls = {}; // the cells of the open table, by "<decision>.r1.i1"
-    this.description = null; // the field "What changed?"
+    this.edit = null;
+    this.versionsOf = null;
+    this.messages = [];
+    this.controls = {};
+    this.description = null;
   }
-
-  // ── what the Portal reads ────────────────────────────────────────────────────
 
   settings() {
     const yaml = parseYaml(this.app.variablesText);
     return readSettings(yaml.errors.length ? {} : yaml.value || {});
   }
 
-  /** The runtime answers: the URL of variables.yaml is the one of the container, and it runs. */
   reachable() {
     const settings = this.settings();
     const runtime = this.app.runtime;
     return Boolean(settings.url) && settings.url.replace(/\/+$/, '') === runtime.url && runtime.state !== 'stopped';
   }
 
-  /** The rules: the models of the runtime (of this application) and the files it does not know yet. */
   models() {
     const prefix = this.settings().prefix;
     const runtime = this.app.runtime;
@@ -77,9 +55,6 @@ export class PortalView {
     return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // ── what an administrator does ───────────────────────────────────────────────
-
-  /** Opens a rule: the active version (or the one asked for), or the file of the project. */
   open(model, version = null) {
     const runtimeName = this.settings().prefix + model;
     const runtime = this.app.runtime;
@@ -107,10 +82,8 @@ export class PortalView {
     this.app.emit({ type: 'portal', action: 'back' });
   }
 
-  /** A new input data node with a column for it, as the KIE editor makes them. */
   addInput(name, type = 'string') {
     if (!this.edit || !name) return false;
-    // the table the lesson names, else the first decision table: the KIE editor adds the column where it is told
     const named = this.app.def.portalTable;
     const decision = this.edit.dmn.decisions.find(candidate => candidate.kind === 'table' && (!named || candidate.name === named));
     if (!decision || !addInput(this.edit.dmn, decision.name, { name, type })) return false;
@@ -120,7 +93,6 @@ export class PortalView {
     return true;
   }
 
-  /** The findings of the DMN engine for what the editor holds, as text; empty when it is valid. */
   findings() {
     const out = [];
     logicsOf(this.edit.dmn).forEach(decision => {
@@ -155,10 +127,6 @@ export class PortalView {
     this.app.emit({ type: 'portal', action: 'check', valid: !findings.length });
   }
 
-  /**
-   * Stores what the editor holds as a new version from the Portal. The runtime refuses a model with errors.
-   * @returns {Object|null} the version, or null when it was refused
-   */
   save(activate) {
     if (!this.edit || !this.reachable()) return null;
     const findings = this.findings();
@@ -214,15 +182,12 @@ export class PortalView {
     this.app.emit({ type: 'portal', action: 'rollback', model: this.versionsOf });
   }
 
-  /** Back to the list of rules, as after a new login. */
   reset() {
     this.edit = null;
     this.versionsOf = null;
     this.messages = [];
     this.render();
   }
-
-  // ── drawing ──────────────────────────────────────────────────────────────────
 
   render() {
     const t = this.app.t;
@@ -250,7 +215,6 @@ export class PortalView {
     if (this.versionsOf) this.root.append(this.renderVersions());
   }
 
-  /** Keeps what is shown in line with the runtime; the editor is not touched. */
   update() {
     if (!this.root) return;
     if (!this.edit) this.renderList();
@@ -329,7 +293,6 @@ export class PortalView {
       }
       if (kind === 'rules') this.renderEditor();
     };
-    // the table the rule owner works on first, as the KIE editor opens the decision that is selected
     const named = this.app.def.portalTable;
     const logics = logicsOf(edit.dmn).sort((a, b) => (b.name === named) - (a.name === named));
     const tables = logics.map(decision => decisionTable({ decision, t, controls: this.controls, onChange: changed }));
@@ -358,7 +321,6 @@ export class PortalView {
         tables));
   }
 
-  /** "+ Input": a name and a type; the KIE editor makes an input data node and a column of it. */
   addInputForm() {
     const t = this.app.t;
     const name = h('input.input.portal-input-name', { type: 'text', placeholder: t('portal.input.name'), spellcheck: false, 'aria-label': t('portal.input.name') });

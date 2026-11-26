@@ -3,9 +3,6 @@ package com.axonivy.utils.rule.engine.runtime.api;
 import com.axonivy.utils.rule.engine.runtime.api.model.ModelVersion;
 import com.axonivy.utils.rule.engine.runtime.store.ModelVersionEntity;
 
-/**
- * Turns what the runtime stores into the records of its API.
- */
 final class Responses {
 
   private Responses() {}
@@ -14,7 +11,6 @@ final class Responses {
     return version(entity, null);
   }
 
-  /** @param created only on registration: false if the same content was already stored */
   static ModelVersion version(ModelVersionEntity entity, Boolean created) {
     return new ModelVersion(entity.model, entity.version, entity.status, entity.source, entity.author,
         entity.description, entity.createdAt, entity.effectiveDate, entity.activatedAt, entity.activatedBy,

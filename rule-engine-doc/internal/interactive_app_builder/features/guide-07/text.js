@@ -1,7 +1,4 @@
-/**
- * Guide 07 — texts of the walkthrough. tour.chapter.<id> are the headings of the tutorial
- * page, word for word.
- */
+/** tour.chapter.<id> are the headings of the tutorial page, word for word. */
 import { LAST_WORD_STRINGS } from '../shared/portal-chapters.js';
 
 const ABOUT_RULES = [

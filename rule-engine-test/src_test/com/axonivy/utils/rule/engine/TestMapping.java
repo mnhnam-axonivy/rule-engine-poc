@@ -26,9 +26,6 @@ import ch.ivyteam.ivy.scripting.objects.DateTime;
 import ch.ivyteam.ivy.scripting.objects.Duration;
 import ch.ivyteam.ivy.scripting.objects.Time;
 
-/**
- * Mapping between Ivy data classes and DMN: types, values and fields by name.
- */
 @IvyTest
 class TestMapping {
 

@@ -10,11 +10,6 @@ import java.util.Optional;
 import ch.ivyteam.ivy.cm.ContentObject;
 import ch.ivyteam.ivy.environment.Ivy;
 
-/**
- * The pages of the tutorial. They are Markdown files in the CMS, at /Tutorial/guide-NN.
- * The dialog Tutorial loads them when it starts and hands them to the page, where they are
- * rendered in the browser.
- */
 public final class TutorialPages {
 
   /** Must match the pages that Tutorial.xhtml renders. */
@@ -23,7 +18,6 @@ public final class TutorialPages {
 
   private TutorialPages() {}
 
-  /** @return the Markdown of every page by its id, e.g. 01. A page that is missing is empty. */
   public static Map<String, String> load() {
     var pages = new LinkedHashMap<String, String>();
     for (String id : PAGE_IDS) {

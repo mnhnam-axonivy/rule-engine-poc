@@ -1,16 +1,3 @@
-/**
- * Builds the interactive simulations into the tutorial project rule-engine-doc:
- *
- *   runtime/            →  webContent/resources/js/interactive-runtime.min.js
- *   features/<name>/    →  webContent/resources/js/<name>.js   (e.g. guide-02.js)
- *
- * Everything a browser needs — three.js included — ends up in those files, so the tutorial
- * works without a network connection.
- *
- *   node build.mjs            build
- *   node build.mjs --watch    rebuild on change
- *   node build.mjs --check    fail if the committed files are not what the sources produce
- */
 import { build, context, transform } from 'esbuild';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -18,7 +5,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const repo = resolve(root, '../..'); // the project rule-engine-doc
+const repo = resolve(root, '../..');
 const outDir = join(repo, 'webContent/resources/js');
 const RUNTIME_FILE = 'interactive-runtime.min.js';
 
@@ -28,13 +15,11 @@ const threeLicense = readFileSync(join(root, 'node_modules/three/LICENSE'), 'utf
 
 const args = new Set(process.argv.slice(2));
 
-/** Feature folders: features/<name>/index.js → <name>.js */
 function featureNames() {
   const dir = join(root, 'features');
   return readdirSync(dir).filter(name => statSync(join(dir, name)).isDirectory() && existsSync(join(dir, name, 'index.js'))).sort();
 }
 
-/** Stylesheets are imported as (minified) text and injected into the shadow root. */
 const cssAsText = {
   name: 'css-as-text',
   setup(b) {
@@ -52,7 +37,6 @@ const shared = {
   minify: true,
   charset: 'ascii', // no encoding surprises, however the file is served
   legalComments: 'none', // the three.js notice is part of the banner below
-  // files of the demo project that a lesson simulates or shows: imported as text
   loader: { '.dmn': 'text', '.java': 'text' },
   logLevel: 'warning'
 };

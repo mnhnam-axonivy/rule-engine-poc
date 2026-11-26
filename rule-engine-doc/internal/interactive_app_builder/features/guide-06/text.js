@@ -1,7 +1,4 @@
-/**
- * Guide 06 — texts of the walkthrough. tour.chapter.<id> are the headings of the tutorial
- * page, word for word.
- */
+/** tour.chapter.<id> are the headings of the tutorial page, word for word. */
 import { ABOUT_RULES } from '../shared/project.js';
 
 export const strings = {

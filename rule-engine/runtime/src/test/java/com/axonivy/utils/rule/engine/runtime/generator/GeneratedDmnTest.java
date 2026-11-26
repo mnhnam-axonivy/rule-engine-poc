@@ -26,10 +26,6 @@ import com.axonivy.utils.rule.engine.runtime.dmn.DmnCompiler;
 import com.axonivy.utils.rule.engine.runtime.dmn.DmnEvaluator;
 import com.axonivy.utils.rule.engine.runtime.dmn.DmnEvaluator.Evaluation;
 
-/**
- * Generated models are checked with the DMN validator of Apache KIE and executed in the engine of the runtime.
- * The generator itself is plain JDK code of the Ivy connector.
- */
 class GeneratedDmnTest {
 
   private final DmnGenerator generator = new DmnGenerator();
@@ -186,7 +182,6 @@ class GeneratedDmnTest {
         .contains("name=\"tAddress\"")
         .contains("<itemComponent id=\"_type_tMember_tags\" name=\"tags\" isCollection=\"true\">")
         .contains("<itemComponent id=\"_type_tMember_otherAddresses\" name=\"otherAddresses\" isCollection=\"true\">")
-        // the nested class is unfolded into columns the author can write rules for
         .contains("<text>member.type</text>")
         .contains("<text>member.address.city</text>")
         .contains("<text>member.vip</text>");
@@ -204,7 +199,6 @@ class GeneratedDmnTest {
     input.put("referredBy", null);
     assertThat(evaluate(model, Map.of("member", input)).results()).containsEntry("approved", false);
 
-    // rules on nested fields work
     String edited = dmn.replaceFirst("(<inputEntry id=\"_rule_1_input_2\">\\s*<text>)-(</text>)", "$1\"Gold\"$2");
     assertThat(edited).isNotEqualTo(dmn);
     edited = edited.replace("<text>false</text>", "<text>true</text>");
@@ -292,7 +286,6 @@ class GeneratedDmnTest {
     input.put("tags", null);
     assertThat(evaluate(model, input).results()).containsEntry("discount", BigDecimal.ZERO);
 
-    // a structure with empty fields
     var member = new HashMap<String, Object>();
     member.put("type", null);
     member.put("address", null);
@@ -333,7 +326,6 @@ class GeneratedDmnTest {
     builtIns.forEach(name -> input.put(name, name));
     assertThat(evaluate(model, input).results()).containsEntry("result", "");
 
-    // and the columns really read the fields: a rule on the column 'date' matches the value of the field 'date'
     String edited = dmn.replaceFirst("<text>-</text>", "<text>\"date\"</text>")
         .replace("<text>&quot;&quot;</text>", "<text>\"matched\"</text>");
     var editedModel = validAndCompiled(edited);

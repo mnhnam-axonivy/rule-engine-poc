@@ -25,26 +25,16 @@ import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
 
-/**
- * The decision table <code>discount</code> of the model invoice-discount, as the page of the demo shows it: every
- * cell as its FEEL text, read from the version that decided.
- */
 public final class DiscountTable {
 
   public static final String MODEL = "invoice-discount";
   public static final String DECISION = "discount";
 
-  /**
-   * @param inputs the input columns, e.g. customerTier
-   * @param outputs the output columns, e.g. discountPercent
-   */
   public record Table(String hitPolicy, List<String> inputs, List<String> outputs, List<RuleRow> rules) {
 
     /**
      * The runtime answers the result, not the rule. With the hit policy FIRST the rule that decided is the first one
      * whose outputs are the result.
-     *
-     * @return the number of that rule, null if no rule has these outputs
      */
     public Integer matching(Invoice invoice) {
       var result = new HashMap<String, Object>();
@@ -84,12 +74,10 @@ public final class DiscountTable {
 
   private DiscountTable() {}
 
-  /** @param version a version of the model on the runtime, e.g. the one that decided; null for the project file */
   public static Table of(Integer version) {
     return read(dmn(version));
   }
 
-  /** @return the table discount of a DMN file */
   public static Table read(String dmn) {
     Element table = decisionTable(parse(dmn));
     var inputs = new ArrayList<String>();
@@ -139,7 +127,6 @@ public final class DiscountTable {
     throw new IllegalStateException("The model has no decision table '" + DECISION + "'.");
   }
 
-  /** @return the content of the first text element inside, e.g. of an inputEntry */
   private static String text(Element element) {
     var texts = element.getElementsByTagNameNS("*", "text");
     return texts.getLength() == 0 ? "" : texts.item(0).getTextContent().trim();
@@ -155,7 +142,6 @@ public final class DiscountTable {
     return children;
   }
 
-  /** @return the content of a version on the runtime, or of the project file if there is no version to read */
   private static String dmn(Integer version) {
     if (version != null) {
       try {

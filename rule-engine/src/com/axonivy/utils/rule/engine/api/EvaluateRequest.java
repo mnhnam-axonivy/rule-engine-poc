@@ -5,12 +5,6 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-/**
- * Evaluates one decision, or all decisions, of a model with the given inputs.
- *
- * @param decision name of the decision to evaluate. Not set = all decisions of the model
- * @param input input values by the name of the DMN input
- */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record EvaluateRequest(
     String decision,

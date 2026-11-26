@@ -25,7 +25,6 @@ button, input { font: inherit; color: inherit; }
 code { padding: 0 4px; border-radius: 3px; background: #eef1f4; font: 12.5px Consolas, "Cascadia Mono", monospace; }
 [hidden] { display: none !important; }
 
-/* ── header ── */
 .bar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   min-height: 48px; padding: 6px 16px;
@@ -38,7 +37,6 @@ code { padding: 0 4px; border-radius: 3px; background: #eef1f4; font: 12.5px Con
 .author input { width: 210px; padding: 4px 8px; border: 1px solid transparent; border-radius: 4px; background: rgba(255, 255, 255, 0.95); color: var(--text); }
 .author input.missing { border-color: #ffb4a8; box-shadow: 0 0 0 3px rgba(255, 180, 168, 0.6); }
 
-/* ── layout ── */
 .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); flex: 1; min-height: 0; }
 .side { overflow: auto; padding: 14px 14px 24px; border-right: 1px solid var(--line); background: var(--surface); }
 .side section + section { margin-top: 22px; }
@@ -89,7 +87,6 @@ button.link { padding: 0 2px; border: 0; background: none; color: var(--primary)
 button.link:hover:not(:disabled) { text-decoration: underline; }
 .file-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* ── editor area ── */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .toolbar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
@@ -121,7 +118,6 @@ button.link:hover:not(:disabled) { text-decoration: underline; }
 .empty { position: absolute; inset: 0; max-width: 620px; margin: 0 auto; padding: 60px 24px; color: var(--muted); }
 .empty h1 { margin: 0 0 12px; color: var(--text); font-size: 22px; }
 
-/* ── dialogs ── */
 dialog { width: min(440px, calc(100% - 32px)); padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25); }
 dialog::backdrop { background: rgba(15, 23, 32, 0.35); }
 dialog h2 { margin: 0 0 8px; font-size: 17px; }

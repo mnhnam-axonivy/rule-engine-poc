@@ -7,25 +7,15 @@ import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableExcep
 
 import ch.ivyteam.ivy.bpm.error.BpmError;
 
-/**
- * The BPMN errors of the Business Rule Task. Catch them with an Error Boundary Event or an Error Start Event.
- */
 public final class RuleErrors {
 
-  /** The decision runtime cannot be reached. */
   public static final String UNREACHABLE = "rule:engine:unreachable";
-  /** The decision runtime did not answer within the timeout. */
   public static final String TIMEOUT = "rule:engine:timeout";
-  /** The runtime rejected the call: unknown model or decision, invalid DMN file or a failed evaluation. */
   public static final String DMN = "rule:engine:dmn";
-  /** The element is not configured completely or process data cannot be mapped to the decision. */
   public static final String MAPPING = "rule:engine:mapping";
 
-  /** Attribute of the BPMN error: error code of the runtime, e.g. MODEL_NOT_FOUND or EVALUATION_FAILED. */
   public static final String ATTRIBUTE_CODE = "ruleEngineCode";
-  /** Attribute of the BPMN error: findings of the DMN engine as text. */
   public static final String ATTRIBUTE_DETAILS = "ruleEngineDetails";
-  /** Attribute of the BPMN error: name of the model. */
   public static final String ATTRIBUTE_MODEL = "ruleEngineModel";
 
   private RuleErrors() {}

@@ -216,7 +216,6 @@ export const STRINGS = {
     'source.readOnly': 'shown for reading',
 
     // the tab "Architecture": every block has a title, a role, a sentence and, when selected, details ("|" separates the lines)
-    // the tab "Portal": Admin Settings › Rule Management of the Axon Ivy Portal, as the real tab shows it
     'portal.tabName': 'Portal',
     'portal.crumb': 'Admin settings',
     'portal.title': 'Admin settings',
@@ -368,16 +367,10 @@ export const STRINGS = {
   }
 };
 
-/** The guide is in English; any other language falls back to it. */
 export function normalizeLanguage() {
   return 'en';
 }
 
-/**
- * @param {string} lang
- * @param {{en?:Object}} [lessonStrings]  looked up before the runtime's own
- * @returns {(key: string, params?: Object) => string}
- */
 export function createTranslator(lang, lessonStrings = {}) {
   const language = normalizeLanguage(lang);
   const sources = [lessonStrings[language], STRINGS[language]].filter(Boolean);

@@ -1,8 +1,3 @@
-/**
- * A decision table, drawn the way the DMN editor shows it: the hit policy in the corner, a
- * column per input and output, one row per rule. Conditions and results can be edited, rules
- * added and removed. The rule that decided the last evaluation is marked.
- */
 import { h } from '../util.js';
 import { icon } from './icons.js';
 import { textBox } from './fields.js';
@@ -10,23 +5,10 @@ import { validateCondition, validateResult, validateExpression } from '../model/
 
 const HIT_POLICY = { UNIQUE: 'U', FIRST: 'F', ANY: 'A', PRIORITY: 'P', COLLECT: 'C', 'RULE ORDER': 'R', 'OUTPUT ORDER': 'O' };
 
-/** A rule that matches everything: every condition is "-". */
 const isCatchAll = rule => rule.inputs.every(condition => condition.trim() === '-' || condition.trim() === '');
 
-/**
- * @param {Object} o
- * @param {Object} o.decision     a decision of a DMN model (see model/dmn.js)
- * @param {number[]} [o.hits]     indexes of the rules that hit in the last evaluation
- * @param {boolean} [o.editable]
- * @param {(kind: 'cell' | 'note' | 'rules') => void} [o.onChange]  'rules': a rule was added or removed;
- *   'note': the description of a rule changed, which decides nothing
- * @param {(key: string, params?: Object) => string} o.t
- * @param {Object} [o.controls]   filled with the cell inputs by key, e.g. "discount.r1.o1"
- * @returns {HTMLElement}
- */
 export function decisionTable({ decision, hits = [], editable = true, onChange = () => {}, t, controls = {} }) {
   const root = h('div.dmn-decision' + (decision.function ? '.dmn-function' : ''), { 'data-decision': decision.name });
-  // a function (business knowledge model) shows the parameters a decision calls it with
   const params = decision.function ? '(' + decision.params.map(param => param.name).join(', ') + ')' : '';
   const head = h('div.dmn-head', null,
     h('span.dmn-kind', null, icon('list', 13), t(decision.function ? 'dmn.function' : 'dmn.decision')),
@@ -36,7 +18,6 @@ export function decisionTable({ decision, hits = [], editable = true, onChange =
   root.append(head);
 
   if (decision.kind === 'literal') {
-    // a FEEL literal expression: a formula that can be read and changed
     const check = input => {
       const error = validateExpression(input.value);
       input.classList.toggle('invalid', Boolean(error));
@@ -102,7 +83,6 @@ export function decisionTable({ decision, hits = [], editable = true, onChange =
     return h('td.' + (kind === 'i' ? 'in' : 'out'), { 'data-tour': key }, input);
   };
 
-  // the description of a rule: says why the rule is there, does not decide anything
   const noteCell = (rule, rowIndex) => {
     const key = 'r' + (rowIndex + 1) + '.n';
     const input = textBox({ value: rule.annotation || '', readOnly: !editable, onInput: value => { rule.annotation = value; onChange('note'); } });

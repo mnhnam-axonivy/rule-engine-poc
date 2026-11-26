@@ -7,16 +7,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Generates a ready-to-edit DMN model from selected fields, so the rule author only fills in rules.
- * <ul>
- * <li>one input node per input field, named exactly like the field</li>
- * <li>one decision with a decision table: a column per input, a column per output and one placeholder rule</li>
- * <li>data types for enums (allowed values), nested data classes (structures) and lists (collections)</li>
- * <li>a diagram layout, so the model opens cleanly in the DMN editor</li>
- * </ul>
- * The output is a DMN 1.5 file. Uses only the JDK.
- */
 public class DmnGenerator {
 
   public static final String DMN_NAMESPACE = "https://www.omg.org/spec/DMN/20230324/MODEL/";
@@ -26,7 +16,6 @@ public class DmnGenerator {
   private static final String DI_NAMESPACE = "http://www.omg.org/spec/DMN/20180521/DI/";
   private static final String MODEL_NAMESPACE_PREFIX = "https://axonivy.com/dmn/";
 
-  /** How deep a nested data class is unfolded into columns of the decision table. */
   private static final int MAX_COLUMN_DEPTH = 3;
 
   private static final int NODE_WIDTH = 160;
@@ -75,9 +64,6 @@ public class DmnGenerator {
     return xml.toString();
   }
 
-  /**
-   * @return the type of the decision result: the type of the single output, or a structure with all outputs
-   */
   private static String decisionType(DmnSpec spec, String decision, TypeDefinitions types) {
     if (spec.outputs().size() == 1) {
       return types.ref(spec.outputs().get(0).type());
@@ -143,10 +129,6 @@ public class DmnGenerator {
     xml.close("decision");
   }
 
-  /**
-   * The columns of an input field: simple values and lists are one column,
-   * a nested data class is unfolded into one column per simple field.
-   */
   private static List<Column> columns(DmnField input, TypeDefinitions types) {
     var columns = new ArrayList<Column>();
     if (input.type() instanceof DmnType.Structure structure) {
@@ -174,9 +156,6 @@ public class DmnGenerator {
     }
   }
 
-  /**
-   * @return the result of the placeholder rule: a neutral value that is valid for the type
-   */
   private static String placeholder(DmnType type) {
     if (type instanceof DmnType.Enumeration enumeration && !enumeration.values().isEmpty()) {
       return quote(enumeration.values().get(0));
@@ -228,9 +207,7 @@ public class DmnGenerator {
     xml.close("dmndi:DMNShape");
   }
 
-  /**
-   * @return a stable XML id, so generating the same model twice gives the same file
-   */
+  /** A stable XML id, so generating the same model twice gives the same file. */
   private static String id(String kind, String name) {
     var id = new StringBuilder("_");
     if (!kind.isEmpty()) {
@@ -250,9 +227,6 @@ public class DmnGenerator {
     return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
   }
 
-  /**
-   * The item definitions of the model: enums, structures and lists that inputs and outputs refer to.
-   */
   private static final class TypeDefinitions {
 
     private final Map<String, DmnType> definitions = new LinkedHashMap<>();
@@ -276,7 +250,6 @@ public class DmnGenerator {
     private String listName(DmnType.Collection collection) {
       String element = ref(collection.element());
       if (collection.element() instanceof DmnType.Simple) {
-        // "date and time" becomes tDateAndTimeList
         element = "t" + java.util.Arrays.stream(element.split(" "))
             .map(DmnGenerator::capitalize)
             .collect(Collectors.joining());
@@ -337,9 +310,6 @@ public class DmnGenerator {
     }
   }
 
-  /**
-   * A minimal XML writer with indentation and escaping.
-   */
   private static final class Xml {
 
     private final StringBuilder out = new StringBuilder();

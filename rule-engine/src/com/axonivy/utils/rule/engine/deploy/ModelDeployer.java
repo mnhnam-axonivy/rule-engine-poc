@@ -17,22 +17,15 @@ import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
 
 /**
- * Registers the .dmn files of Ivy projects as versions on the decision runtime.
- * <p>The runtime stores a content only once, so registering the same file again is harmless. Whether a new
- * version goes live is decided by the runtime: a project version replaces a project version, but never a
- * version that was activated from the Portal.</p>
+ * The runtime stores a content only once, so registering the same file again is harmless. Whether a new version goes
+ * live is decided by the runtime.
  */
 public final class ModelDeployer {
 
-  /** What this engine has already registered: runtime URL and model name to the fingerprint of the content. */
   private static final Map<String, String> REGISTERED = new ConcurrentHashMap<>();
 
   private ModelDeployer() {}
 
-  /**
-   * Registers the file, unless this engine already registered exactly this content.
-   * Called before a decision is evaluated, so a changed file is live with the next evaluation.
-   */
   public static void ensureRegistered(RuleEngineClient client, String runtimeModel, LoadedDmn dmn) {
     String key = key(client, runtimeModel);
     if (dmn.hash().equals(REGISTERED.get(key))) {
@@ -62,16 +55,11 @@ public final class ModelDeployer {
     return version;
   }
 
-  /** The runtime does not know the model any more, e.g. its data was deleted: register it again next time. */
   public static void forget(RuleEngineClient client, String runtimeModel) {
     REGISTERED.remove(key(client, runtimeModel));
     ActiveVersionInputs.forget(client, runtimeModel);
   }
 
-  /**
-   * Registers all .dmn files of a project and of the projects it requires.
-   * @return the version of each file. A file that the runtime rejects is logged and skipped.
-   */
   public static List<ModelVersion> deployAll(Project project, RuleEngineClient client, RuleEngineConfig config) {
     var versions = new ArrayList<ModelVersion>();
     for (var file : ProjectDmnFiles.list(project)) {
@@ -84,7 +72,6 @@ public final class ModelDeployer {
     return versions;
   }
 
-  /** Forgets everything that was registered, so every file is registered again with its next use. */
   public static void reset() {
     REGISTERED.clear();
     ActiveVersionInputs.reset();

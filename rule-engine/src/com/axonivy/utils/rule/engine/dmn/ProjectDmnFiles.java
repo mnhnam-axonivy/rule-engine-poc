@@ -19,34 +19,20 @@ import java.util.stream.Stream;
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
 
-/**
- * The .dmn files of an Ivy project. They are the source of the versions that a project registers on the runtime.
- */
 public final class ProjectDmnFiles {
 
-  /** Folder of a project where new .dmn files are generated. */
   public static final String DMN_FOLDER = "dmn";
   public static final String DMN_EXTENSION = ".dmn";
   private static final int MAX_DEPTH = 8;
   private static final long LISTING_TTL_MILLIS = 3000;
 
-  /**
-   * @param model name of the model: the file name without extension
-   * @param path location of the file
-   * @param project name of the project that owns the file
-   */
   public record DmnFile(String model, Path path, String project, String projectCoordinates) {
 
-    /** @return path of the file inside of its project, e.g. <code>dmn/discount.dmn</code> */
     public String relativePath(Path projectDirectory) {
       return projectDirectory.relativize(path).toString().replace('\\', '/');
     }
   }
 
-  /**
-   * @param hash fingerprint of the content. Line endings are ignored.
-   * @param info decisions and inputs of the file, null if the file cannot be parsed
-   */
   public record LoadedDmn(DmnFile file, String content, String hash, DmnModelInfo info, String parseError) {}
 
   private record Listing(long loadedAt, List<DmnFile> files) {}
@@ -55,17 +41,12 @@ public final class ProjectDmnFiles {
 
   private static final Map<Long, Listing> LISTINGS = new ConcurrentHashMap<>();
   private static final Map<Path, CachedContent> CONTENTS = new ConcurrentHashMap<>();
-  /** Where an .iar keeps the files of the project. */
   private static final String PACKED_ROOT = "/META-INF/ivy";
-  /** The .iar files of deployed projects, opened as zip file systems. */
   private static final Map<Path, FileSystem> PACKED = new ConcurrentHashMap<>();
 
   private ProjectDmnFiles() {}
 
-  /**
-   * @return all .dmn files of the project and of the projects it requires. A model of the project itself hides
-   *         an equally named model of a required project.
-   */
+  /** A model of the project itself hides an equally named model of a required project. */
   public static List<DmnFile> list(Project project) {
     if (project == null) {
       return List.of();
@@ -88,12 +69,10 @@ public final class ProjectDmnFiles {
     return list(project).stream().filter(file -> file.model().equals(model)).findFirst();
   }
 
-  /** Forgets cached listings, e.g. after a file was generated. */
   public static void refresh() {
     LISTINGS.clear();
   }
 
-  /** @return the files of one project, without the projects it requires */
   public static List<DmnFile> filesOf(Project project) {
     Path root = root(project.directory());
     if (root == null) {
@@ -113,9 +92,6 @@ public final class ProjectDmnFiles {
     }
   }
 
-  /**
-   * Reads and parses a file. Unchanged files are served from memory.
-   */
   public static LoadedDmn load(DmnFile file) {
     try {
       long lastModified = Files.getLastModifiedTime(file.path()).toMillis();
@@ -141,11 +117,8 @@ public final class ProjectDmnFiles {
   }
 
   /**
-   * Where the files of a project are. In the Designer that is the folder of the project. An engine keeps a deployed
-   * project packed: {@link Project#directory()} is then its .iar file, a zip with the files of the project under
-   * META-INF/ivy. Paths into it can be read like any other; they cannot be written.
-   *
-   * @return the root of the files, or null if there is none
+   * An engine keeps a deployed project packed: {@link Project#directory()} is then its .iar file, a zip with the files
+   * of the project under META-INF/ivy. Paths into it can be read like any other; they cannot be written.
    */
   public static Path root(Path directory) {
     if (directory == null) {

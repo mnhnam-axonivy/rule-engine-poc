@@ -1,31 +1,3 @@
-/**
- * FEEL, the expression language of DMN, as far as the simulation goes.
- *
- * Conditions of a rule (unary tests):
- *   -            any value
- *   "Gold"       equal to a text, a number, true/false or null
- *   >= 1000      comparison with <, <=, >, >=, =, !=
- *   [500..1000)  a range; [ ] include the end, ( ) exclude it; also of dates: [date("2026-11-01")..date("2027-01-31")]
- *   "A", "B"     one of several conditions
- *   not("A")     none of the conditions inside
- *
- * Expressions (a literal expression, a column of a table, a function of the model):
- *   literals      15, 12.5, "text", true, false, null, [1, 2], { a: 1, b: a + 1 }
- *   arithmetic    + - * /, comparisons = != < <= > >=, and, or
- *   if c then a else b, for x in list return expr
- *   paths         line.net; on a list it gives the values of every element: pricedLines.net
- *   lists         list[1] (from 1, -1 from the end), list[net > 0] (a filter)
- *   functions     sum min max count mean concatenate append flatten distinct values, list contains,
- *                 decimal, round half up, round half down, round up, round down, floor ceiling abs modulo,
- *                 date, string, number, upper case, lower case, string length, contains, starts with,
- *                 ends with, substring, not; and the business knowledge models of the model
- *
- * Numbers are numbers of JavaScript; each arithmetic step is rounded to 15 significant digits, so that money
- * amounts come out as DMN computes them with decimals. Anything outside this subset raises a FeelError of kind
- * "unsupported" with a message the UI shows as it is, so a learner is told what the simulation cannot do instead
- * of getting a wrong result.
- */
-
 export class FeelError extends Error {
   constructor(message, kind = 'syntax') {
     super(message);
@@ -34,7 +6,6 @@ export class FeelError extends Error {
   }
 }
 
-/** A FEEL date: compared and printed as its ISO text. */
 export class FeelDate {
   constructor(iso) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) throw new FeelError('"' + iso + '" is not a date like "2026-11-19"');
@@ -52,7 +23,6 @@ const isContext = value => value !== null && typeof value === 'object' && !Array
 /** One arithmetic step: 0.1 + 0.2 is 0.3, as with decimals. */
 export const clean = n => (isNumber(n) && Number.isFinite(n) ? Number(n.toPrecision(15)) : n);
 
-/** Splits at the commas that are not inside quotes or brackets. */
 export function splitList(text) {
   const parts = [];
   let depth = 0;
@@ -77,7 +47,6 @@ export function splitList(text) {
   return parts;
 }
 
-/** A literal value: a number, "text", true, false or null. */
 export function literal(source) {
   const text = String(source == null ? '' : source).trim();
   if (text === '') throw new FeelError('A value is missing');
@@ -92,7 +61,6 @@ export function literal(source) {
   throw new FeelError('"' + text + '" is not a value this simulation understands. Use a number, a "text" in quotes, true, false or null.', 'unsupported');
 }
 
-/** A value in a condition: a literal, or a constant expression such as date("2026-11-01"). */
 function operand(text) {
   try {
     return literal(text);
@@ -102,7 +70,6 @@ function operand(text) {
   }
 }
 
-/** The order of two values of the same kind, or null if they cannot be ordered. */
 function order(a, b) {
   if (a === null || a === undefined || b === null || b === undefined) return null;
   if (isNumber(a) && isNumber(b)) return a < b ? -1 : a > b ? 1 : 0;
@@ -111,7 +78,6 @@ function order(a, b) {
   return null;
 }
 
-/** FEEL equality: values of the same kind, lists and contexts entry by entry. */
 export function same(a, b) {
   if (a === undefined) a = null;
   if (b === undefined) b = null;
@@ -159,17 +125,12 @@ function matchesOne(test, value) {
   return compare('=', value === undefined ? null : value, operand(test));
 }
 
-/**
- * Does the value fulfil the condition of a rule (a FEEL unary test)?
- * @throws {FeelError} when the condition is not understood
- */
 export function matches(condition, value) {
   const text = String(condition == null ? '' : condition).trim();
   if (text === '-' || text === '') return true;
   return splitList(text).some(part => matchesOne(part, value));
 }
 
-/** Returns null when the condition is understood, otherwise the FeelError saying why not. */
 export function validateCondition(condition) {
   try {
     matches(condition, null);
@@ -180,7 +141,6 @@ export function validateCondition(condition) {
   }
 }
 
-/** Returns null when the result is a literal value, otherwise the FeelError saying why not. */
 export function validateResult(text) {
   try {
     literal(text);
@@ -191,7 +151,6 @@ export function validateResult(text) {
   }
 }
 
-/** Returns null when the text is an expression of the subset, otherwise the FeelError saying why not. */
 export function validateExpression(text) {
   try {
     parseExpression(text);
@@ -201,8 +160,6 @@ export function validateExpression(text) {
     throw e;
   }
 }
-
-// ── Expressions: tokens ──────────────────────────────────────────────────────
 
 const KEYWORDS = new Set(['if', 'then', 'else', 'for', 'in', 'return', 'and', 'or', 'true', 'false', 'null', 'some', 'every', 'satisfies',
   'between', 'instance', 'of', 'function', 'external']);
@@ -251,8 +208,6 @@ function tokenize(source) {
   return tokens;
 }
 
-// ── Expressions: parser ──────────────────────────────────────────────────────
-
 const BUILT_IN = {};
 
 /** The longest run of name tokens that is the name of a built-in function, e.g. round half up. */
@@ -266,7 +221,6 @@ function multiWordName(tokens, at) {
   return { name: tokens[at].v, next: at + 1 };
 }
 
-/** @returns {Object} the syntax tree of a FEEL expression @throws {FeelError} */
 export function parseExpression(source) {
   const tokens = tokenize(source);
   let pos = 0;
@@ -437,8 +391,6 @@ export function parseExpression(source) {
   return tree;
 }
 
-// ── Expressions: evaluation ──────────────────────────────────────────────────
-
 const AST_CACHE = new Map();
 const parsed = source => {
   if (typeof source !== 'string') return source;
@@ -460,12 +412,6 @@ const has = (scope, name) => {
 };
 const child = (scope, entries) => Object.assign(Object.create(scope || null), entries);
 
-/**
- * Evaluates a FEEL expression.
- * @param {string|Object} source  the text, or a tree of parseExpression
- * @param {Object} scope          values by name: inputs, results of other decisions, functions of the model
- * @throws {FeelError}
- */
 export function evaluateExpression(source, scope) {
   return evaluate(parsed(source), scope || {});
 }
@@ -589,7 +535,6 @@ function arithmetic(op, a, b) {
   }
 }
 
-/** Calls a built-in function, a business knowledge model of the model, or a function value. */
 export function invoke(fn, args, name) {
   if (fn && fn.__feelFunction) {
     if (fn.builtIn) return fn.builtIn(args);
@@ -599,8 +544,6 @@ export function invoke(fn, args, name) {
   throw new FeelError("'" + name + "' is not a function", 'missing');
 }
 
-// ── Built-in functions ───────────────────────────────────────────────────────
-
 const listOf = args => (args.length === 1 && Array.isArray(args[0]) ? args[0] : args);
 const numbers = (args, name) => {
   const list = listOf(args);
@@ -609,7 +552,6 @@ const numbers = (args, name) => {
 };
 const anyNull = args => args.some(arg => arg === null || arg === undefined);
 
-/** Rounds to a scale: 'half up' and 'half down' away from / towards zero at .5, 'up' away from zero, 'down' towards zero, 'half even' to the even neighbour. */
 export function roundTo(n, scale, mode) {
   if (n === null || scale === null) return null;
   const factor = 10 ** scale;
@@ -671,11 +613,8 @@ Object.assign(BUILT_IN, {
   not: args => (args[0] === true ? false : args[0] === false ? true : null)
 });
 
-// ── Decision tables ──────────────────────────────────────────────────────────
-
 const SINGLE = ['UNIQUE', 'FIRST', 'ANY', 'PRIORITY'];
 
-/** The value of an output cell: a literal, or an expression over the inputs. */
 function outputValue(text, scope) {
   try {
     return literal(text);
@@ -685,14 +624,6 @@ function outputValue(text, scope) {
   }
 }
 
-/**
- * Evaluates a decision table.
- * @param {Object} table    { hitPolicy, aggregation, inputs, outputs, rules } (see dmn.js)
- * @param {Object} context  values by name: the inputs, the results of earlier decisions, the functions of the model
- * @returns {{ result: any, matched: number[] }}  `matched`: indexes of the rules that hit;
- *   for a single-hit policy the first one decides
- * @throws {FeelError}
- */
 export function evaluateTable(table, context) {
   const values = table.inputs.map(input => {
     try {

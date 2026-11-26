@@ -1,16 +1,3 @@
-/**
- * Animation of a process run, independent of the renderer.
- *
- * Effects owns a list of drawable `items` (token, rings, cards, links) and a tiny tween
- * engine that moves them. A stage draws whatever is in `items` each frame and calls
- * `step(dt)`; the choreography methods return promises so the app can await each beat.
- *
- * Item shapes (x/y in process pixels, z = height above the canvas plane):
- *   { kind: 'token', x, y, z, r, o }
- *   { kind: 'ring',  x, y, z, w, h, radius, o, tone }
- *   { kind: 'card',  x, y, z, s, o, rev, data }      data → draw.js paintCard
- *   { kind: 'link',  a: {x,y,z}, b: {x,y,z}, o, tone }
- */
 import { pathLength, pointAt } from './layout.js';
 
 const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -19,8 +6,8 @@ const linear = t => t;
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-const NODE_HEIGHT = 230;   // how far the model card floats above the agent (tilted view)
-const NODE_OFFSET = 112;   // how far above the agent it sits in the flat view
+const NODE_HEIGHT = 230;
+const NODE_OFFSET = 112;
 const VIEW_KEYS = ['x', 'y', 'zoom', 'tilt', 'lift'];
 
 function bezier(a, c, b, t) {
@@ -40,25 +27,15 @@ function textUnits(text) {
 }
 
 export class Effects {
-  /**
-   * @param {Object} host
-   * @param {() => void} host.invalidate            request a redraw
-   * @param {() => Object} host.getView             { x, y, zoom, tilt, lift }
-   * @param {(view: Object) => void} host.setView
-   * @param {() => {w:number,h:number}} host.size   viewport in CSS pixels
-   * @param {boolean} host.supportsTilt
-   */
   constructor(host) {
     this.host = host;
     this.items = [];
     this.tweens = new Set();
     this.speed = 1;
     this.reducedMotion = false;
-    this.paused = false; // the walkthrough's Pause freezes every animation
+    this.paused = false;
     this.remote = null;
   }
-
-  // ── tween engine ───────────────────────────────────────────────────────────
 
   tween(duration, update, ease = easeInOut, group = 'fx') {
     const ms = this.reducedMotion ? 0 : duration / this.speed;
@@ -73,10 +50,8 @@ export class Effects {
     });
   }
 
-  /** Waits without animating anything (still scaled by speed, skipped for reduced motion). */
   wait(duration) { return this.tween(duration, () => {}, linear); }
 
-  /** Advances all tweens. Returns true while any is still running. */
   step(dt) {
     if (this.paused) return false;
     this.tweens.forEach(tw => {
@@ -91,7 +66,6 @@ export class Effects {
     return this.tweens.size > 0;
   }
 
-  /** Ends every animation at once and removes all effect items (reset / dispose). */
   cancelAll() {
     const pending = [...this.tweens];
     this.tweens.clear();
@@ -107,9 +81,6 @@ export class Effects {
     if (i >= 0) this.items.splice(i, 1);
   }
 
-  // ── view ───────────────────────────────────────────────────────────────────
-
-  /** Animates the camera. A later call (or the user dragging) replaces a running one. */
   moveView(target, duration = 500) {
     this.#stopViewTweens();
     const from = this.host.getView();
@@ -135,9 +106,6 @@ export class Effects {
     if (this.remote) this.remote.userMoved = true;
   }
 
-  // ── token ──────────────────────────────────────────────────────────────────
-
-  /** Moves the token along a polyline of process coordinates. */
   async travel(points, { duration = 460 } = {}) {
     const length = pathLength(points);
     const at = t => pointAt(points, t);
@@ -154,7 +122,6 @@ export class Effects {
     trail.forEach(tr => this.#remove(tr));
   }
 
-  /** Ripple around an element (arrival of the token, arrival of the answer). */
   pulse(el, tone = 'assistant') {
     const round = el.shape === 'event';
     const ring = this.#add({ kind: 'ring', x: el.x, y: el.y, z: 0, w: el.w, h: el.h, radius: round ? el.w / 2 : 5, o: 0, tone });
@@ -167,9 +134,6 @@ export class Effects {
     }, easeOut).then(() => this.#remove(ring));
   }
 
-  // ── the agent's round trip to the model ────────────────────────────────────
-
-  /** Shows the model above the agent element; tilts the canvas when the stage is 3D. */
   async remoteOpen(el, { title, subtitle }) {
     const tilt = this.host.supportsTilt && !this.reducedMotion;
     const node = tilt ? { x: el.x, y: el.y, z: NODE_HEIGHT } : { x: el.x, y: el.y - NODE_OFFSET, z: 0 };
@@ -209,7 +173,6 @@ export class Effects {
     }).then(() => this.#remove(item));
   }
 
-  /** Sends message cards from the agent up to the model. packets: [{ tone, tag, text }] */
   async remoteSend(packets) {
     const a = this.remote;
     if (!a) return;
@@ -220,7 +183,6 @@ export class Effects {
     })));
   }
 
-  /** The model "thinks". With `failing`, the card turns red at the end. */
   async remoteThink(ms, { failing = false } = {}) {
     const a = this.remote;
     if (!a) return;
@@ -246,7 +208,6 @@ export class Effects {
     }
   }
 
-  /** Brings the answer back down to the agent. */
   async remoteReceive(packet) {
     const a = this.remote;
     if (!a) return;
@@ -254,7 +215,6 @@ export class Effects {
     if (this.remote === a) this.pulse(a.el, packet.tone);
   }
 
-  /** A short-lived chip over an element, e.g. "→ in.summary". Resolves once readable. */
   chip(el, text, tone = 'assistant') {
     const width = clamp(textUnits(text) * 6 + 22, 64, 250);
     const y0 = el.y - el.h / 2 - 20;
@@ -269,7 +229,6 @@ export class Effects {
     return visible;
   }
 
-  /** Removes the model card and returns the camera to where it was. */
   async remoteClose() {
     const a = this.remote;
     if (!a) return;

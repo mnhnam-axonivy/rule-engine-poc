@@ -1,7 +1,3 @@
-/**
- * Starting points and a chapter that two lessons on the Portal share: the page Edit rules in the Portal (guide-07)
- * and the questions about rules that change (guide-11-3).
- */
 import { ELEMENTS, MODEL, DECISION, discountText } from './project.js';
 import { WHAT_CHANGED, withKeyAccount } from './portal-rules.js';
 
@@ -10,7 +6,6 @@ const DMN = 'dmn:' + MODEL;
 /** The discount of rule 6 of the table in the project file: "Silver customer". */
 export const SILVER_RULE = DMN + ':' + DECISION + '.r6.o1';
 
-/** The first run of the process: the file of the project is version 1 on the runtime. */
 export function seedProjectVersion(app) {
   const file = app.dmnFiles.find(candidate => candidate.id === MODEL);
   app.runtime.register(MODEL, file.current, { source: 'PROJECT', author: 'rule-engine-demo' });
@@ -19,7 +14,6 @@ export function seedProjectVersion(app) {
   return file;
 }
 
-/** What the rule owner leaves behind in the Portal: version 2, with the key account rule, is active. */
 export function seedPortalVersion(app) {
   const file = seedProjectVersion(app);
   const { entry } = app.runtime.register(MODEL, withKeyAccount(file.current), { source: 'PORTAL', author: 'admin', activate: true });
@@ -27,7 +21,6 @@ export function seedPortalVersion(app) {
   app.refreshRuntimeViews();
 }
 
-/** A developer raises the discount of Silver customers in the file of the project, from 2 to 3 percent. */
 export async function raiseSilver(d, note) {
   await d.tab(DMN);
   d.focus(DMN + '@' + DECISION + '/r6.o1');
@@ -37,10 +30,6 @@ export async function raiseSilver(d, note) {
   await d.tab('process');
 }
 
-/**
- * Who has the last word: version 2 of the Portal is active, a developer changes the file of the project. The file
- * is registered as a draft, and the rule owner's version still decides. Its notes are LAST_WORD_STRINGS.
- */
 export async function lastWord(d) {
   seedPortalVersion(d.app);
   await d.panel('runtime');
@@ -58,7 +47,6 @@ export async function lastWord(d) {
   await d.panel(null);
 }
 
-/** The notes of lastWord. */
 export const LAST_WORD_STRINGS = {
   'tour.portalActive.title': 'Active: the version of the Portal',
   'tour.portalActive.text': 'Version 2 came from the Portal and is active: it has the key account rule. Version 1 is the file of the project.',

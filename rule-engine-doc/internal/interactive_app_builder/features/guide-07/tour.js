@@ -1,8 +1,3 @@
-/**
- * Guide 07 — the walkthrough. Six chapters, each starting from the project as the tutorial ships it;
- * the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do, and
- * runtime/ui/portal.js for the parts of the Portal tab.
- */
 import { ELEMENTS, MODEL, inputsText, discountText, invoiceText } from '../shared/project.js';
 import { TABLE, NEW_INPUT, NEW_RULE, WHAT_CHANGED } from '../shared/portal-rules.js';
 import { seedProjectVersion, seedPortalVersion, lastWord } from '../shared/portal-chapters.js';
@@ -12,9 +7,8 @@ const DMN = 'dmn:' + MODEL;
 /** The rule the rule owner adds: FIRST needs it at the top, above "Silver customer". */
 const RULE = 1;
 
-const key = column => TABLE + '.r' + RULE + '.' + column; // column: 'i3', 'o1' or 'n'
+const key = column => TABLE + '.r' + RULE + '.' + column;
 
-/** 1 — the rules of the project, which do not read the customer of the invoice. */
 async function before(d) {
   await d.run({ fast: true, on: { 'rule:mapped': ({ call }) => d.note('noKeyAccount', { target: 'el:' + RULE_TASK, quote: discountText(call) }) } });
   await d.tab(DMN);
@@ -25,7 +19,6 @@ async function before(d) {
   await d.panel(null);
 }
 
-/** 2 — the tab in the Portal, and how the Portal finds the rule engine. */
 async function portal(d) {
   seedProjectVersion(d.app);
   await d.tab('arch');
@@ -39,7 +32,6 @@ async function portal(d) {
   await d.note('editor', { target: 'portal@kie', extra: 400 });
 }
 
-/** 3 — one more input and one more rule, checked, saved and activated. */
 async function edit(d) {
   seedProjectVersion(d.app);
   d.app.portal.open(MODEL);
@@ -62,7 +54,6 @@ async function edit(d) {
   await d.note('saved', { target: 'portal@title', extra: 400 });
 }
 
-/** 4 — the same invoice, the same process, a lower price. */
 async function after(d) {
   seedPortalVersion(d.app);
   await d.tab('process');
@@ -79,7 +70,6 @@ async function after(d) {
   await d.tab('process');
 }
 
-/** 5 — every version is kept; one click back. */
 async function versions(d) {
   seedPortalVersion(d.app);
   await d.tab('portal');
@@ -99,7 +89,6 @@ export const tour = {
     { id: 'edit', play: edit },
     { id: 'after', play: after },
     { id: 'versions', play: versions },
-    // 6 — a changed file of the project does not take the rule owner's place
     { id: 'lastWord', play: lastWord }
   ]
 };

@@ -1,14 +1,3 @@
-/**
- * The process canvas, rendered with Three.js.
- *
- * The diagram itself is painted with the shared Canvas-2D painters into textures (one per
- * element, one for all connectors) so text stays as crisp as in the real Designer. Three.js
- * adds what a flat canvas cannot: a perspective camera that tilts the process plane while
- * the agent talks to the model, with message cards flying between the two levels, plus
- * shader-drawn grid, token glow and ripples.
- *
- * World space: x = process x, y = -process y, z = height above the process plane.
- */
 import {
   WebGLRenderer, Scene, PerspectiveCamera, Mesh, PlaneGeometry, ShaderMaterial, CanvasTexture,
   Vector2, Vector3, Raycaster, Plane, Color, ColorManagement, LinearSRGBColorSpace, NoColorSpace,
@@ -78,7 +67,6 @@ const GRID_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(mix(uBackground, uDot, dotMask), 1.0);
   }`;
 
-// Token: white-hot core with an additive coloured halo.
 const GLOW_FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
   uniform float opacity;
@@ -91,7 +79,6 @@ const GLOW_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(colour, core * 0.85) * opacity;
   }`;
 
-// Ripple: outline of a rounded rectangle (or circle) with a soft falloff.
 const RING_FRAGMENT = /* glsl */ `
   uniform vec2 uSize;
   uniform float uRadius;
@@ -111,7 +98,6 @@ const RING_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(uColor * a, a);
   }`;
 
-/** A quad textured from a 2D canvas. `rect` is the area it covers, in local process pixels. */
 class CanvasSprite {
   constructor(geometry, anisotropy, renderOrder) {
     this.canvas = document.createElement('canvas');
@@ -174,13 +160,6 @@ export class ThreeStage {
     }
   }
 
-  /**
-   * @param {HTMLElement} host   element the canvas is appended to; its size is the viewport
-   * @param {Object} scene
-   * @param {Object} scene.model
-   * @param {(id: string) => Object} scene.stateOf            element state for the painters
-   * @param {(connector: Object) => Object} scene.connectorState
-   */
   constructor(host, scene) {
     this.kind = 'webgl';
     this.supportsTilt = true;
@@ -225,8 +204,8 @@ export class ThreeStage {
 
     this.connectorSprite = new CanvasSprite(this.quad, this.anisotropy, 1);
     this.scene.add(this.connectorSprite.mesh);
-    this.sprites = new Map();   // element id → CanvasSprite
-    this.fx = new Map();        // effect item → { mesh, update, dispose }
+    this.sprites = new Map();
+    this.fx = new Map();
     this.dirty = new Set(['*']);
     this.textureScale = 0;
     this.viewDirty = true;
@@ -248,8 +227,6 @@ export class ThreeStage {
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     this.frame = this.frame.bind(this);
   }
-
-  // ── view ───────────────────────────────────────────────────────────────────
 
   resize() {
     const w = this.host.clientWidth;
@@ -305,7 +282,6 @@ export class ThreeStage {
     if (this.onViewChange) this.onViewChange();
   }
 
-  /** Centres the whole process in the viewport. */
   fit({ animate = false } = {}) {
     if (!this.width) return Promise.resolve();
     const b = modelBounds(this.data.model);
@@ -333,7 +309,6 @@ export class ThreeStage {
     this.setView({ x: this.view.x - dx / this.view.zoom, y: this.view.y - dy / this.view.zoom });
   }
 
-  /** Client pixel → process coordinates on the canvas plane. */
   clientToWorld(clientX, clientY) {
     if (this.viewDirty && this.width) this.applyCamera();
     const r = this.canvas.getBoundingClientRect();
@@ -343,7 +318,6 @@ export class ThreeStage {
     return hit ? { x: hit.x, y: -hit.y } : { x: this.view.x, y: this.view.y };
   }
 
-  /** Process coordinates (and optional height) → client pixel. */
   worldToClient(x, y, z = 0) {
     if (this.viewDirty && this.width) this.applyCamera();
     const r = this.canvas.getBoundingClientRect();
@@ -351,9 +325,6 @@ export class ThreeStage {
     return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
   }
 
-  // ── content ────────────────────────────────────────────────────────────────
-
-  /** Repaints 'all', the 'connectors', or one element (by id) on the next frame. */
   refresh(target = 'all') {
     if (target === 'all') this.dirty.add('*');
     else if (target === 'connectors') this.dirty.add('connectors');
@@ -433,8 +404,6 @@ export class ThreeStage {
     place(this.connectorSprite, 0, 0);
   }
 
-  // ── effects ────────────────────────────────────────────────────────────────
-
   createFx(item) {
     if (item.kind === 'token') {
       const material = new ShaderMaterial({
@@ -504,7 +473,6 @@ export class ThreeStage {
         dispose: () => sprite.dispose()
       };
     }
-    // link
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(6), 3));
     const material = new LineBasicMaterial({ color: new Color(toneColor(item.tone)), transparent: true, opacity: 0, depthTest: false, depthWrite: false });

@@ -32,9 +32,6 @@ import com.axonivy.utils.rule.engine.runtime.api.model.ModelInfo;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 
-/**
- * Turns DMN XML into an executable model at runtime. No code generation, no build, no restart.
- */
 @ApplicationScoped
 public class DmnCompiler {
 
@@ -47,10 +44,6 @@ public class DmnCompiler {
   @ConfigProperty(name = "rule.engine.type-check", defaultValue = "true")
   boolean typeCheck = true;
 
-  /**
-   * @return the executable model
-   * @throws InvalidModelException with readable messages if the content cannot be loaded
-   */
   public CompiledModel compile(String model, int version, String xml) {
     DMNRuntime runtime = buildRuntime(xml);
     if (runtime.getModels().isEmpty()) {
@@ -64,10 +57,6 @@ public class DmnCompiler {
         decisions(dmnModel), inputs(dmnModel), runtime, dmnModel);
   }
 
-  /**
-   * Checks the content against the DMN schema, the DMN model rules and the compiler.
-   * @return all findings, errors and warnings
-   */
   public List<Message> validate(String xml) {
     if (xml == null || xml.isBlank()) {
       return List.of(Message.error("The DMN content is empty."));
@@ -93,10 +82,6 @@ public class DmnCompiler {
     }
   }
 
-  /**
-   * Validates and compiles in one go.
-   * @throws InvalidModelException if the validator or the compiler reports an error
-   */
   public CompiledModel validateAndCompile(String model, int version, String xml) {
     var findings = validate(xml);
     if (findings.stream().anyMatch(Message::isError)) {
@@ -105,9 +90,6 @@ public class DmnCompiler {
     return compile(model, version, xml);
   }
 
-  /**
-   * @return why the content is not a DMN document, or null if it is one
-   */
   private static String checkIsDmnDocument(String xml) {
     try {
       var factory = DocumentBuilderFactory.newInstance();

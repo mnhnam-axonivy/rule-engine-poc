@@ -14,10 +14,6 @@ import ch.ivyteam.ivy.environment.IvyTest;
 import ch.ivyteam.ivy.workflow.IProcessStart;
 import ch.ivyteam.ivy.workflow.IWorkflowProcessModelVersion;
 
-/**
- * The tutorial: its process start, its pages in the CMS and the files of the page.
- * How the page looks on an engine is tested by {@link TutorialWebIT}.
- */
 @IvyTest
 class TestTutorial {
 

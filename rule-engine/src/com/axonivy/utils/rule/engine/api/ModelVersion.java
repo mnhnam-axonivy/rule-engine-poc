@@ -6,11 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-/**
- * One version of a model on the decision runtime.
- *
- * @param created only on registration: false if the same content was already stored
- */
 @JsonInclude(Include.NON_NULL)
 public record ModelVersion(
     String model,

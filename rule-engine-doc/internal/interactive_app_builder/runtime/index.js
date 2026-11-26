@@ -1,16 +1,3 @@
-/**
- * Entry point of the shared runtime (built to js/interactive-runtime.min.js).
- *
- * It exposes `window.reInteractive`:
- *   register(id, definition)          called by each js/feature-XX.js
- *   has(id)                           is an app available for this page?
- *   about(id)                         its title, intro text, duration and chapter titles
- *   mount(container, id, { lang, autoplay, chapter })   renders the app, playing from a chapter with
- *                                     autoplay; returns { host, app, setLanguage, dispose }
- *
- * Each app renders into a shadow root, so the hosting page and the simulation cannot
- * disturb each other's styles.
- */
 import css from './ui/styles.css';
 import { DesignerApp } from './app.js';
 
@@ -68,10 +55,6 @@ if (!window.reInteractive) {
     register(id, definition) { registry.set(id, definition); },
     has: id => registry.has(id),
     ids: () => [...registry.keys()],
-    /**
-     * What a walkthrough is about, from its own texts, for a list of walkthroughs:
-     * { id, title, text, duration, chapters: [titles] }, or null if there is no such walkthrough.
-     */
     about(id, lang = 'en') {
       const definition = registry.get(id);
       if (!definition) return null;
@@ -80,7 +63,6 @@ if (!window.reInteractive) {
       const chapters = ((definition.tour && definition.tour.chapters) || []).map(chapter => strings['tour.chapter.' + chapter.id] || chapter.id);
       return { id, title: strings['tour.intro.title'] || id, text: strings['tour.intro.text'] || '', duration: strings['tour.intro.duration'] || '', chapters };
     },
-    /** The simulations currently on the page (for debugging and tests). */
     instances: () => [...mounted],
     mount
   };

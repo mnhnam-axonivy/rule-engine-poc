@@ -1,8 +1,4 @@
-/**
- * Canvas-2D painters for everything on the process canvas. Both renderers use them: the
- * Three.js stage paints into textures, the fallback stage paints straight onto its canvas.
- * Every painter expects the context to be scaled so that one unit is one process pixel.
- */
+/** Every painter expects the context to be scaled so that one unit is one process pixel. */
 import { theme } from '../theme.js';
 import { RULE_TILE, subEventPath } from '../glyphs.js';
 import { layoutElement, labelFont } from './layout.js';
@@ -27,17 +23,6 @@ function circle(ctx, x, y, r) {
   ctx.arc(x, y, r, 0, Math.PI * 2);
 }
 
-/**
- * @typedef {Object} ElementState
- * @property {boolean} [selected]
- * @property {boolean} [hover]
- * @property {number}  [executed]   how often the element ran
- * @property {boolean} [active]     the element the token is on / reached last
- * @property {boolean} [error]
- * @property {boolean} [breakpoint]
- * @property {string[]} [ghostLabel] shown when the element has been removed ("slot")
- */
-
 function strokeColor(el, state) {
   if (state.error) return theme.error;
   if (state.selected) return theme.selection;
@@ -61,15 +46,12 @@ function drawLabel(ctx, layout, align, color) {
   });
 }
 
-// ── Icons ────────────────────────────────────────────────────────────────────
-
 function iconBox(ctx, icon, color) {
   roundRect(ctx, icon.x, icon.y, icon.size, icon.size, 4);
   ctx.fillStyle = color;
   ctx.fill();
 }
 
-/** Script step: a sheet of paper with braces. */
 function scriptIcon(ctx, icon) {
   iconBox(ctx, icon, theme.scriptIconBg);
   const cx = icon.x + icon.size / 2;
@@ -97,7 +79,6 @@ function scriptIcon(ctx, icon) {
   ctx.fillText('{ }', cx, cy + 2.5);
 }
 
-/** Business Rule Task: its icon of the Designer, a blue tile with a table, on a mint box. */
 function ruleIcon(ctx, icon) {
   iconBox(ctx, icon, RULE_TILE.background);
   const t = RULE_TILE;
@@ -116,7 +97,6 @@ function ruleIcon(ctx, icon) {
   ctx.restore();
 }
 
-/** The arrows of a callable start and end, as Path2D, made once. */
 const SUB_EVENT_ICONS = new Map();
 function subEventIcon(type) {
   const path = subEventPath(type);
@@ -134,8 +114,6 @@ function genericIcon(ctx, icon) {
   roundRect(ctx, cx - 7, cy - 6, 14, 12, 2);
   ctx.stroke();
 }
-
-// ── Elements ─────────────────────────────────────────────────────────────────
 
 function drawBadge(ctx, x, y, count) {
   const text = String(count);
@@ -259,7 +237,6 @@ function drawEvent(ctx, el, layout, state) {
     ctx.stroke();
   }
   if (el.kind === 'boundary') {
-    // an error boundary: a second ring and a flash
     ctx.lineWidth = 1;
     ctx.strokeStyle = color;
     circle(ctx, 0, 0, r - 3);
@@ -320,7 +297,6 @@ function drawNote(ctx, el, layout) {
   drawLabel(ctx, layout, 'left', theme.cardMuted);
 }
 
-/** Paints one element with its centre at the origin. */
 export function paintElement(ctx, el, state = {}) {
   const layout = layoutElement(el);
   if (el.removed) drawGhost(ctx, el, layout, state);
@@ -330,12 +306,6 @@ export function paintElement(ctx, el, state = {}) {
   else drawNote(ctx, el, layout);
 }
 
-// ── Connectors ───────────────────────────────────────────────────────────────
-
-/**
- * @param {{x:number,y:number}[]} points  @param {{executed?:boolean,dashed?:boolean}} state
- * @param {string} [label]  @param {number|null} [segment]  where the label sits, see paintConnectorLabel
- */
 export function paintConnector(ctx, points, state = {}, label = '', segment = null) {
   if (points.length < 2) return;
   ctx.save();
@@ -386,8 +356,6 @@ function paintConnectorLabel(ctx, points, label, segment, state) {
 
 const clamp01 = (value, max) => Math.max(0, Math.min(max, value));
 
-// ── Effect cards (the "call the model" round trip) ───────────────────────────
-
 const TONES = {
   system: theme.toneSystem,
   user: theme.toneUser,
@@ -407,10 +375,6 @@ function fit(ctx, text, maxWidth) {
   return t.trimEnd() + '…';
 }
 
-/**
- * A small card centred on the origin. `data`:
- *   { w, h, tone, title, subtitle?, tag?, busy? (0..1 spinner phase) }
- */
 export function paintCard(ctx, data) {
   const { w, h } = data;
   const color = toneColor(data.tone);
@@ -445,7 +409,6 @@ export function paintCard(ctx, data) {
     ctx.globalAlpha = 0.22;
     ctx.fill();
     ctx.globalAlpha = 1;
-    // spark: the model
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.5;
     ctx.lineCap = 'round';
@@ -475,7 +438,6 @@ export function paintCard(ctx, data) {
   }
 }
 
-/** Soft glowing dot (the token) for the 2D fallback; radius in process pixels. */
 export function paintGlow(ctx, radius, color, alpha = 1) {
   const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
   g.addColorStop(0, color);
@@ -496,7 +458,6 @@ export function paintGlow(ctx, radius, color, alpha = 1) {
   ctx.restore();
 }
 
-/** Dotted background grid for the 2D fallback. `view` = visible rectangle in process pixels. */
 export function paintGrid(ctx, view, zoom) {
   const step = theme.gridSpacing * (zoom < 0.6 ? 2 : 1);
   if (zoom * step < 5) return;

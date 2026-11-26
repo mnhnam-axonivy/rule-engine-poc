@@ -37,12 +37,6 @@ import ch.ivyteam.ivy.bpm.engine.client.BpmClient;
 import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import ch.ivyteam.ivy.environment.AppFixture;
 
-/**
- * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, REST,
- * DMN engine and the database of the runtime. The discount of the demo invoice is decided by dmn/invoice-discount.dmn
- * of rule-engine-demo.
- * <p>Build the image first: <code>docker compose build</code>, then <code>mvn verify -Pcontainer.test</code>.</p>
- */
 @IvyProcessTest
 class RuleEngineContainerTest {
 
@@ -108,10 +102,6 @@ class RuleEngineContainerTest {
     assertThat(discount(client, "Gold", 5)).isEqualTo("8 Gold, order of 10,000 or more 9568.00");
   }
 
-  /**
-   * In the Portal a rule owner adds an input the .dmn file of the project does not have. The same data, the same
-   * process, no deployment: it is decided otherwise.
-   */
   @Test
   @SuppressWarnings("unchecked")
   void inputAddedInThePortal_decidesTheSameDataOtherwise(BpmClient client) throws IOException {
@@ -134,11 +124,6 @@ class RuleEngineContainerTest {
     RuleEngine.rollback("discount", "admin");
   }
 
-  /**
-   * A rule owner adds the input customer and a key account rule at the top of the table. The invoice has a field
-   * customer, which the file of the project does not read. The same invoice, the same process, no deployment: it
-   * costs less.
-   */
   @Test
   @SuppressWarnings("unchecked")
   void keyAccountAddedInThePortal_pricesTheSameInvoiceLower(BpmClient client) throws IOException {
@@ -168,14 +153,12 @@ class RuleEngineContainerTest {
         .isEqualByComparingTo("9016.00");
   }
 
-  /** The story of the demo: a rule owner changes a cell, the same invoice is priced otherwise, and back. */
   @Test
   void versionActivatedFromThePortal_isLiveAtOnce_andSurvivesRedeployment(BpmClient client) {
     var initialExecution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
     assertThat(silverDiscount(initialExecution.subResult().param("invoice", Invoice.class))).isEqualTo(2);
     int projectVersion = TestBusinessRuleTask.decidedBy(initialExecution, DEMO);
 
-    // a rule owner raises the discount of Silver customers
     String current = RuleEngine.client().content(DEMO, projectVersion);
     String changed = current.replace(SILVER, SILVER.replace("<text>2</text>", "<text>3</text>"));
     assertThat(changed).isNotEqualTo(current);
@@ -196,13 +179,11 @@ class RuleEngineContainerTest {
     assertThat(DiscountTable.of(draft.version()).rules().get(5).getOutputs()).as("the table the page shows")
         .containsExactly("3", "\"Silver customer\"");
 
-    // the project is deployed again: its file is registered, but the version of the Portal stays active
     ModelDeployer.reset();
     var deployed = RuleEngine.deploy(Project.current());
     assertThat(deployed).extracting(ModelVersion::model).contains(DEMO, "discount");
     assertThat(silverDiscount(client)).as("redeployment does not overwrite the version of the Portal").isEqualTo(3);
 
-    // rollback: the previous version is active again
     ModelVersion rolledBack = RuleEngine.rollback(DEMO, "rule.approver");
     assertThat(rolledBack.version()).isEqualTo(projectVersion);
     assertThat(silverDiscount(client)).isEqualTo(2);
@@ -250,7 +231,6 @@ class RuleEngineContainerTest {
           .as("findings of the DMN validator of the runtime").isEmpty();
       assertThat(result.getDiscount().intValue()).as("the placeholder rule of the generated table").isZero();
 
-      // the rule author fills in a rule, the changed file is live with the next evaluation
       String withRule = Files.readString(generated).replace("<rule id=\"_rule_1\">", """
           <rule id="_rule_gold">
             <inputEntry id="_rule_gold_1"><text>&gt;= 1000</text></inputEntry>
@@ -269,7 +249,7 @@ class RuleEngineContainerTest {
       assertThat(decided.getErrorMessage()).isNull();
       assertThat(decided.getDiscount()).isEqualTo(12.5);
     } finally {
-      Files.deleteIfExists(generated); // the folder dmn stays: it holds the models of the tests
+      Files.deleteIfExists(generated);
       ProjectDmnFiles.refresh();
     }
   }
@@ -298,7 +278,6 @@ class RuleEngineContainerTest {
     assertThat(RuleEngine.client().isReady()).isTrue();
   }
 
-  /** @return percent, reason and total of the sample invoice with this tier and this many laptops */
   private static String discount(BpmClient client, String tier, int laptops) {
     Invoice sample = InvoiceSamples.standard();
     sample.setCustomerTier(tier);

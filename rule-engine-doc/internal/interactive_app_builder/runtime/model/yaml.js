@@ -25,7 +25,6 @@ function unquote(raw) {
   return v;
 }
 
-/** Finds the colon that separates key and value, ignoring colons inside quotes. */
 function splitKeyValue(content) {
   let quote = null;
   for (let i = 0; i < content.length; i++) {
@@ -39,9 +38,6 @@ function splitKeyValue(content) {
   return null;
 }
 
-/**
- * @returns {{ value: Object, errors: {line:number,message:string}[] }}
- */
 export function parseYaml(source) {
   const errors = [];
   const root = {};
@@ -98,7 +94,6 @@ export function parseYaml(source) {
   return { value: root, errors };
 }
 
-/** Reads `AI.DefaultProvider`-style paths below the top-level `Variables:` key. */
 export function readVariable(parsed, path) {
   let node = parsed && parsed.Variables;
   for (const key of path.split('.')) {
@@ -108,7 +103,6 @@ export function readVariable(parsed, path) {
   return typeof node === 'string' ? node : '';
 }
 
-/** True when `Variables.<path>` exists as a nested block. */
 export function hasBlock(parsed, path) {
   let node = parsed && parsed.Variables;
   for (const key of path.split('.')) {
@@ -118,20 +112,15 @@ export function hasBlock(parsed, path) {
   return node != null && typeof node === 'object';
 }
 
-/**
- * Sets `Variables.<path>` in the text of a variables.yaml and returns the new text. The
- * line that holds the value is rewritten; keys that do not exist yet are added at the end of
- * the block they belong to. Comments and everything else stay as they are.
- */
 export function setVariable(source, path, value) {
   const lines = String(source == null ? '' : source).replace(/\r\n/g, '\n').split('\n');
   const keys = ['Variables'].concat(path.split('.'));
   const quoted = '"' + String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
   const indentOf = line => /^ */.exec(line)[0].length;
   const isEntry = line => Boolean(stripComment(line).trim());
-  let from = 0; // first line of the block that is searched
-  let to = lines.length; // one past its last line
-  let indent = -1; // indent of the key that owns the block
+  let from = 0;
+  let to = lines.length;
+  let indent = -1;
   for (let depth = 0; depth < keys.length; depth++) {
     let found = -1;
     let childIndent = null;
@@ -144,7 +133,6 @@ export function setVariable(source, path, value) {
       if (pair && unquote(pair[0]) === keys[depth]) { found = i; break; }
     }
     if (found < 0) {
-      // add the rest of the path at the end of this block
       const base = childIndent !== null ? childIndent : indent + 2;
       let at = to;
       while (at > from && !isEntry(lines[at - 1])) at--;
@@ -158,7 +146,6 @@ export function setVariable(source, path, value) {
       lines[found] = head[1] + head[2] + ' ' + quoted + (comment ? ' ' + comment.trim() : '');
       return lines.join('\n');
     }
-    // the block of the key that was found: the lines below it that are indented deeper
     indent = indentOf(lines[found]);
     from = found + 1;
     let end = from;

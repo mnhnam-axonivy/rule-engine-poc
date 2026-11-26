@@ -1,12 +1,5 @@
-/**
- * The demo process extended the way the page "Create a new DMN from scratch" describes it: the invoice gets a field
- * approver, and a second Business Rule Task after the discount asks for a new DMN, invoice-approver, from
- * in.invoice.total and in.invoice.discountPercent. Plain functions over the files of the demo, so that the unit
- * tests use them as the lesson does.
- */
 const RULE_CLASS = 'com.axonivy.utils.rule.engine.BusinessRuleTask';
 
-/** Element ids: those of the demo, and the new Business Rule Task. */
 export const APPROVER = { APPLY: 'f6', END: 'f11', CREATE_TASK: 'f40' };
 export const NEW_MODEL = 'invoice-approver';
 export const INPUT_FIELDS = 'in.invoice.total, in.invoice.discountPercent';

@@ -31,18 +31,11 @@ import ch.ivyteam.ivy.bpm.error.BpmError;
 import ch.ivyteam.ivy.environment.Ivy;
 import ch.ivyteam.ivy.process.program.exec.ProgramContext;
 
-/**
- * Runs a Business Rule Task: maps process data to the inputs of the decision, lets the runtime evaluate the
- * active version of the model and writes the results back to the process data.
- */
 public class RuleTaskExecutor {
 
-  /** The variable of the process data in IvyScript. */
   private static final String DATA = "in";
-  /** A field of the process data, e.g. <code>in.member.purchaseAmount</code>. */
   private static final java.util.regex.Pattern FIELD_PATH = java.util.regex.Pattern
       .compile(DATA + "(\\.[A-Za-z_$][A-Za-z0-9_$]*)+");
-  /** Prefix of the case custom field that stores the model version that produced the result. */
   public static final String VERSION_FIELD_PREFIX = "ruleVersion_";
 
   interface Variable {
@@ -123,10 +116,6 @@ public class RuleTaskExecutor {
     return EvaluateRequest.builder().decision(selection.decision()).input(input).build();
   }
 
-  /**
-   * @return the value of every input, read from the field of the process data with the name of the input. A Script
-   *         before the Business Rule Task prepares a value that is not in such a field yet.
-   */
   private Map<String, Object> input(List<String> names, Selection selection, Class<?> dataClass) {
     var input = new LinkedHashMap<String, Object>();
     var unmapped = new ArrayList<String>();
@@ -180,11 +169,9 @@ public class RuleTaskExecutor {
   }
 
   /**
-   * The version that answers may not be the file of the project: a version that a rule owner activated in the Portal
-   * or through the API stays active, the file is only stored as a draft beside it. Such a version may need inputs the
-   * file does not have, e.g. a column the rule owner added. A version from a project is replaced by the file.
-   *
-   * @return the inputs of the file, and those of the active version if that version answers instead of the file
+   * The version that answers may not be the file of the project: a version that a rule owner activated in the Portal or
+   * through the API stays active, the file is only stored as a draft beside it. Such a version may need inputs the file
+   * does not have, e.g. a column the rule owner added. A version from a project is replaced by the file.
    */
   private static List<String> withInputsOfAnsweringVersion(List<String> fileInputs, boolean deploy,
       Optional<ActiveVersionInputs.Active> active) {
@@ -196,10 +183,6 @@ public class RuleTaskExecutor {
     return names;
   }
 
-  /**
-   * @return the inputs the decision needs. Taken from the .dmn file of the project,
-   *         or from the runtime if the project has no such file.
-   */
   private static List<String> inputNames(Selection selection, Optional<LoadedDmn> dmn, RuleEngineClient client,
       String runtimeModel) {
     if (dmn.isPresent() && dmn.get().info() != null) {
@@ -235,7 +218,6 @@ public class RuleTaskExecutor {
     rememberVersion(selection.model(), response.version());
   }
 
-  /** @return the result of the selected decision, or all results if the whole model was evaluated */
   private static Object mainResult(EvaluateResponse response, Selection selection) {
     if (selection.decision() != null) {
       return response.results().get(selection.decision());

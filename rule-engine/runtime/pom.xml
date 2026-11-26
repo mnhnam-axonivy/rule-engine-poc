@@ -154,7 +154,6 @@
         </executions>
       </plugin>
       <plugin>
-        <!-- puts the KIE DMN editor next to the page /editor/: META-INF/resources/editor/lib/dmn-editor.js -->
         <artifactId>maven-antrun-plugin</artifactId>
         <version>3.1.0</version>
         <executions>
@@ -204,7 +203,6 @@
 
   <profiles>
     <profile>
-      <!-- mvn test -Pperformance : runs the performance baseline (decision table with 1,000 rules) -->
       <id>performance</id>
       <build>
         <plugins>

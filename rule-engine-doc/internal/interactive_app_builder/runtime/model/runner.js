@@ -1,29 +1,4 @@
-/**
- * Executes a process model step by step.
- *
- * The Business Rule Task follows the connector's RuleTaskExecutor (rule-engine 14.0.1), so the
- * simulation reacts to configuration the way the real element does:
- *   - "Decision"         → `model#decision`, or the whole model; nothing selected fails the
- *                          step with rule:engine:mapping
- *   - inputs             → the inputs the decision needs are read from the process data fields
- *                          with their names. An input without a field fails the step before
- *                          anything is sent
- *   - registration       → the .dmn file of the project is registered on the runtime when its
- *                          content is new (RuleEngine.AutoDeploy); the runtime decides whether
- *                          the version goes live
- *   - the call           → runtime not reachable, a timeout and an error answer of the runtime
- *                          throw the BPMN errors rule:engine:unreachable, rule:engine:timeout
- *                          and rule:engine:dmn
- *   - results            → each result is written to the field with its name
- *   - "New DMN"          → generates the model from "Input fields" and "Output fields" when it
- *                          does not exist yet, then evaluates it; the fields are used for nothing else
- *
- * Besides the rule task it knows scripts, the Alternative gateway (the first condition that
- * holds decides), tasks that wait for a user, Error Ends and Error Boundary Events.
- *
- * The runner has no DOM or animation knowledge: everything visible goes through `io`, whose
- * async methods let the UI pace the run (token travel, the round trip to the runtime, step mode).
- */
+/** The Business Rule Task follows the connector's RuleTaskExecutor (rule-engine 14.0.1). */
 import { runScript, evalExpression, assignTo, IvyScriptError, positionOf } from './ivyscript.js';
 import { expandMacro } from './macro.js';
 import { parseYaml, readVariable } from './yaml.js';
@@ -83,15 +58,6 @@ const IO_METHODS = ['travel', 'enter', 'leave', 'pause', 'rule', 'log', 'note', 
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export class ProcessRunner {
-  /**
-   * @param {Object} options
-   * @param {Object} options.model    process model (see process.js)
-   * @param {() => Object} options.runtime  the decision runtime the project talks to (see decision-runtime.js)
-   * @param {Object} options.project  the .dmn files of the project:
-   *   { find(model) → the model of the file as it is now, or null; add(dmn) → a generated file }
-   * @param {Object} options.io       presentation callbacks, all optional
-   * @param {() => Date} [options.now]
-   */
   constructor({ model, runtime, project, io = {}, now = () => new Date() }) {
     this.model = model;
     this.runtime = runtime;
@@ -100,7 +66,6 @@ export class ProcessRunner {
     this.io = {};
     IO_METHODS.forEach(m => { this.io[m] = typeof io[m] === 'function' ? io[m].bind(io) : noop; });
     this.active = null;
-    /** What this engine has already registered: runtime model → fingerprint (rule-engine: ModelDeployer). */
     this.registered = new Map();
   }
 
@@ -110,25 +75,14 @@ export class ProcessRunner {
     if (this.active) this.active.cancelled = true;
   }
 
-  /** Switches step mode for the run in progress (Continue vs. Step while paused). */
   setStepMode(stepMode) {
     if (this.active) this.active.stepMode = stepMode;
   }
 
-  /** Forgets what was registered, e.g. when the simulation is reset. */
   forget() {
     this.registered.clear();
   }
 
-  /**
-   * @param {Object} options
-   * @param {string} options.variablesText   contents of variables.yaml
-   * @param {boolean} [options.stepMode]     pause after every element
-   * @param {Set<string>} [options.breakpoints]
-   * @param {string} [options.start]         id of the start element to begin at (default: the first)
-   * @param {Object} [options.params]        the parameters a caller passes to a callable sub process, by name
-   * @returns {Promise<Object>} summary of what happened (status, rule calls, …)
-   */
   async run({ variablesText = '', stepMode = false, breakpoints = new Set(), start = null, params = null } = {}) {
     if (this.active) throw new Error('A run is already in progress');
     const run = {
@@ -138,7 +92,7 @@ export class ProcessRunner {
       params: params ? JSON.parse(JSON.stringify(params)) : {},
       data: {},
       variables: null,
-      route: null, // where a gateway sends the token
+      route: null,
       result: { status: 'completed', visited: [], ruleCalls: [], routes: [], tasks: [], caught: [], logs: [], data: null }
     };
     this.active = run;
@@ -169,7 +123,6 @@ export class ProcessRunner {
           await this.#execute(run, element);
         } catch (e) {
           if (!(e instanceof ProcessFailure)) throw e;
-          // a BPM error goes to the Error Boundary Event that catches its code, if there is one
           const boundary = e.info.errorCode ? boundaryFor(this.model, element, e.info.errorCode) : null;
           if (boundary) {
             this.io.leave(element, 'caught');
@@ -197,7 +150,6 @@ export class ProcessRunner {
         const next = run.route || nextOf(this.model, element);
         run.route = null;
         if (!next || !next.element) break;
-        // Step mode: this element has run; wait before the token moves on to the next one.
         if (run.stepMode && !next.element.removed) {
           await this.#wait(run, this.io.pause(next.element, 'step'));
           stepped = true;
@@ -216,8 +168,6 @@ export class ProcessRunner {
     this.active = null;
     return run.result;
   }
-
-  // ── helpers ────────────────────────────────────────────────────────────────
 
   async #wait(run, value) {
     const v = await value;
@@ -296,7 +246,6 @@ export class ProcessRunner {
     }
   }
 
-  /** The start of a callable sub process: its input mapping copies the parameters of the caller into the data. */
   #callSubStart(run, element) {
     const input = element.config.input || {};
     const map = input.map || {};
@@ -319,7 +268,6 @@ export class ProcessRunner {
     if (code.trim()) this.#runCode(run, element, code, vars);
   }
 
-  /** An Error End throws a BPM error; its code can attach attributes to the error first. */
   #errorEnd(run, element) {
     const errorCode = (element.config.throws && element.config.throws.error) || 'ivy:error';
     const error = { __type: BPM_ERROR, __bpmError: true, errorCode, message: errorCode, attributes: {} };
@@ -329,7 +277,6 @@ export class ProcessRunner {
     throw new ProcessFailure(element, { kind: 'bpm', errorCode, message: errorCode, attributes: error.attributes });
   }
 
-  /** Runs code of an element; a script error stops the process there. */
   #runCode(run, element, code, vars) {
     try {
       runScript(code, this.#scriptContext(run, element, vars));
@@ -377,17 +324,13 @@ export class ProcessRunner {
     throw new ProcessFailure(element, { kind: 'gateway', message });
   }
 
-  /**
-   * What an Error Boundary Event does with the error it caught: its output mapping and its
-   * output code, where `error` is the BPM error (e.g. in.errorCode = error.getErrorCode()).
-   */
   #catch(run, boundary, info) {
     const error = { __type: BPM_ERROR, __bpmError: true, errorCode: info.errorCode, message: info.message, attributes: info.attributes || {} };
     const output = boundary.config.output || {};
     const map = output.map || {};
     const ctx = this.#scriptContext(run, boundary, { error });
     Object.keys(map).forEach(target => {
-      if (target === 'out' || target === 'in') return; // out ← in: the data goes on as it is
+      if (target === 'out' || target === 'in') return;
       try {
         assignTo(target, evalExpression(map[target], ctx), ctx);
       } catch (e) {
@@ -399,7 +342,6 @@ export class ProcessRunner {
     if (code.trim()) this.#runCode(run, boundary, code, { error });
   }
 
-  /** The user a task goes to when its responsible is "User from Attr.": a script over the process data. */
   #responsible(run, element) {
     const responsible = (element.config.task || {}).responsible;
     if (!responsible || responsible.type !== 'USER_FROM_ATTRIBUTE' || !responsible.script) return '';
@@ -412,8 +354,6 @@ export class ProcessRunner {
       return '';
     }
   }
-
-  // ── Business Rule Task ─────────────────────────────────────────────────────
 
   async #rule(run, element) {
     const cfg = ruleConfig(element);
@@ -431,14 +371,12 @@ export class ProcessRunner {
       });
     };
 
-    // 1 — settings (RuleEngineConfig)
     if (run.variablesError) {
       await fail(RULE_ERRORS.MAPPING, 'variables.yaml could not be read (line ' + run.variablesError.line + ': ' + run.variablesError.message + ')');
     }
     const settings = readSettings(run.variables);
     call.timeout = settings.timeout;
 
-    // 2 — the selected decision, or a new DMN from the selected fields
     const selected = configList(cfg.decision);
     const value = (selected[0] || '').trim();
     if (!value) {
@@ -465,10 +403,9 @@ export class ProcessRunner {
     }
     const runtime = this.runtime();
     const runtimeModel = settings.prefix + model;
-    const dmn = this.project.find(model); // the file of the project, as it is saved now
+    const dmn = this.project.find(model);
     Object.assign(call, { model, runtimeModel, decision, url: settings.url + '/api/models/' + runtimeModel + '/evaluate' });
 
-    // 3 — inputs: the process data fields with their names
     let names;
     if (dmn) {
       names = requiredInputs(dmn, decision);
@@ -483,7 +420,6 @@ export class ProcessRunner {
         (requiredInputs(active.dmn, decision) || []).forEach(name => { if (!names.includes(name)) names.push(name); });
       }
     } else {
-      // no such file in the project: ask the runtime what the model needs
       const reachable = this.#unreachable(settings, runtime);
       if (reachable) {
         await tell('request', {});
@@ -511,7 +447,6 @@ export class ProcessRunner {
     call.input = input;
     await tell('request', {});
 
-    // 4 — the round trip to the runtime
     const down = this.#unreachable(settings, runtime);
     if (down) {
       await tell('thinking', { failing: true });
@@ -527,12 +462,10 @@ export class ProcessRunner {
       await fail(RULE_ERRORS.DMN, e.message, { runtimeCode: e.code, category: 'REST_CLIENT' });
     }
     this.#log(run, 'info', element, 'REST service ruleEngine (ruleEngine) call to POST ' + call.url + ' successful executed in 1 [s]. Response status was 200 OK', { category: 'REST_CLIENT' });
-    // one decision asked, or a model of one decision: the rule that decided explains the result
     const decided = decision || (response.dmn.decisions.length === 1 ? response.dmn.decisions[0].name : null);
     const hits = decided ? response.matched[decided] || [] : [];
     const table = decided ? (decisionOf(response.dmn, decided) || {}).table : null;
     const describe = (tbl, index) => ({ index, inputs: tbl.rules[index].inputs, outputs: tbl.rules[index].outputs, annotation: tbl.rules[index].annotation });
-    // a whole model: what every table decided, a table that is a function once per call (e.g. per line)
     const rules = [];
     const matched = { ...response.matched };
     response.dmn.decisions.forEach(d => {
@@ -550,13 +483,11 @@ export class ProcessRunner {
       results: response.results,
       matched,
       calls: response.calls || {},
-      // the rule that decided, for the explanation next to the result
       rule: table && hits.length ? describe(table, hits[0]) : null,
       rules: decided ? [] : rules
     });
     await tell('response', {});
 
-    // 5 — results back into the process data
     try {
       this.#mapResults(run, element, call, decision, response);
     } catch (e) {
@@ -567,7 +498,6 @@ export class ProcessRunner {
     await tell('end', {});
   }
 
-  /** Why the runtime cannot answer, or null: a wrong URL, a stopped container, or one that is too slow. */
   #unreachable(settings, runtime) {
     if (!settings.url) {
       return { errorCode: RULE_ERRORS.MAPPING, message: 'The URL of the rule engine is not configured. Set the variable ' + VARIABLES.URL + '.' };
@@ -584,7 +514,6 @@ export class ProcessRunner {
     return null;
   }
 
-  /** ModelDeployer.ensureRegistered: the file is registered, unless exactly this content already was. */
   async #register(run, element, call, runtime, runtimeModel, dmn, tell) {
     const hash = JSON.stringify(dmn);
     if (this.registered.get(runtimeModel) === hash && runtime.versions(runtimeModel).length) return;
@@ -601,10 +530,6 @@ export class ProcessRunner {
     if (created || entry.status !== 'ACTIVE') await tell('registered', { version: entry.version, status: entry.status, created });
   }
 
-  /**
-   * DmnCreator: generates the file when it does not exist yet. The file these fields generated before is used and
-   * never overwritten; another file of that name is an error, and so is an empty name.
-   */
   #create(run, element, cfg, inputs, outputs) {
     const spec = generateDmn({ modelName: cfg.newModel, inputs, outputs }, this.model);
     const existing = this.project.find(modelNameFor(cfg.newModel));
@@ -637,7 +562,6 @@ export class ProcessRunner {
       call.targets.push({ expression, value: converted });
     };
 
-    // each result to the field with its name
     const named = decision ? { [decision]: main } : results;
     Object.keys(named).forEach(name => {
       const field = findField(this.model, name);

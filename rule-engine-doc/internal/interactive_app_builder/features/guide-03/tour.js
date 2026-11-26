@@ -1,13 +1,7 @@
-/**
- * Guide 03 — the walkthrough. Three chapters, each starting from the project as the tutorial ships
- * it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do. The runs
- * play at the normal speed: they are what the page is about.
- */
 import { ELEMENTS, inputsText, ruleText, discountText, invoiceText, errorText } from '../shared/project.js';
 
 const { START, SUM, RULE_TASK, APPLY, BOUNDARY, NOT_PRICED } = ELEMENTS;
 
-/** Step 3: the demo process, element by element, then the parts it went through. */
 async function run(d) {
   await d.run({
     on: {
@@ -32,7 +26,6 @@ async function run(d) {
   d.arch(null);
 }
 
-/** Step 4: what the runtime holds after the first run. */
 async function holds(d) {
   await d.run({ fast: true });
   await d.panel('runtime');
@@ -46,7 +39,6 @@ async function holds(d) {
   await d.tab('process');
 }
 
-/** If it does not work: the runtime is down. */
 async function fails(d) {
   await d.panel('runtime');
   await d.runtime('stopped');

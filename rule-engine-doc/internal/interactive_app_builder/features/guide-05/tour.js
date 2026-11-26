@@ -1,22 +1,15 @@
-/**
- * Guide 05 — the walkthrough. Four chapters, each starting from the project as the tutorial
- * ships it; the notes are in text.js. See runtime/ui/tour.js for what the director `d` can do.
- * The project is the callable of the demo with a second Business Rule Task, see shared/approver-project.js.
- */
 import { APPROVER, NEW_MODEL } from '../shared/approver-project.js';
 import { MODEL, errorText } from '../shared/project.js';
 
 const { CREATE_TASK } = APPROVER;
 const DMN = 'dmn:' + NEW_MODEL;
-const AT = DMN + '@approver/'; // a part of the generated table: + rule1, r1.i1
-const CELL = DMN + ':approver.'; // a cell of the generated table: + r1.i1
+const AT = DMN + '@approver/';
+const CELL = DMN + ':approver.';
 
 const resultOf = call => 'approver = ' + JSON.stringify((call.results || {}).approver) + '   (version ' + call.version + ')';
 const field = key => 'field:' + CREATE_TASK + '.' + key;
-/** Only what the new task does: the discount before it is decided as always. */
 const created = call => call.elementId === CREATE_TASK;
 
-/** 1 — what the element is told: a new file, which fields go in, which field comes out. */
 async function fields(d) {
   await d.open(CREATE_TASK, 'configuration');
   await d.note('create', { target: field('decision'), extra: 600 });
@@ -25,7 +18,6 @@ async function fields(d) {
   await d.close();
 }
 
-/** 2 — the name of the file: required, and one that no other file has. */
 async function name(d) {
   await d.open(CREATE_TASK, 'configuration');
   await d.note('nameField', { target: field('newModel') });
@@ -45,7 +37,6 @@ async function name(d) {
   await d.note('ownName');
 }
 
-/** 3 — the run generates the file, then evaluates it. */
 async function generate(d) {
   await d.run({
     on: {
@@ -63,7 +54,6 @@ async function generate(d) {
   await d.close();
 }
 
-/** 4 — the rule author adds a rule above the placeholder. */
 async function rules(d) {
   await d.run({ fast: true });
   await d.tab(DMN);

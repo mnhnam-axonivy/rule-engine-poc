@@ -1,22 +1,3 @@
-/**
- * The tab "Architecture": the parts of the Rules Engine as blocks, and what connects them.
- *
- *   Axon Ivy Engine                         Docker container
- *     Axon Ivy Portal    (Rule Management)
- *     ┆ calls Portal/RuleManagement
- *     rule-engine-demo   (your project)       REST API        DMN editor page  ← Browser
- *     rule-engine        (connector)  ⇄ HTTP  DMN engine      Database         → Volume
- *
- * The diagram is live: it shows the state of the container, what the database holds, the files
- * of the project and the last call. A walkthrough lights blocks and lets a link flow
- * (setFocus); a learner selects a block to read what is in it, in a drawer on the right.
- *
- * Blocks and link labels carry data-arch="<id>", which is what the walkthrough points at
- * ('arch:demo', 'arch:http'):
- *   blocks  ivy, portal, demo, connector, container, api, editor, engine, db, browser, volume
- *   links   http (connector ⇄ api), ui (browser → editor), store (db → volume),
- *           callable (portal → connector, along the side of the projects)
- */
 import { h, clear, brief } from '../util.js';
 import { icon } from './icons.js';
 import { readSettings } from '../model/runner.js';
@@ -26,20 +7,13 @@ const SVG = 'http://www.w3.org/2000/svg';
 const IMAGE = 'axonivy/rule-engine-runtime';
 /** From this width of the tab on, the details stand beside the diagram (and leave it 840 px). */
 const DETAILS_BESIDE = 1180;
-/** How far the camera of a walkthrough zooms in and out. */
 const ZOOM = { max: 1.2, min: 0.5 };
-/** Room around what the camera frames, and between it and the note. */
 const FRAME_PAD = 20;
 
-/** A result in a few words: a structure by its values, e.g. 2 · Silver customer. */
 const compact = value => (value !== null && typeof value === 'object' && !Array.isArray(value)
   ? Object.keys(value).map(key => (value[key] !== null && typeof value[key] === 'object' ? '…' : String(value[key]))).join(' · ')
   : brief(value));
 
-/**
- * from → to; `both`: a second line carries the answer back; `side`: runs along the left
- * edge of the blocks in between, its label stands in the row below `from`.
- */
 const LINKS = [
   { id: 'callable', from: 'portal', to: 'connector', side: true },
   { id: 'http', from: 'connector', to: 'api', both: true },
@@ -78,7 +52,6 @@ function route(a, b, offset = 0) {
 
 const pathOf = points => points.map((p, i) => (i ? 'L' : 'M') + Math.round(p[0]) + ' ' + Math.round(p[1])).join(' ');
 
-/** A small arrow head at the end of the points, in the direction of their last segment. */
 function headOf(points) {
   const [x, y] = points[points.length - 1];
   let i = points.length - 2;
@@ -93,20 +66,18 @@ function headOf(points) {
 }
 
 export class ArchitectureView {
-  /** @param {Object} app  the DesignerApp  @param {HTMLElement} host  the editor of the tab */
   constructor(app, host) {
     this.app = app;
     this.host = host;
-    this.nodes = {}; // blocks and link labels by id
-    this.live = {}; // the line of a block that shows the current state
-    this.paths = {}; // link id → { out, back, label }
-    this.focus = null; // what a walkthrough lights: { lit, flow, label }
-    this.camera = null; // what a note of a walkthrough is about: { ids, note }, see frame()
+    this.nodes = {};
+    this.live = {};
+    this.paths = {};
+    this.focus = null;
+    this.camera = null;
     this.frameKey = '';
     this.selection = null;
-    this.call = null; // the last call of a Business Rule Task
+    this.call = null;
     this.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.layout()) : null;
-    // the details close with their button, with Escape, or with a click anywhere but on a block
     this.onClick = event => {
       if (!this.selection) return;
       const target = event.target;
@@ -122,8 +93,6 @@ export class ArchitectureView {
     host.addEventListener('click', this.onClick);
     host.addEventListener('keydown', this.onKey);
   }
-
-  // ── building ────────────────────────────────────────────────────────────────
 
   render() {
     const t = this.app.t;
@@ -183,7 +152,6 @@ export class ArchitectureView {
       label('http', t('arch.link.http')), label('ui', t('arch.link.ui')), label('store', t('arch.link.store')));
     // the label of 'callable' was created above, in its row of the stack
 
-    // the details of the selected block: a drawer on the right, beside the diagram
     this.detailsEl = h('aside.arch-details', { hidden: true, 'aria-label': t('arch.details.label') });
     // the stage clips the diagram while the camera moves it, so that it never slides over the title
     this.scrollEl = h('div.arch-scroll', null,
@@ -202,20 +170,14 @@ export class ArchitectureView {
     this.layout();
   }
 
-  /** The element of a block or of a link label, for the walkthrough. */
   node(id) {
     return this.nodes[id] || null;
   }
 
-  /** Where the diagram ends on screen: notes of the walkthrough go below it, unless the camera frames a part of it. */
   bottom() {
     return this.diagram && !this.camera ? this.diagram.getBoundingClientRect().bottom : 0;
   }
 
-  /**
-   * Where a block or a link label lies in the diagram, as laid out: not moved by the camera.
-   * @returns {{left:number, top:number, right:number, bottom:number, width:number, height:number}|null}
-   */
   boxOf(id) {
     const node = this.nodes[id];
     if (!node || node.hidden || !node.offsetWidth) return null;
@@ -230,7 +192,6 @@ export class ArchitectureView {
     if (el !== this.diagram) return null;
     const width = node.offsetWidth;
     const height = node.offsetHeight;
-    // a link label stands centred on its point
     if (node.classList.contains('arch-link-label') && !node.classList.contains('inline')) {
       left -= width / 2;
       top -= height / 2;
@@ -238,16 +199,6 @@ export class ArchitectureView {
     return { left, top, right: left + width, bottom: top + height, width, height };
   }
 
-  // ── the camera of a walkthrough ─────────────────────────────────────────────
-
-  /**
-   * While a note of a walkthrough is about a part of the diagram, the camera scales and moves the diagram so
-   * that the part, with what is lit beside it, stands in the middle of one side of the tab, and the note has
-   * the other side. A small tab, such as the tutorial inside the Portal, zooms out; a large one zooms in a bit.
-   * Called for every frame the note is shown: it only moves when something changed.
-   * @param {string|null} id  the block or link the note is about; null lets go
-   * @param {{width:number, height:number}} [note]  the size of the note
-   */
   frame(id, note = null) {
     if (!this.diagram) return;
     const ids = id && this.nodes[id] ? [...new Set([id, ...this.focusIds()])] : [];
@@ -259,11 +210,6 @@ export class ArchitectureView {
     this.applyCamera();
   }
 
-  /**
-   * What the camera frames, where it is on screen now (it follows the camera while it moves), and the side it
-   * keeps free for the note.
-   * @returns {{side: 'left'|'right', rect: {left:number, top:number, right:number, bottom:number}}|null}
-   */
   framed() {
     const camera = this.camera;
     if (!camera || !camera.side) return null;
@@ -278,7 +224,6 @@ export class ArchitectureView {
     };
   }
 
-  /** What the walkthrough lights: blocks, and both ends of a link that flows. */
   focusIds() {
     const focus = this.focus || {};
     const ids = [...(focus.lit || [])];
@@ -307,7 +252,6 @@ export class ArchitectureView {
     };
     const width = box.right - box.left;
     const height = box.bottom - box.top;
-    // the diagram as laid out, in the coordinates of the scroll area; the title above it stays
     const originX = this.diagram.offsetLeft - view.offsetLeft;
     const originY = this.diagram.offsetTop - view.offsetTop;
     const noteWidth = camera.note ? camera.note.width + FRAME_PAD : 0;
@@ -318,19 +262,14 @@ export class ArchitectureView {
     const onRight = box.left + width / 2 > this.diagram.offsetWidth / 2;
     camera.side = onRight ? 'left' : 'right';
     const areaLeft = onRight ? view.clientWidth - FRAME_PAD - areaWidth : FRAME_PAD;
-    // the middle of the part goes to the middle of its area; the area starts below the title
     const x = areaLeft + areaWidth / 2 - originX - scale * (box.left + width / 2);
     const y = FRAME_PAD + areaHeight / 2 - scale * (box.top + height / 2);
     this.diagram.style.transform = 'translate(' + Math.round(x) + 'px, ' + Math.round(y) + 'px) scale(' + scale.toFixed(3) + ')';
   }
 
-  // ── links ───────────────────────────────────────────────────────────────────
-
-  /** Draws the links between the blocks as they are laid out now. */
   layout() {
     if (!this.diagram || this.host.hidden) return;
     if (!this.host.clientWidth) return;
-    // the details take room beside the diagram, or lie over it where there is too little room
     this.mainEl.classList.toggle('details-over', this.host.clientWidth < DETAILS_BESIDE);
     const width = this.scrollEl.clientWidth;
     // wide: browser and volume stand beside the page and the database they belong to;
@@ -377,7 +316,6 @@ export class ArchitectureView {
         return g;
       };
       if (link.side) {
-        // down the left edge of the blocks in between, inside the frame
         const x = Math.min(a.left, b.left) - 7;
         const y1 = a.top + a.height / 2;
         const y2 = b.top + b.height / 2;
@@ -400,18 +338,9 @@ export class ArchitectureView {
     this.applyCamera();
   }
 
-  // ── what a walkthrough shows ────────────────────────────────────────────────
-
-  /**
-   * Lights blocks and lets links flow; everything else steps back.
-   * @param {{ lit?: string[], flow?: string[], label?: Object }|null} focus
-   *   flow: 'http>' (to the runtime), 'http<' (the answer), 'ui>', 'store>'
-   *   label: text for the label of a link while the focus lasts, e.g. { http: 'POST …/evaluate' }
-   */
   setFocus(focus) {
     this.focus = focus && (focus.lit || focus.flow) ? focus : null;
     this.applyFocus();
-    // the end of a chapter, a reset: the whole diagram again
     if (!this.focus) this.frame(null);
   }
 
@@ -447,9 +376,6 @@ export class ArchitectureView {
     });
   }
 
-  // ── the current state ───────────────────────────────────────────────────────
-
-  /** The last call of a Business Rule Task, or null after a reset. */
   setCall(call) {
     this.call = call;
     this.update();
@@ -511,15 +437,11 @@ export class ArchitectureView {
     this.labels.http.node.classList.toggle('broken', !this.reachable);
   }
 
-  // ── details of a block ──────────────────────────────────────────────────────
-
-  /** A click on a block: shows its details, or closes them when they are shown already. */
   select(id) {
     if (this.app.mode === 'tour') return; // the walkthrough has the room of the tab to itself
     this.show(this.selection === id ? null : id);
   }
 
-  /** Closes the details; the focus goes back to the block they were about. */
   close() {
     const block = this.selection && this.nodes[this.selection];
     const focused = this.detailsEl && this.detailsEl.contains(this.host.getRootNode().activeElement);
@@ -527,7 +449,6 @@ export class ArchitectureView {
     if (focused && block) (block.querySelector('.arch-frame-head') || block).focus();
   }
 
-  /** Shows the details of a block or a frame in the drawer on the right; null closes it. */
   show(id) {
     const opened = Boolean(this.selection) !== Boolean(id);
     this.selection = id && this.nodes[id] ? id : null;

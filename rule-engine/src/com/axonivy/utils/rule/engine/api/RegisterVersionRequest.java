@@ -4,16 +4,6 @@ import java.time.OffsetDateTime;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-/**
- * A DMN model to store as a new version.
- *
- * @param content the DMN file as XML
- * @param author who provides this version
- * @param description what changed
- * @param source origin of the version. Defaults to API
- * @param activate true = go live now, false = keep as draft. Not set = the first version of a model and project deployments go live, unless the active version was activated from the Portal or the API
- * @param effectiveDate go live at this time instead of now
- */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RegisterVersionRequest(
     String content,

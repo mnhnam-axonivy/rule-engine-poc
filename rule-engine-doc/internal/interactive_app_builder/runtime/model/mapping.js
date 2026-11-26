@@ -1,12 +1,6 @@
 /**
- * How the Business Rule Task connects process data and a decision, following the connector
- * (rule-engine: FieldSelection, FeelNames, FieldLocator, ValueConverter):
- *
- *   - an input is read from the process data field with its name; fields of nested data
- *     classes are found too, the field closest to the root wins
- *   - a result is written to the field with its name
- *   - "Input fields" / "Output fields" only describe a new DMN: field paths such as
- *     `in.member.type`, each becoming an input or output named like its field
+ * How the Business Rule Task maps process data, following the connector (rule-engine: FieldSelection,
+ * FeelNames, FieldLocator, ValueConverter).
  */
 
 /** Words of the FEEL grammar: a variable with one of these names cannot be used in an expression. */
@@ -22,7 +16,6 @@ export class MappingError extends Error {
   }
 }
 
-/** A valid FEEL name for a field name: reserved words get "_" appended, illegal characters are replaced. */
 export function toFeelName(fieldName) {
   const raw = String(fieldName || '');
   if (!raw.trim()) return '_';
@@ -37,13 +30,11 @@ export function toFeelName(fieldName) {
   return KEYWORDS.has(name) ? name + '_' : name;
 }
 
-/** The field name a FEEL name was derived from: `function` for `function_`. */
 export function toFieldName(feelName) {
   const name = String(feelName || '');
   return name.endsWith('_') && KEYWORDS.has(name.slice(0, -1)) ? name.slice(0, -1) : name;
 }
 
-/** The segments of a path without its root variable: [member, type] for in.member.type. */
 function segments(path) {
   const all = path.trim().split('.');
   return all.length > 1 && (all[0] === 'in' || all[0] === 'out') ? all.slice(1) : all;
@@ -56,9 +47,8 @@ function lastSegments(path, depth) {
 }
 
 /**
- * Names for field paths: the last segment, with parent segments added until the names differ.
- * in.member.type and in.order.type become memberType and orderType.
- * @returns {Map<string, string>} name by path, in the order of the paths
+ * Names for field paths: the last segment, with parent segments added until the names differ. in.member.type
+ * and in.order.type become memberType and orderType.
  */
 export function uniqueNames(paths) {
   const distinct = [];
@@ -94,10 +84,6 @@ export function uniqueNames(paths) {
   return names;
 }
 
-/**
- * The fields selected for a new DMN: field paths separated by comma, semicolon or line break.
- * @returns {{ name: string, expression: string }[]}  in the order of selection
- */
 export function parseFieldSelection(text) {
   const paths = [];
   String(text == null ? '' : text).split(/[,;\r\n]/).forEach(entry => {
@@ -113,11 +99,8 @@ export function parseFieldSelection(text) {
   return selection;
 }
 
-// ── types of the process data ────────────────────────────────────────────────
-
 const NUMERIC = /(^|\.)(Number|Integer|Long|Double|Float|Short|Byte|BigDecimal|BigInteger)$/;
 
-/** 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'duration' | 'list' | 'class' | 'any' */
 export function kindOf(type, classes = {}) {
   const name = String(type || 'String');
   if (name === 'String' || name === 'java.lang.String') return 'string';
@@ -132,19 +115,15 @@ export function kindOf(type, classes = {}) {
   return 'any';
 }
 
-/** The FEEL type a field has in a generated DMN. */
 export function feelTypeOf(type, classes = {}) {
   return { string: 'string', number: 'number', boolean: 'boolean', date: 'date', datetime: 'date and time', time: 'time', duration: 'days and time duration' }[kindOf(type, classes)] || 'Any';
 }
 
-/** A name as the tolerant search compares it: letters and digits, lower case. */
 export const normalize = name => String(name).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
 
 /**
- * Searches a field by name, level by level. An exact name wins over one that only differs in
- * case, blanks or separators ("Risk Level" finds riskLevel).
- * @param {{ dataClass: Object, classes: Object }} model
- * @returns {{ expression: string, type: string } | null}
+ * Searches a field by name, level by level. An exact name wins over one that only differs in case, blanks or
+ * separators ("Risk Level" finds riskLevel).
  */
 export function findField(model, name) {
   const wanted = toFieldName(name);
@@ -169,7 +148,6 @@ function search(model, name, tolerant) {
   return null;
 }
 
-/** The declared type of a field path such as in.member.type, or null when it leads to no field. */
 export function typeOfPath(model, expression) {
   const path = String(expression).trim().split('.').map(part => part.trim());
   if (path.length < 2 || (path[0] !== 'in' && path[0] !== 'out')) return null;
@@ -184,7 +162,6 @@ export function typeOfPath(model, expression) {
   return type;
 }
 
-/** A plain field path (in.member.type), as opposed to a calculation. */
 export const isFieldPath = expression => /^(in|out)(\.[A-Za-z_$][\w$]*)+$/.test(String(expression).trim());
 
 /** Reads a field path from the process data. A nested object that is not set gives null. */
@@ -198,7 +175,6 @@ export function readPath(data, expression) {
   return value === undefined ? null : value;
 }
 
-/** A value of the process data as the JSON value the runtime gets. */
 export function toJson(value) {
   if (value === undefined || value === null) return null;
   if (Array.isArray(value)) return value.map(toJson);
@@ -212,10 +188,6 @@ export function toJson(value) {
 
 const describe = value => (value === null ? 'null' : typeof value === 'string' ? 'String' : typeof value === 'number' ? 'Number' : typeof value === 'boolean' ? 'Boolean' : Array.isArray(value) ? 'List' : 'structure');
 
-/**
- * A value of a decision result in the type of the field that takes it.
- * @throws {MappingError} when the value does not fit the type
- */
 export function fromJson(value, type, classes = {}) {
   if (value === null || value === undefined) return null;
   const kind = kindOf(type, classes);
@@ -249,7 +221,6 @@ export function fromJson(value, type, classes = {}) {
       if (typeof value !== 'string') throw mismatch();
       return value;
     case 'list': {
-      // a list of a data class: each element becomes an object of that class
       const list = Array.isArray(value) ? value : [value];
       const element = elementTypeOf(type);
       return list.map(entry => fromJson(entry, element, classes));
@@ -259,7 +230,6 @@ export function fromJson(value, type, classes = {}) {
   }
 }
 
-/** The type of the elements of a list type: com.acme.Line for List<com.acme.Line>, Object without one. */
 export function elementTypeOf(type) {
   const m = /<\s*([^<>]+?)\s*>$/.exec(String(type || ''));
   return m ? m[1] : 'Object';

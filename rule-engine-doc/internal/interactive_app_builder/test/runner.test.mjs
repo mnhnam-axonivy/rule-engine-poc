@@ -1,7 +1,6 @@
 /**
- * The demo process, the callable InvoicePricing, run by the simulation without any UI: the Business Rule Task has
- * to behave like the connector's RuleTaskExecutor, and the model has to decide what the real runtime decides
- * (the numbers are those of RuleEngineContainerTest).
+ * The numbers are those of RuleEngineContainerTest: the simulation has to decide what the real runtime
+ * decides.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,7 +56,6 @@ function setup({ approver = false } = {}) {
 const callOf = result => result.ruleCalls[0];
 const messages = result => result.logs.map(entry => entry.message);
 const silver = dmn => decisionOf(dmn, DECISION).table.rules[5];
-/** percent, reason and total, as RuleEngineContainerTest compares them */
 const decided = result => [result.data.invoice.discountPercent, result.data.invoice.discountReason, result.data.invoice.total].join(' ');
 
 test('runner: the callable sums the lines, the table decides the discount, the process applies it', async () => {

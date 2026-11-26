@@ -19,10 +19,6 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-/**
- * Protects /api/* with a shared secret, so only the Ivy Engine can load versions and evaluate decisions.
- * The key is expected as <code>X-API-Key</code> header or as bearer token.
- */
 @ApplicationScoped
 public class ApiKeyFilter {
 

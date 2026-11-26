@@ -31,20 +31,12 @@ import ch.ivyteam.ivy.scripting.objects.DateTime;
 import ch.ivyteam.ivy.scripting.objects.Duration;
 import ch.ivyteam.ivy.scripting.objects.Time;
 
-/**
- * Converts between process data and the JSON values of the decision runtime.
- * <p>Supported: string, number, boolean, date, date and time, time, duration, enum, nested data class and list.</p>
- */
 public final class ValueConverter {
 
   private static final int MAX_DEPTH = 10;
 
   private ValueConverter() {}
 
-  /**
-   * @param value a value of the process data
-   * @return the value as JSON structure: Map, List, String, Number, Boolean or null
-   */
   public static Object toJson(Object value) {
     return toJson(value, new IdentityHashMap<>(), 0);
   }
@@ -133,12 +125,6 @@ public final class ValueConverter {
     return truncated.toString() + (truncated.getSecond() == 0 ? ":00" : "");
   }
 
-  /**
-   * @param json a value of a decision result
-   * @param target the type of the process data field that takes the value
-   * @return the value in the target type
-   * @throws IllegalArgumentException if the value does not fit the type
-   */
   public static Object fromJson(Object json, Type target) {
     Class<?> type = rawType(target);
     if (json == null) {

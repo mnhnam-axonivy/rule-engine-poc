@@ -28,9 +28,6 @@ import io.quarkus.scheduler.Scheduled.ConcurrentExecution;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-/**
- * Use cases of the runtime: load versions, change which one is active and evaluate decisions.
- */
 @ApplicationScoped
 public class VersionService {
 
@@ -62,10 +59,6 @@ public class VersionService {
 
   public record EvaluationOutcome(CompiledModel model, String decision, Evaluation evaluation) {}
 
-  /**
-   * Stores the content as a new version of the model. Content that is already stored is not duplicated.
-   * @throws com.axonivy.utils.rule.engine.runtime.dmn.InvalidModelException if the content is not a valid DMN model
-   */
   public Registration register(String model, RegisterCommand command) {
     requireValidName(model);
     var content = command.content();
@@ -115,17 +108,11 @@ public class VersionService {
     return store.modelNames();
   }
 
-  /**
-   * Evaluates the active version of a model.
-   */
   public EvaluationOutcome evaluate(String model, String decision, java.util.Map<String, Object> input) {
     var compiled = registry.active(model).orElseThrow(() -> missing(model));
     return evaluate(compiled, decision, input);
   }
 
-  /**
-   * Evaluates a specific version, active or not. Meant for test runs before a version goes live.
-   */
   public EvaluationOutcome evaluate(String model, int version, String decision, java.util.Map<String, Object> input) {
     return evaluate(registry.version(model, version), decision, input);
   }

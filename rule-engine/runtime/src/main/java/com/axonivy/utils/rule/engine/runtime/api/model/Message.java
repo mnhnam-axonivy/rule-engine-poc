@@ -6,14 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-/**
- * A finding of the DMN engine: its compiler, validator or evaluation.
- *
- * @param severity ERROR, WARN or INFO
- * @param message readable text
- * @param type kind of the finding, e.g. ERROR_EVAL_NODE
- * @param sourceId id of the DMN element the finding belongs to
- */
 @Schema(name = "ModelMessage")
 @JsonInclude(Include.NON_NULL)
 public record Message(String severity, String message, String type, String sourceId) {

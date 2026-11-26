@@ -52,7 +52,6 @@
         <version>14.0.1</version>
         <configuration>
           <iarExcludes>
-            <!-- the decision runtime: a Quarkus service of its own, shipped as container image -->
             <iarExclude>runtime/**</iarExclude>
           </iarExcludes>
         </configuration>

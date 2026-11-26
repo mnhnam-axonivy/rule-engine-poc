@@ -9,9 +9,6 @@ import com.axonivy.utils.rule.engine.runtime.service.ModelRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-/**
- * Ready once the active versions are loaded from the store. Reports active versions that could not be loaded.
- */
 @Readiness
 @ApplicationScoped
 public class ModelsHealthCheck implements HealthCheck {

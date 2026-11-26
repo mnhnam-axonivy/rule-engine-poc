@@ -1,8 +1,3 @@
-/**
- * Form widgets of the simulated inscription view: collapsible sections, macro and script
- * inputs, a small code editor and a multi-select. Each returns a DOM element (plus a few
- * methods where the caller needs them).
- */
 import { h, clear, escapeHtml, openPopover } from '../util.js';
 import { icon } from './icons.js';
 import { parseMacro } from '../model/macro.js';
@@ -16,14 +11,12 @@ function autosize(textarea, minRows = 1) {
 
 const later = fn => requestAnimationFrame(fn);
 
-// ── Where characters are on screen ───────────────────────────────────────────
 // The walkthrough points at the exact text it is about to change. Every text control has
 // `textRect(start, end)`: the box around those characters of its value in client
 // coordinates (width 0 for a caret position), or null when it cannot tell.
 
 let ruler = null;
 
-/** Characters [start, end) of a one-line input, measured in the input's own font. */
 function inputTextRect(input, start, end) {
   if (!ruler) ruler = document.createElement('canvas').getContext('2d');
   const box = input.getBoundingClientRect();
@@ -36,7 +29,6 @@ function inputTextRect(input, start, end) {
   return { left, top: box.top + 4, width: Math.max(0, at(end) - left), height: box.height - 8 };
 }
 
-/** Characters [lo, hi) of one text node; with lo === hi, the caret position there. */
 function nodeTextRect(node, lo, hi) {
   const text = node.data;
   const range = document.createRange();
@@ -86,9 +78,6 @@ function piecesTextRect(pieces, start, end) {
     .map(p => nodeTextRect(p.node, inside(p, start), inside(p, end))));
 }
 
-// ── Structure ────────────────────────────────────────────────────────────────
-
-/** Collapsible group with a title bar, like the groups in the inscription view. */
 export function section({ title, open = false, onToggle }, ...children) {
   const head = h('button.section-head', { type: 'button', 'aria-expanded': String(open) },
     h('span.section-title', null, title), icon(open ? 'chevronDown' : 'chevronRight', 14));
@@ -105,7 +94,6 @@ export function section({ title, open = false, onToggle }, ...children) {
   return el;
 }
 
-/** Label + control + message line. `el.setMessage(type, text)` shows validation feedback. */
 export function field(label, control, { help } = {}) {
   const message = h('div.field-msg');
   const el = h('div.field', null,
@@ -123,8 +111,6 @@ export function field(label, control, { help } = {}) {
 export function note(text) {
   return h('p.field-note', null, text);
 }
-
-// ── Plain inputs ─────────────────────────────────────────────────────────────
 
 export function textBox({ value = '', rows = 1, readOnly = false, placeholder = '', mono = false, onInput } = {}) {
   if (rows <= 1) {
@@ -148,8 +134,6 @@ export function checkbox({ checked = false, label, disabled = false, onChange })
   return h('label.check' + (disabled ? '.disabled' : ''), null, input, h('span', null, label));
 }
 
-// ── Attribute browser (inserts process data fields) ──────────────────────────
-
 function attributeMenu(layer, anchor, attributes, title, choose) {
   const list = h('div.menu', null,
     h('div.menu-title', null, title),
@@ -160,17 +144,6 @@ function attributeMenu(layer, anchor, attributes, title, choose) {
   return close;
 }
 
-// ── Macro area: text with <%= expression %> parts shown as chips ─────────────
-
-/**
- * @param {Object} o
- * @param {string} o.value
- * @param {number} [o.minRows]
- * @param {{code:string,type:string,comment:string}[]} [o.attributes]  offered by the browser button
- * @param {string} [o.browseTitle]
- * @param {HTMLElement} o.layer  popover layer
- * @param {(value:string)=>void} o.onInput
- */
 export function macroArea({ value = '', minRows = 1, placeholder = '', attributes = [], browseTitle = '', layer, onInput }) {
   let current = value;
   let caret = [value.length, value.length];
@@ -179,7 +152,7 @@ export function macroArea({ value = '', minRows = 1, placeholder = '', attribute
   const browse = attributes.length ? h('button.field-browse', { type: 'button', title: browseTitle, 'aria-label': browseTitle }, icon('code', 13)) : null;
   const box = h('div.macro', { style: { minHeight: minRows * 18 + 14 + 'px' } }, view, edit, browse);
 
-  let pieces = []; // where each stretch of the value is shown (see piecesTextRect)
+  let pieces = [];
   const renderView = () => {
     clear(view);
     pieces = [];
@@ -237,8 +210,6 @@ export function macroArea({ value = '', minRows = 1, placeholder = '', attribute
   return box;
 }
 
-// ── Script input: one line of IvyScript ──────────────────────────────────────
-
 export function scriptInput({ value = '', placeholder = '', attributes = [], browseTitle = '', layer, onInput }) {
   const input = h('input.input.mono.script-input', { type: 'text', value, placeholder, spellcheck: false, autocomplete: 'off' });
   input.addEventListener('input', () => onInput(input.value));
@@ -258,8 +229,6 @@ export function scriptInput({ value = '', placeholder = '', attributes = [], bro
   box.input = input;
   return box;
 }
-
-// ── Code editor: textarea over a highlighted copy, with line numbers ─────────
 
 const HIGHLIGHT = {
   ivyscript(source) {
@@ -304,13 +273,6 @@ const HIGHLIGHT = {
   }
 };
 
-/**
- * @param {Object} o
- * @param {string} o.value
- * @param {'ivyscript'|'yaml'|'java'|'text'} o.language
- * @param {(value:string)=>void} o.onInput
- * @returns {HTMLElement & { setValue(v:string):void, setMarkers(m:{line:number,message:string}[]):void, textarea:HTMLTextAreaElement }}
- */
 export function codeEditor({ value = '', language = 'ivyscript', onInput, label = '' }) {
   const gutter = h('div.code-gutter', { 'aria-hidden': 'true' });
   const highlight = h('pre.code-hl', { 'aria-hidden': 'true' });
@@ -368,14 +330,6 @@ export function codeEditor({ value = '', language = 'ivyscript', onInput, label 
   return el;
 }
 
-// ── Multi-select ─────────────────────────────────────────────────────────────
-
-/**
- * @param {Object} o
- * @param {string[]} o.values
- * @param {{value:string,label?:string,icon?:string,description?:string}[]} o.options
- * @param {(values:string[])=>void} o.onChange
- */
 export function multiSelect({ values = [], options = [], placeholder = '', emptyText = '', layer, onChange }) {
   let selected = values.slice();
   const chips = h('span.select-chips');

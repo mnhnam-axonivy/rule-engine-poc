@@ -2,21 +2,14 @@ package com.axonivy.utils.rule.engine.runtime;
 
 import java.util.UUID;
 
-/**
- * DMN models for tests.
- */
 public final class TestModels {
 
   private TestModels() {}
 
-  /** @return a model name that no other test uses */
   public static String uniqueName(String prefix) {
     return prefix + "-" + UUID.randomUUID().toString().substring(0, 8);
   }
 
-  /**
-   * A discount decision: Gold members get the given discount from a purchase amount of 1000, everyone else 0.
-   */
   public static String discount(int goldDiscount) {
     return """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -62,9 +55,6 @@ public final class TestModels {
         """.formatted(goldDiscount);
   }
 
-  /**
-   * A model with a date input and a date result: the due date is 30 days after the invoice date.
-   */
   public static String dueDate() {
     return """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -88,20 +78,14 @@ public final class TestModels {
         """;
   }
 
-  /** A model that parses as XML but does not compile: the rule has a broken FEEL expression. */
   public static String brokenExpression() {
     return discount(15).replace("&gt;= 1000", "&gt;= )(");
   }
 
-  /** A model that refers to an input that does not exist. */
   public static String missingInput() {
     return discount(15).replace("href=\"#_in_type\"", "href=\"#_unknown\"");
   }
 
-  /**
-   * A decision table with many rules for the performance baseline.
-   * Rule n matches customers of segment n with an amount in a band of 100.
-   */
   public static String decisionTable(int rules) {
     var table = new StringBuilder();
     for (int rule = 0; rule < rules; rule++) {

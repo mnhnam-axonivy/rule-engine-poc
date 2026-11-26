@@ -26,13 +26,11 @@ const CLASSES = ['Invoice', 'InvoiceLine'];
  * of an earlier demo, kept as a fixture to test the DMN engine of the simulation.
  */
 const pricing = () => parseDmn(fixture('invoice-pricing.dmn'), { model: 'invoice-pricing', file: 'dmn/invoice-pricing.dmn' });
-/** The model of the demo: one decision table. */
 const demoModel = () => parseDmn(text('dmn/invoice-discount.dmn'), { model: 'invoice-discount', file: 'dmn/invoice-discount.dmn' });
 const processModel = () => loadProcess(json('process/InvoicePricing.p.json'), json(DATA + 'InvoicePricingData.d.json'),
   { file: 'InvoicePricing.p.json', project: 'rule-engine-demo', classes: CLASSES.map(name => json(DATA + name + '.d.json')) });
 const NS = 'com.axonivy.utils.rule.engine.demo.';
 const lines = value => (Array.isArray(value) ? value.join('\n') : String(value || ''));
-/** The inputs of the pricing model for its sample invoice. */
 const SAMPLE = {
   customerTier: 'Silver', country: 'CH', paymentTerms: 'Net 30', promoCode: '', expressDelivery: false, invoiceDate: '2026-11-19',
   lines: [
@@ -42,8 +40,6 @@ const SAMPLE = {
     { product: 'A4 paper, box of 5 reams', category: 'Consumables', quantity: 60, unitPrice: 25 },
     { product: 'Project management handbook', category: 'Books', quantity: 12, unitPrice: 45 }]
 };
-
-// ── XML and DMN ──────────────────────────────────────────────────────────────
 
 test('xml: elements, attributes, entities, comments and prefixes', () => {
   const root = parseXml('<?xml version="1.0"?>\n<!-- note -->\n<a:root x="1 &lt; 2" y=\'q\'><b>t &amp; u</b><c/><![CDATA[<raw>]]></a:root>');
@@ -135,8 +131,6 @@ test('dmn: the demo model is one decision table, decided from the top', () => {
   assert.deepEqual(decide('Standard', 12000).matched, [6]);
   assert.deepEqual(decide(null, 9200), { result: { discountPercent: 0, discountReason: 'No discount' }, matched: [6] }, 'only - matches null');
 });
-
-// ── FEEL ─────────────────────────────────────────────────────────────────────
 
 test('feel: conditions of a rule', () => {
   assert.equal(matches('-', 5), true);
@@ -236,8 +230,6 @@ test('feel: UNIQUE allows one match, COLLECT returns every hit, input columns ar
   assert.equal(evaluateTable(shipping, { country: 'CH', expressDelivery: false, pricedLines: [{ net: 300 }, { net: 100 }] }).result.fee, 15);
 });
 
-// ── The decision runtime ─────────────────────────────────────────────────────
-
 const withHardware = (dmn, value) => {
   const copy = cloneDmn(dmn);
   functionOf(copy, 'lineDiscountTable').table.rules[5].outputs[0] = String(value);
@@ -314,8 +306,6 @@ test('runtime: one decision with what it needs; the others are not evaluated', (
   assert.deepEqual(answer.matched, { orderDiscounts: [0, 2] });
 });
 
-// ── Mapping ──────────────────────────────────────────────────────────────────
-
 test('mapping: selected fields get their DMN names', () => {
   assert.deepEqual(parseFieldSelection('in.invoice.country, in.invoice.expressDelivery\nin.customer.country; in.amount\nin.invoice.country'), [
     { name: 'invoiceCountry', expression: 'in.invoice.country' },
@@ -374,7 +364,6 @@ test('generator: a table from selected fields, named so that it maps by name', (
   assert.deepEqual(requiredInputs(dmn, 'discountAmount'), ['total', 'discountPercent']);
   assert.deepEqual(evaluateTable(decision.table, { total: 9016, discountPercent: 2 }), { result: 0, matched: [0] });
 
-  // a nested data class is unfolded into columns
   const nested = {
     dataClass: { name: 'Data', simpleName: 'Data', fields: [{ name: 'shipping', type: 'Shipping' }, { name: 'errorCode' }] },
     classes: { Shipping: { name: 'Shipping', fields: [{ name: 'fee', type: 'Number' }, { name: 'reason' }] } }
@@ -396,7 +385,6 @@ test('generator: a selection that the mapping by name would not find again is re
   assert.throws(() => readableByName(parseFieldSelection('in.errorCode'), parseFieldSelection('in.errorCode'), model),
     /'errorCode' is selected as input and as output/);
 
-  // the same name in two data classes: in.order.type comes first
   const twice = {
     dataClass: { name: 'Data', simpleName: 'Data', fields: [{ name: 'order', type: 'Order' }, { name: 'member', type: 'Member' }] },
     classes: { Order: { name: 'Order', fields: [{ name: 'type' }] }, Member: { name: 'Member', fields: [{ name: 'type' }, { name: 'discount', type: 'Number' }] } }
@@ -406,8 +394,6 @@ test('generator: a selection that the mapping by name would not find again is re
   assert.throws(() => readableByName(parseFieldSelection('in.order.type, in.member.type'), parseFieldSelection('in.member.discount'), twice),
     /Several selected fields are named 'type'/);
 });
-
-// ── IvyScript and settings ───────────────────────────────────────────────────
 
 test('ivyscript: fields of nested data classes are assigned, the objects on the way are created', () => {
   const model = processModel();

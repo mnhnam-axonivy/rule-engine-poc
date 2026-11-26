@@ -12,7 +12,6 @@
   <version>14.0.1-SNAPSHOT</version>
   <packaging>iar</packaging>
   <properties>
-    <!-- image of the decision runtime used by the container tests: docker compose build -->
     <rule.engine.image>axonivy/rule-engine-runtime:dev</rule.engine.image>
   </properties>
   <dependencies>
@@ -70,7 +69,6 @@
         <version>14.0.1</version>
       </plugin>
       <plugin>
-        <!-- mvn test: everything that needs no container. The runtime is replaced by a mock. -->
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <excludes>
@@ -82,7 +80,6 @@
   </build>
   <profiles>
     <profile>
-      <!-- mvn verify -Pcontainer.test: runs the *ContainerTest classes against the real decision runtime in Docker -->
       <id>container.test</id>
       <build>
         <plugins>

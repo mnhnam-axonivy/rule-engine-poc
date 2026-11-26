@@ -5,9 +5,6 @@ import org.kie.dmn.api.core.DMNMessage;
 
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
 
-/**
- * Readable findings of the DMN compiler, validator or evaluation of Apache KIE.
- */
 public final class Messages {
 
   private Messages() {}
@@ -20,7 +17,6 @@ public final class Messages {
         message.getSourceId());
   }
 
-  /** The level of a finding as the API names it: ERROR, WARN or INFO. */
   private static String severity(Level level) {
     if (level == null) {
       return Message.ERROR;

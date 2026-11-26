@@ -20,20 +20,15 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 /**
- * Serves the DMN editor of Apache KIE to the browser, from this engine: GET
- * <code>{application}/api/rule-engine/dmn-editor/dmn-editor.js</code>.
- *
- * <p>The script is the one the decision runtime serves for its own page <code>/editor/</code>, so the editor
- * always fits the DMN engine that checks the models. This engine fetches it once through the REST client
- * <code>ruleEngine</code> and keeps it in memory. The browser never talks to the runtime: it may well be
- * unreachable from there, and its API key stays on the server.</p>
+ * The script is the one the decision runtime serves for its own page <code>/editor/</code>, so the editor always fits
+ * the DMN engine that checks the models. The browser never talks to the runtime: it may well be unreachable from there,
+ * and its API key stays on the server.
  */
 @Path(RuleManagement.REST_PATH)
 @PermitAll // the open source editor; it holds no data of the application
-@Hidden // not part of the API of the application
+@Hidden
 public class DmnEditorScript {
 
-  /** Where the runtime serves the standalone build of the KIE DMN editor. */
   static final String RUNTIME_PATH = "editor/lib/" + RuleManagement.EDITOR_SCRIPT;
   private static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(60);
   private static final String JAVASCRIPT = "text/javascript; charset=utf-8";
@@ -72,7 +67,6 @@ public class DmnEditorScript {
         .build();
   }
 
-  /** Forgets the script, so that it is fetched from the runtime again, e.g. after the runtime was updated. */
   public static void forget() {
     cached = new SoftReference<>(null);
   }
@@ -107,7 +101,6 @@ public class DmnEditorScript {
   }
 
   private static Response problem(Response.Status status, String message) {
-    // shown in the console of the browser, and by the Portal when the script does not load
     return Response.status(status).type(MediaType.TEXT_PLAIN_TYPE.withCharset("utf-8")).entity(message)
         .header("Cache-Control", "no-store")
         .build();

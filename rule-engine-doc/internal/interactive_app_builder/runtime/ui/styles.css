@@ -116,8 +116,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .glyph-rule { background: #c3eddf; }
 .glyph-script { background: #d0e0fd; color: #4c82f5; }
 
-/* ── Editor tabs ── */
-
 .tabs {
   grid-row: 1;
   display: flex;
@@ -157,8 +155,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
   white-space: nowrap;
 }
 .badge:hover { background: rgba(76, 118, 214, 0.3); }
-
-/* ── Workbench ── */
 
 .workbench { position: relative; grid-row: 2; min-height: 0; }
 .editor { height: 100%; }
@@ -233,7 +229,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .run-status.completed { color: var(--ok); }
 .run-status.failed { color: var(--err); }
 .run-status.paused, .run-status.waiting, .run-status.waiting-user, .run-status.dialog, .run-status.incomplete { color: var(--warn); }
-/* The simulated User Dialog of a user task. */
 .task-dialog {
   position: absolute;
   top: 56px;
@@ -297,7 +292,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   font-size: 12.5px;
 }
-/* ── Inscription view ── */
 
 .inscription {
   display: grid;
@@ -465,8 +459,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .mapping th { padding: 3px 6px; color: var(--muted); font-weight: 600; text-align: left; }
 .mapping td { padding: 4px 6px; border-top: 1px solid var(--line); }
 
-/* ── Code editor ── */
-
 .code {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -520,8 +512,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .editor-source { display: grid; grid-template-columns: minmax(0, 1fr); }
 .src-note { margin-left: 10px; color: var(--faint); font-family: var(--ui); }
 
-/* ── variables.yaml ── */
-
 .editor-variables { display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
 .var-main { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; padding: 10px 12px 12px; }
 .var-path { display: flex; align-items: center; gap: 6px; color: var(--muted); font: 12px var(--mono); }
@@ -555,8 +545,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .var-effect .i { margin-top: 2px; }
 .var-effect.ok { background: rgba(93, 195, 106, 0.13); color: #9be0a5; }
 .var-effect.bad { background: rgba(241, 76, 76, 0.13); color: #ff9a9a; }
-
-/* ── Bottom panel ── */
 
 .panel {
   grid-row: 3;
@@ -683,8 +671,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
   to { background: transparent; }
 }
 
-/* ── Popovers ── */
-
 .layer { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
 .popover {
   position: absolute;
@@ -715,12 +701,10 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .about ul { margin: 0 0 10px; padding-left: 18px; color: #d2d2d2; }
 .about-actions { display: flex; justify-content: flex-end; }
 
-/* ── Narrow containers: the inscription view slides over the canvas ── */
-
 .app[data-layout="narrow"] .editor-process { grid-template-columns: minmax(0, 1fr); }
 .app[data-layout="narrow"] .inscription {
   position: absolute;
-  top: 46px; /* below the toolbar */
+  top: 46px;
   right: 0;
   bottom: 0;
   z-index: 5;
@@ -731,15 +715,10 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .app[data-layout="narrow"] .editor-variables { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 .app[data-layout="narrow"] .var-side { max-height: 190px; border-top: 1px solid var(--edge); border-left: 0; }
 
-/* ── Small containers: controls keep their icons and drop their labels ── */
-
 .app.small .run-btn > span:not(.i) { display: none; }
 .app.small .run-btn { padding: 0 8px; }
 .app.small .caption { max-width: calc(100% - 20px); bottom: 46px; }
 
-/* ── Walkthrough: the tutorial's own layer, deliberately not styled like the Designer ── */
-
-/* Opening card: only the process and one button. */
 .app[data-mode="intro"] .tabs,
 .app[data-mode="intro"] .toolbar,
 .app[data-mode="intro"] .panel,
@@ -748,7 +727,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .app[data-mode="intro"] .caption,
 .app[data-mode="intro"] .toasts { display: none; }
 
-/* Playback: only what the current note is about. */
 .app[data-mode="tour"] .toolbar,
 .app[data-mode="tour"] .runbar,
 .app[data-mode="tour"] .zoombar,
@@ -820,7 +798,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
   box-shadow: 0 0 0 4000px rgba(9, 13, 22, 0.4);
   pointer-events: none;
 }
-/* Around the characters the walkthrough types: tighter, tinted like a selection. */
 .tour-spot.text { border-radius: 4px; background: rgba(141, 184, 255, 0.16); }
 
 .tour-note {
@@ -911,7 +888,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .tour-note.manual .tour-note-bar i { display: none; }
 .tour-note.paused .tour-note-bar i { background: var(--warn); }
 
-/* The screen between chapters. */
 .tour-title {
   position: absolute;
   inset: 0;
@@ -975,7 +951,6 @@ code { font-family: var(--mono); font-size: 0.95em; }
   .app *, .app *::before, .app *::after { animation: none !important; transition: none !important; }
 }
 
-/* ── DMN editor: the decision tables of a .dmn file ─────────────────────────── */
 .editor-dmn { display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
 /* every row as high as its content: a model has several tables and formulas, one below the other */
 .dmn-main { grid-auto-rows: max-content; align-content: start; overflow: auto; }
@@ -1018,7 +993,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .dmn-params { margin-left: 2px; color: var(--muted); font: 12px var(--mono); }
 .dmn-function .dmn-kind { color: #c9a7ff; }
 
-/* ── Decision runtime panel ─────────────────────────────────────────────────── */
 .panel-view.runtime { display: grid; gap: 10px; align-content: start; }
 .rt-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; }
 .rt-title { display: inline-flex; align-items: center; gap: 7px; }
@@ -1060,7 +1034,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .rt-status.draft { border-color: #7a6a3a; color: var(--warn); }
 .link-btn:disabled { opacity: 0.45; cursor: default; text-decoration: none; }
 
-/* ── The rule owner's dialog (what a Rules UI does on the runtime) ──────────── */
 .owner-dialog {
   position: absolute;
   left: 50%;
@@ -1085,9 +1058,8 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .owner-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .owner-dialog .field-note { margin: 0; }
 
-/* ── The tab "Architecture": the parts as blocks, and what connects them ───── */
 .editor-arch { position: relative; overflow: hidden; }
-.app[data-tab="arch"] .panel, .app[data-tab="portal"] .panel { display: none; } /* the diagram shows the state itself */
+.app[data-tab="arch"] .panel, .app[data-tab="portal"] .panel { display: none; }
 .arch-main { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); height: 100%; }
 .arch-main.with-details:not(.details-over) { grid-template-columns: minmax(0, 1fr) 340px; }
 .arch-scroll { display: grid; align-content: start; gap: 10px; min-width: 0; min-height: 0; padding: 10px 14px 14px; overflow: auto; }
@@ -1205,7 +1177,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .arch-link-label.quoted { max-width: 230px; padding: 4px 8px; border-color: var(--guide-accent); background: #14213a; color: #fff; font: 11px/1.4 var(--mono); overflow-wrap: anywhere; }
 .arch-link-label.quoted .arch-link-sub { display: none; }
 
-/* a walkthrough lights what it talks about; the rest steps back */
 .arch-diagram.focus .arch-block:not(.lit), .arch-diagram.focus .arch-link-label:not(.lit) { opacity: 0.42; }
 .arch-diagram.focus .arch-link:not(.lit) { opacity: 0.4; }
 .arch-diagram.focus .arch-frame:not(.lit):not(.lit-inside) > .arch-frame-head, .arch-diagram.focus .arch-frame:not(.lit):not(.lit-inside) > .arch-kind { opacity: 0.5; }
@@ -1215,7 +1186,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 /* the diagram dims what is not meant by itself: the spotlight only draws its ring */
 .tour-spot.plain { box-shadow: none; }
 
-/* the details of the selected block: a drawer on the right; over the diagram where the tab is narrow */
 .arch-details {
   display: flex;
   flex-direction: column;
@@ -1247,7 +1217,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .arch-details code { color: #9cdcfe; overflow-wrap: anywhere; }
 .app[data-mode="tour"] .arch-details { display: none; }
 
-/* ── The Portal: Admin Settings › Rule Management, in the light look of the Axon Ivy Portal ── */
 .editor-portal { overflow: auto; background: #f2f2f2; color: #1d1d1d; }
 .portal { position: relative; min-height: 100%; font-size: 13px; }
 .portal-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 18px; border-bottom: 1px solid #e3e3e3; background: #fff; }
@@ -1331,7 +1300,6 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .portal-dialog-foot { display: flex; align-items: center; margin-top: 14px; }
 .portal-dialog .portal-table td { overflow-wrap: anywhere; }
 
-/* the Portal in the architecture, and its call of the connector along the side of the projects */
 .arch-block.arch-optional { border-style: dashed; }
 .arch-calls { display: flex; align-items: center; height: 26px; padding-left: 12px; }
 .arch-link-label.inline { position: static; transform: none; justify-items: start; max-width: none; padding: 0 4px; font-size: 10.5px; }

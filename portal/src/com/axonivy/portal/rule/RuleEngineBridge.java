@@ -14,13 +14,8 @@ import ch.ivyteam.ivy.process.call.SubProcessSearchFilter.SearchScope;
 import ch.ivyteam.ivy.security.exec.Sudo;
 
 /**
- * The connection of the Portal to the Axon Ivy Rules Engine, without a dependency on it.
- *
- * <p>The rule engine project offers the callable sub process <code>Portal/RuleManagement</code>. Like Smart Workflow,
- * it is found by its signatures in the security context: without it the Portal shows no Rule Management and works as
- * before. Only JDK types cross, so the Portal needs no class of the rule engine.</p>
- *
- * <p>Every call answers with a result and an error, see {@link RuleEngineAnswer}.</p>
+ * The Portal has no dependency on the rule engine: the callable sub process <code>Portal/RuleManagement</code> is found
+ * by its signatures in the security context, like Smart Workflow. Only JDK types cross.
  */
 public final class RuleEngineBridge {
 
@@ -35,7 +30,6 @@ public final class RuleEngineBridge {
 
   private RuleEngineBridge() {}
 
-  /** @return true if a rule engine project is in the security context */
   public static boolean isAvailable() {
     try {
       return Sudo.get(() -> CollectionUtils.isNotEmpty(SubProcessCallStartEvent.find(SubProcessSearchFilter.create()
@@ -48,32 +42,26 @@ public final class RuleEngineBridge {
     }
   }
 
-  /** runtimeUrl, reachable, editorScript (link of the DMN editor script) and modelPrefix */
   public static RuleEngineAnswer info() {
     return call(INFO, null);
   }
 
-  /** The models of the decision runtime and the .dmn files of the projects, see {@link RuleModel} */
   public static RuleEngineAnswer models() {
     return call(MODELS, null);
   }
 
-  /** The versions of a model, newest first, see {@link RuleVersion} */
   public static RuleEngineAnswer versions(String model) {
     return call(VERSIONS, params("model", model));
   }
 
-  /** model, version and dmn of a version; version null opens the active one */
   public static RuleEngineAnswer content(String model, Integer version) {
     return call(CONTENT, params("model", model, "version", version));
   }
 
-  /** valid and messages: the findings of the DMN engine */
   public static RuleEngineAnswer validate(String dmn) {
     return call(VALIDATE, params("dmn", dmn));
   }
 
-  /** Stores a new version with the source Portal: live at once, or as draft */
   public static RuleEngineAnswer save(String model, String dmn, String author, String description, boolean activate) {
     return call(SAVE, params("model", model, "dmn", dmn, "author", author, "description", description,
         "activate", activate));
@@ -83,7 +71,6 @@ public final class RuleEngineBridge {
     return call(ACTIVATE, params("model", model, "version", version, "author", author));
   }
 
-  /** Activates the version that was active before the current one */
   public static RuleEngineAnswer rollback(String model, String author) {
     return call(ROLLBACK, params("model", model, "author", author));
   }

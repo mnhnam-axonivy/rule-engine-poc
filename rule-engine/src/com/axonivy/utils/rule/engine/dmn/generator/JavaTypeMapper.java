@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Maps Java types to DMN types. Works with plain reflection and class names only,
- * so the types of the Ivy scripting language are supported without a dependency on Ivy.
+ * Plain reflection and class names only, so the types of the Ivy scripting language are supported without a dependency
+ * on Ivy.
  */
 public class JavaTypeMapper {
 
@@ -129,10 +129,6 @@ public class JavaTypeMapper {
     }
   }
 
-  /**
-   * Types without a meaning for a decision: maps, objects and the technical types of Ivy
-   * like File, Binary, Xml, Record, Recordset and Tree.
-   */
   private static boolean isOpaque(Class<?> type) {
     String name = type.getName();
     return type == Object.class

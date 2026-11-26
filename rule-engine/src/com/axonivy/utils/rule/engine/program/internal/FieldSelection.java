@@ -6,13 +6,6 @@ import java.util.Map;
 
 import com.axonivy.utils.rule.engine.dmn.generator.FeelNames;
 
-/**
- * The fields selected for "New DMN...": field paths separated by comma, semicolon or line
- * break, e.g. <code>in.member.purchaseAmount, in.member.type</code>. Each becomes an input or an output of the
- * new DMN, named like its field: <code>purchaseAmount</code>, <code>type</code>.
- *
- * @param expressionsByName the field path of each field by its DMN name, in the order of selection
- */
 public record FieldSelection(Map<String, String> expressionsByName) {
 
   public static FieldSelection parse(String text) {

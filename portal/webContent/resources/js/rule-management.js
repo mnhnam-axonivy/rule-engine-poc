@@ -1,10 +1,6 @@
 /*
- * The DMN editor of the tab "Rule Management" (Admin Settings).
- *
- * The editor is the DMN editor of Apache KIE (window.DmnEditor). Its script is served by the rule engine
- * project of the application; the link comes from the Portal (data-editor-script) and the script is loaded
- * the first time a rule is opened. The model goes in and out through the hidden field .rule-editor-dmn:
- * the Portal fills it when a rule is opened, this script fills it before a save or a check.
+ * The model goes in and out through the hidden field .rule-editor-dmn: the Portal fills it when a rule is
+ * opened, this script fills it before a save or a check.
  */
 var RuleManagement = (function () {
   'use strict';
@@ -52,7 +48,6 @@ var RuleManagement = (function () {
     return state.loading;
   }
 
-  /** Opens the model of the hidden field in the editor; called after the Portal opened a rule. */
   function open() {
     close();
     var host = root();
@@ -99,14 +94,12 @@ var RuleManagement = (function () {
     }
   }
 
-  /** Stores what the editor holds as a new version, live or as draft. */
   function save(activate) {
     withContent(function () {
       window.ruleManagementSave([{ name: 'activate', value: activate ? 'true' : 'false' }]);
     });
   }
 
-  /** Lets the DMN engine check what the editor holds. */
   function validate() {
     withContent(function () {
       window.ruleManagementValidate();
@@ -128,7 +121,6 @@ var RuleManagement = (function () {
     });
   }
 
-  /** oncomplete of a save or a check */
   function done(xhr, status, args) {
     state.busy = false;
     if (args && args.saved && state.editor) {
@@ -138,7 +130,6 @@ var RuleManagement = (function () {
     render();
   }
 
-  /** @return false if the user wants to stay with unsaved changes */
   function leave() {
     if (state.dirty && !window.confirm(text('leave'))) {
       return false;

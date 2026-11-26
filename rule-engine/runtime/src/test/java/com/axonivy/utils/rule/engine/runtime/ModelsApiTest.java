@@ -108,7 +108,6 @@ class ModelsApiTest {
     assertThat(statuses).containsExactly("DRAFT", "DRAFT", "ACTIVE");
 
     evaluate(model, gold(1500)).body("results.discount", equalTo(15)).body("version", equalTo(1));
-    // a draft can be evaluated explicitly for a test run
     given().contentType(ContentType.JSON).body(Map.of("input", gold(1500)))
         .post("/api/models/{model}/versions/3/evaluate", model).then()
         .statusCode(200)
@@ -124,7 +123,6 @@ class ModelsApiTest {
         .statusCode(200)
         .body("version", equalTo(1))
         .body("created", equalTo(false));
-    // line endings do not make a new version
     uploadXml(model, TestModels.discount(15).replace("\n", "\r\n"))
         .statusCode(200)
         .body("version", equalTo(1));
@@ -148,7 +146,6 @@ class ModelsApiTest {
         .body("code", equalTo("INVALID_MODEL"));
     register(model, " ", Map.of()).statusCode(400).body("code", equalTo("INVALID_REQUEST"));
     uploadXml("bad name!", TestModels.discount(15)).statusCode(400).body("code", equalTo("INVALID_REQUEST"));
-    // nothing was stored
     given().get("/api/models/{model}", model).then().statusCode(404);
 
     given().contentType(ContentType.XML).body(TestModels.brokenExpression())
@@ -208,7 +205,6 @@ class ModelsApiTest {
         .statusCode(201)
         .body("status", equalTo("ACTIVE"));
     evaluate(model, gold(1500)).body("version", equalTo(2));
-    // deploying an older state of the project again makes that state live again
     register(model, TestModels.discount(10), Map.of("source", "PROJECT"))
         .statusCode(200)
         .body("version", equalTo(1))
@@ -230,12 +226,10 @@ class ModelsApiTest {
         .body("status", equalTo("ACTIVE"))
         .body("activatedBy", equalTo("rule.approver"));
 
-    // the project is deployed again with a changed file: it is registered, but does not go live
     register(model, TestModels.discount(30), Map.of("source", "PROJECT"))
         .statusCode(201)
         .body("version", equalTo(3))
         .body("status", equalTo("DRAFT"));
-    // and neither does the unchanged file of the initial deployment
     register(model, TestModels.discount(10), Map.of("source", "PROJECT"))
         .statusCode(200)
         .body("version", equalTo(1))

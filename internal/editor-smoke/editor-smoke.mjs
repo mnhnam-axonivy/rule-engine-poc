@@ -1,19 +1,3 @@
-/**
- * Browser check of the DMN editor page of the decision runtime (/editor/).
- *
- *   npm run smoke            starts a throwaway runtime container from axonivy/rule-engine-runtime:dev
- *                            (build it first: docker compose build), protected by an API key, runs the
- *                            checks in headless Chrome/Edge and removes the container again
- *   npm run smoke -- --url=http://localhost:8090/ [--key=<api key>]
- *                            the same against a runtime that runs already. It adds versions to it!
- *
- * The page is used like a person would: API key prompt, open a model, change a rule, save and activate,
- * activate the old version, roll back, a model the runtime rejects, a new model, a .dmn file written back.
- * The first change is made in the KIE editor itself, like a person does it: select the decision, "Edit", type
- * into a cell. Later changes use the editor's API (setContent). Every request outside the runtime is blocked
- * and counted as a failure.
- * Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
- */
 import puppeteer from 'puppeteer-core';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
@@ -23,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const shots = resolve(here, '.preview');
 const downloads = join(shots, 'downloads');
-// a small model of one table: the fixture of the connector tests, not the demo
 const discountFile = resolve(here, '../../rule-engine-test/dmn/discount.dmn');
 const IMAGE = process.env.RULE_ENGINE_IMAGE || 'axonivy/rule-engine-runtime:dev';
 const arg = name => (process.argv.find(a => a.startsWith('--' + name + '=')) || '').slice(name.length + 3);
@@ -53,8 +36,6 @@ const check = (ok, what) => {
   if (!ok) failures.push(what);
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// ── the runtime ──────────────────────────────────────────────────────────────
 
 let base = arg('url');
 let key = arg('key');
@@ -96,8 +77,6 @@ const evaluate = async () => (await api('models/discount/evaluate', {
 
 const original = readFileSync(discountFile, 'utf8');
 const withDiscount = value => original.replace(/(<outputEntry id="_rule_1_output_discount">\s*<text>)15(<\/text>)/, '$1' + value + '$2');
-
-// ── the browser ──────────────────────────────────────────────────────────────
 
 let browser;
 const problems = [];
@@ -147,7 +126,6 @@ async function shot(page, name) {
   await page.screenshot({ path: join(shots, name + '.png') });
 }
 
-/** Enters the API key when the page asks for it, and waits until the models are listed. */
 async function enterKey(page) {
   await page.waitForFunction(() => document.querySelector('#key-dialog').open
     || document.querySelector('#runtime-hint').textContent !== 'Loading the models…', { timeout: 30000, polling: 100 });
@@ -160,7 +138,6 @@ async function enterKey(page) {
   await page.waitForFunction(() => document.querySelector('#runtime-hint').textContent !== 'Loading the models…', { timeout: 30000, polling: 100 });
 }
 
-/** The content of the open editor, or null while the editor is still starting. */
 const content = page => page.evaluate(() => {
   const editor = window.ruleEditor && window.ruleEditor.editor;
   if (!editor) return null;
@@ -203,12 +180,10 @@ async function typeIntoTable(page, cellIndex, value) {
   await page.keyboard.press('Enter');
 }
 
-/** Replaces the model in the editor, the way an edit in the table would change it. */
 const setModel = (page, xml, path = 'discount.dmn') => page.evaluate((p, x) => window.ruleEditor.editor.setContent(p, x), path, xml);
 
 const message = page => page.$eval('#messages', box => (box.hidden ? '' : box.textContent.replace(/^Close/, '').replace(/\s+/g, ' ').trim()));
 
-/** Clicks a button of the page and waits for the message it shows. */
 async function act(page, selector, kind) {
   await page.$eval('#messages', box => { box.hidden = true; });
   await page.click(selector);
@@ -219,8 +194,6 @@ async function act(page, selector, kind) {
 
 const versions = async () => (await api('models/discount/versions'))
   .sort((a, b) => a.version - b.version).map(v => v.version + ':' + v.status + ':' + v.source).join(',');
-
-// ── checks ───────────────────────────────────────────────────────────────────
 
 try {
   await ready();

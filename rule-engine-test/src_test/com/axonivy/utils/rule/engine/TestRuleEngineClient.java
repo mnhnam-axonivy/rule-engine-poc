@@ -22,10 +22,6 @@ import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
 import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import jakarta.ws.rs.core.Response;
 
-/**
- * The client of the decision runtime: requests, answers and failures. Each call runs a REST element of the callable
- * RuleEngine/RuntimeCall; the runtime is replaced by {@link MockRuntime}.
- */
 @IvyProcessTest(enableWebServer = true)
 class TestRuleEngineClient {
 
@@ -157,7 +153,6 @@ class TestRuleEngineClient {
           assertThat(ex.getMessage()).contains("502").contains("Bad Gateway");
         });
 
-    // the mock answers 404 MODEL_NOT_FOUND for a model it does not know
     assertThatThrownBy(() -> client().model("x"))
         .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> assertThat(ex.isModelMissing()).isTrue());
   }

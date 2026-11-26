@@ -1,10 +1,6 @@
 /**
- * A small XML reader, enough for well-formed .dmn files: elements, attributes, text, comments,
- * CDATA and the five standard entities. It has no DOM dependency, so the model code that uses
- * it runs in the browser and in the unit tests alike.
- *
- * A node is { name, local, attrs, children, text }: `name` as written (dmndi:DMNShape),
- * `local` without its namespace prefix (DMNShape), `text` the text directly inside it.
+ * A small XML reader without a DOM dependency, so the model code that uses it runs in the browser and in the
+ * unit tests alike.
  */
 
 export class XmlError extends Error {
@@ -33,7 +29,6 @@ export function encodeEntities(text) {
 
 const localName = name => (name.includes(':') ? name.slice(name.indexOf(':') + 1) : name);
 
-/** @returns the root element. Throws XmlError when the text is not well-formed. */
 export function parseXml(source) {
   const src = String(source == null ? '' : source);
   let i = 0;
@@ -76,7 +71,6 @@ export function parseXml(source) {
       continue;
     }
 
-    // an opening tag: name, attributes, and ">" or "/>"
     const tag = /^<([^\s/>]+)/.exec(src.slice(i, i + 200));
     if (!tag) fail('Unexpected "<"');
     const node = { name: tag[1], local: localName(tag[1]), attrs: {}, children: [], text: '' };
@@ -102,13 +96,10 @@ export function parseXml(source) {
   return root;
 }
 
-/** The child elements with that local name. */
 export const childrenOf = (node, local) => node.children.filter(child => child.local === local);
 
-/** The first child element with that local name, or null. */
 export const childOf = (node, local) => node.children.find(child => child.local === local) || null;
 
-/** The text of the first child with that local name, trimmed; '' when there is none. */
 export const textOf = (node, local) => {
   const child = childOf(node, local);
   return child ? child.text.trim() : '';

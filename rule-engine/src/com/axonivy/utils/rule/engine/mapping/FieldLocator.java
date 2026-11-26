@@ -11,18 +11,10 @@ import java.util.Optional;
 import com.axonivy.utils.rule.engine.dmn.generator.BeanProperties;
 import com.axonivy.utils.rule.engine.dmn.generator.FeelNames;
 
-/**
- * Finds the field of the process data that belongs to a DMN input or result, by name.
- */
 public final class FieldLocator {
 
-  /** How deep nested data classes are searched. */
   private static final int MAX_DEPTH = 4;
 
-  /**
-   * @param expression IvyScript expression of the field, e.g. <code>in.member.purchaseAmount</code>
-   * @param type declared type of the field
-   */
   public record Field(String expression, Type type) {}
 
   private record Node(Class<?> type, String expression, int depth, List<Class<?>> parents) {}
@@ -30,13 +22,8 @@ public final class FieldLocator {
   private FieldLocator() {}
 
   /**
-   * Searches a field by name, level by level: a field of the process data wins over a field of a nested data
-   * class. An exact name wins over a name that only differs in case, blanks or separators
-   * (<code>Risk Level</code> finds <code>riskLevel</code>).
-   *
-   * @param root class of the process data
-   * @param rootExpression the variable of the process data, e.g. <code>in</code>
-   * @param name name of the DMN input or result
+   * Searches level by level: a field of the process data wins over a field of a nested data class. An exact name wins
+   * over a name that only differs in case, blanks or separators (<code>Risk Level</code> finds <code>riskLevel</code>).
    */
   public static Optional<Field> findByName(Class<?> root, String rootExpression, String name) {
     String fieldName = FeelNames.toFieldName(name);
@@ -72,11 +59,6 @@ public final class FieldLocator {
     return Optional.empty();
   }
 
-  /**
-   * @param root class of the process data
-   * @param expression a field path that starts with the variable of the process data, e.g. <code>in.member.type</code>
-   * @return the declared type of the field, empty if the path does not lead to a field
-   */
   public static Optional<Type> typeOf(Class<?> root, String expression) {
     String[] segments = expression.trim().split("\\.");
     Type type = root;
@@ -91,12 +73,8 @@ public final class FieldLocator {
   }
 
   /**
-   * Reads a field without touching the process data: a nested object that is not set gives null,
-   * it is not created on the way.
-   *
-   * @param data the process data
-   * @param expression a field path that starts with the variable of the process data, e.g. <code>in.member.type</code>
-   * @return the value (which may be null), or empty if the path does not lead to a field
+   * Reads a field without touching the process data: a nested object that is not set gives null, it is not created on
+   * the way.
    */
   public static Optional<Optional<Object>> read(Object data, String expression) {
     String[] segments = expression.trim().split("\\.");
@@ -133,7 +111,6 @@ public final class FieldLocator {
     return Object.class;
   }
 
-  /** @return the name without case, blanks and separators: <code>Risk Level</code> and <code>riskLevel</code> are equal */
   public static String normalize(String name) {
     var normalized = new StringBuilder();
     for (char c : name.toCharArray()) {

@@ -1,12 +1,3 @@
-/**
- * Reads a .dmn file into the model the simulation works on: the inputs of the model, its
- * decisions and its functions (business knowledge models). A decision or a function is a decision
- * table or a FEEL literal expression; both can be shown, edited and evaluated. Any other boxed
- * expression is kept as it is and reported as not simulated.
- *
- * The .dmn files are imported from the demo project at build time, so the simulated rules are
- * the real ones.
- */
 import { parseXml, childrenOf, childOf, textOf, XmlError } from './xml.js';
 
 export class DmnError extends Error {
@@ -41,13 +32,6 @@ function toTable(node) {
   };
 }
 
-/**
- * @param {string} xml   content of a .dmn file
- * @param {{ model?: string, file?: string }} [meta]  `model`: the name on the runtime, the file
- *   name without extension; `file`: its path in the project, e.g. dmn/discount.dmn
- * @returns {{ model, file, name, namespace, types, inputs, decisions }}
- * @throws {DmnError} when the content is not a DMN file
- */
 export function parseDmn(xml, meta = {}) {
   let root;
   try {
@@ -58,7 +42,6 @@ export function parseDmn(xml, meta = {}) {
   }
   if (root.local !== 'definitions') throw new DmnError('The file is not a DMN model: its root element is <' + root.name + '>');
 
-  // item definitions that restrict a string to allowed values: the enums of the process data
   const types = {};
   childrenOf(root, 'itemDefinition').forEach(item => {
     const allowed = childOf(item, 'allowedValues');
@@ -79,7 +62,6 @@ export function parseDmn(xml, meta = {}) {
   };
   const inputs = childrenOf(root, 'inputData').map(node => ({ id: node.attrs.id || '', name: node.attrs.name || '', type: variableType(node) }));
 
-  /** The logic of a decision or a function: a decision table, a literal expression, or something not simulated. */
   const logic = node => {
     const table = childOf(node, 'decisionTable');
     const literal = childOf(node, 'literalExpression');
@@ -110,7 +92,6 @@ export function parseDmn(xml, meta = {}) {
     };
   });
 
-  // business knowledge models: functions with parameters that decisions call, e.g. once for every line
   const functions = childrenOf(root, 'businessKnowledgeModel').map(node => {
     const encapsulated = childOf(node, 'encapsulatedLogic') || { attrs: {}, children: [] };
     return {
@@ -146,7 +127,6 @@ export function functionOf(model, name) {
   return (model.functions || []).find(fn => fn.name === name) || null;
 }
 
-/** A decision or a function of the model by its name: what the editor shows and edits. */
 export function logicOf(model, name) {
   return decisionOf(model, name) || functionOf(model, name);
 }
@@ -171,26 +151,22 @@ export function typeLabel(model, typeRef, depth = 0) {
   return item.collection ? 'list of ' + base : base;
 }
 
-/** What a decision gives: one result named like it, or the entries of a structure when its table has several outputs. */
 export function outputsOf(model, decision) {
   const columns = decision.table ? decision.table.outputs : [];
   if (columns.length > 1) return columns.map(column => ({ name: column.name || column.label, type: typeLabel(model, column.type) }));
   return [{ name: decision.name, type: typeLabel(model, decision.type || (columns[0] && columns[0].type)) }];
 }
 
-/** e.g. "purchaseAmount (number), type (string)" */
 export function describeNames(names, types) {
   return names.map(name => (types[name] ? name + ' (' + types[name] + ')' : name)).join(', ');
 }
 
-/** The type of each input of the model for a reader, by its name. */
 export function inputTypes(model) {
   const types = {};
   model.inputs.forEach(input => { const type = typeLabel(model, input.type); if (type) types[input.name] = type; });
   return types;
 }
 
-/** The results of a decision with their types, e.g. "discount (number)". */
 export function describeOutputs(model, decision) {
   const outputs = outputsOf(model, decision);
   const types = {};
@@ -198,10 +174,6 @@ export function describeOutputs(model, decision) {
   return describeNames(outputs.map(output => output.name), types);
 }
 
-/**
- * The names of the inputs a decision depends on, directly or through other decisions.
- * Without a decision: all inputs of the model.
- */
 export function requiredInputs(model, decisionName) {
   if (!decisionName) return model.inputs.map(input => input.name);
   const start = decisionOf(model, decisionName);
@@ -218,7 +190,6 @@ export function requiredInputs(model, decisionName) {
   return ids.map(id => model.inputs.find(input => input.id === id)).filter(Boolean).map(input => input.name);
 }
 
-/** The decisions to evaluate for `decisionName`, the ones it depends on first. Without a name: all. */
 export function evaluationOrder(model, decisionName) {
   const order = [];
   const visiting = new Set();
@@ -234,9 +205,8 @@ export function evaluationOrder(model, decisionName) {
 }
 
 /**
- * Adds an input to a model and a column for it to the table of a decision, which is what the DMN editor does
- * with a new input data node and a new column. The existing rules get "-" for it, so they decide as before.
- * @returns {boolean} false if the decision has no table
+ * Adds an input to a model and a column for it to the table of a decision. The existing rules get "-" for it,
+ * so they decide as before.
  */
 export function addInput(model, decisionName, { name, type = 'string' }) {
   const decision = decisionOf(model, decisionName);

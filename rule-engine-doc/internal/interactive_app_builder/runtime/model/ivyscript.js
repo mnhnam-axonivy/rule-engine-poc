@@ -1,27 +1,3 @@
-/**
- * A deliberately small IvyScript interpreter — just enough to run the script steps and
- * script fields that appear in the tutorial processes:
- *
- *   in.invoiceText = "INVOICE\n" + "Invoice Number: ..." ;   assignments to process data
- *   ivy.log.error(out.summary);                              runtime log calls
- *   in.summary                                               field expressions (macros, mappings)
- *   tutorial.InvoiceData.class                               class literals
- *   in.result.totalAmount                                    fields of a data class object
- *   dev.langchain4j.internal.Json.toJson(in.result)          the JSON call the tutorials log with
- *   in.invoiceDecision.isAutoApprove == false                conditions of a gateway
- *   double amount = Double.parseDouble(in.amount.trim());    local variables, a few Java statics
- *   if (...) { ... } else if (...) { ... } else { ... }      the rules inside a tool's script
- *   try { ... } catch (NumberFormatException e) { ... }
- *   new DecisionMaker(in.aiMemoryId).resolve(result.answer)  objects the surroundings provide
- *   error.getAttribute("decision") as tutorial.HumanFeedback  a cast is read and ignored
- *   for (InvoiceLine line : in.invoice.lines) { ... }       a loop over a list, fields of its elements
- *   line.unitPrice.multiply(BigDecimal.valueOf(2))           BigDecimal arithmetic, RoundingMode.HALF_UP
- *
- * Anything outside that subset raises an IvyScriptError of kind "unsupported" with a message
- * the UI can show as-is, so learners are told what the simulation cannot do instead of
- * getting a silent wrong answer.
- */
-
 import { clean, roundTo } from './feel.js';
 
 export class IvyScriptError extends Error {
@@ -40,8 +16,6 @@ const PUNCTUATION = ['==', '!=', '&&', '||', '<=', '>=', '.', ',', ';', '(', ')'
 const SUPPORTED_HINT = 'This simulation understands assignments, if/else, for (Type item : list), try/catch, comparisons, text joined with +, and ivy.log calls.';
 // binary operators, loosest first
 const LEVELS = [['||'], ['&&'], ['==', '!='], ['<', '>', '<=', '>='], ['+', '-'], ['*', '/', '%']];
-
-// ── Tokenizer ────────────────────────────────────────────────────────────────
 
 export function tokenize(source) {
   const src = String(source == null ? '' : source);
@@ -109,8 +83,6 @@ export function tokenize(source) {
   return tokens;
 }
 
-// ── Parser ───────────────────────────────────────────────────────────────────
-
 class Parser {
   constructor(source) {
     this.tokens = tokenize(source);
@@ -173,7 +145,6 @@ class Parser {
       return { type: 'if', test, then, otherwise, pos: start.pos };
     }
     if (this.is('id', 'for')) {
-      // for (Type item : list) statement
       this.next();
       this.expectPunct('(');
       const varType = this.dottedName();
@@ -187,7 +158,6 @@ class Parser {
       return { type: 'forEach', varType, name: name.v, iterable, body: this.statement(), pos: start.pos };
     }
     if (this.is('id', 'import')) {
-      // import a.b.C; — the class is then known by its short name
       this.next();
       const parts = [];
       while (!this.is('p', ';') && !this.is('eof')) parts.push(this.next().v);
@@ -210,7 +180,6 @@ class Parser {
       if (!handlers.length) throw new IvyScriptError("'try' needs a 'catch' in this simulation", { pos: start.pos, kind: 'unsupported' });
       return { type: 'try', body, handlers, pos: start.pos };
     }
-    // a local variable: Type name = value;
     const name = this.tokens[this.i + 1];
     const after = this.tokens[this.i + 2];
     const word = t => t && t.t === 'id' && !KEYWORDS.has(t.v) && !LITERALS.has(t.v);
@@ -256,7 +225,6 @@ class Parser {
     return { type: 'cond', test, yes, no: this.expression(), pos: mark.pos };
   }
 
-  /** a.b.C */
   dottedName() {
     const first = this.next();
     if (first.t !== 'id') throw new IvyScriptError('Expected a name', { pos: first.pos });
@@ -343,9 +311,6 @@ class Parser {
 export function parseScript(source) { return new Parser(source).program(); }
 export function parseExpression(source) { return new Parser(source).singleExpression(); }
 
-// ── Evaluation ───────────────────────────────────────────────────────────────
-
-/** Flattens `a.b.c` into ['a','b','c'] when the node is a plain dotted name, else null. */
 function dottedName(node) {
   const parts = [];
   let n = node;
@@ -365,12 +330,10 @@ function fieldOf(ctx, name, pos) {
 
 function isDataRoot(name) { return name === 'in' || name === 'out'; }
 
-/** An object of a data class: { __type: 'tutorial.InvoiceData', invoiceNumber: '…', … }. */
 const isTyped = value => value !== null && typeof value === 'object' && typeof value.__type === 'string';
 const classOf = (ctx, name) => (ctx.classes && ctx.classes[name]) || null;
 const NUMERIC_TYPE = /(^|\.)(BigDecimal|BigInteger|Number|Integer|Long|Double|Float|Short)$/;
 
-/** The field `path[i]` of the data class `type`; throws when that class has no such field. */
 function subField(ctx, type, path, i, pos) {
   const cls = classOf(ctx, type);
   const sub = cls ? cls.fields.find(f => f.name === path[i]) : null;
@@ -402,10 +365,6 @@ export function toJson(value, ctx = {}, indent = '') {
   }).join(',\n') + '\n' + indent + '}';
 }
 
-/**
- * Any value as Json.toJson writes it — what a tool hands back to the model: objects over
- * several lines with " : ", lists on one line, entries without a value left out.
- */
 export function prettyJson(value, indent = '') {
   if (value === null || value === undefined) return 'null';
   if (typeof value !== 'object') return JSON.stringify(value);
@@ -416,14 +375,12 @@ export function prettyJson(value, indent = '') {
   return '{\n' + names.map(name => inner + JSON.stringify(name) + ' : ' + prettyJson(value[name], inner)).join(',\n') + '\n' + indent + '}';
 }
 
-/** A map as Json.toJson writes it. */
 export function mapJson(values) {
   const names = Object.keys(values || {});
   if (!names.length) return '{ }';
   return '{\n' + names.map(name => '  ' + JSON.stringify(name) + ' : ' + toJson(values[name], {}, '  ')).join(',\n') + '\n}';
 }
 
-/** An exception a script can catch: it carries the name of its Java class. */
 function javaError(javaType, message, pos) {
   const error = new IvyScriptError(javaType + ': ' + message, { pos, kind: 'runtime' });
   error.javaType = javaType;
@@ -442,7 +399,6 @@ function parseJavaNumber(value, pattern, pos) {
   return parseFloat(raw);
 }
 
-/** Static Java methods the tutorial processes call. */
 const STATIC_METHODS = {
   'dev.langchain4j.internal.Json.toJson': (args, ctx) => toJson(args[0], ctx),
   'Double.parseDouble': (args, ctx, pos) => parseJavaNumber(args[0], JAVA_NUMBER, pos),
@@ -453,7 +409,6 @@ const STATIC_METHODS = {
   'BigDecimal.valueOf': (args, ctx, pos) => number(args[0], pos)
 };
 
-/** Static Java fields the tutorial processes read, by class and field: BigDecimal.ZERO. */
 const STATIC_FIELDS = {
   'BigDecimal.ZERO': 0,
   'BigDecimal.ONE': 1,
@@ -467,7 +422,6 @@ const STATIC_FIELDS = {
 const staticField = path => (path && path.length > 1 ? STATIC_FIELDS[path.slice(-2).join('.')] : undefined);
 const staticMethod = path => (path ? STATIC_METHODS[path.join('.')] || STATIC_METHODS[path.slice(-2).join('.')] : undefined);
 
-/** Which thrown Java exception a catch clause takes. */
 function catches(declared, thrown) {
   if (declared === thrown || ['Exception', 'Throwable', 'RuntimeException'].includes(declared)) return true;
   return declared === 'IllegalArgumentException' && thrown === 'NumberFormatException';
@@ -609,7 +563,6 @@ function evaluate(node, ctx) {
   }
 }
 
-/** The classes a script may create with `new` are given by its surroundings (ctx.constructors). */
 function constructorOf(node, ctx) {
   const known = ctx.constructors || {};
   const make = known[node.className] || known[node.className.split('.').pop()];
@@ -626,7 +579,6 @@ function evaluateReference(node, ctx) {
       const field = fieldOf(ctx, path[1], node.pos);
       let value = ctx.data[field.name];
       if (value === undefined || value === null) value = defaultFor(field);
-      // fields of a data class object, e.g. in.result.totalAmount (null while the object is missing)
       let type = field.type || 'String';
       for (let i = 2; i < path.length; i++) {
         const sub = subField(ctx, type, path, i, node.pos);
@@ -637,7 +589,6 @@ function evaluateReference(node, ctx) {
       return value;
     }
     if (ctx.locals && ctx.locals.has(root)) {
-      // a local and the fields of its object, e.g. line.unitPrice in a loop over the lines
       let value = ctx.locals.get(root);
       for (let i = 1; i < path.length; i++) {
         if (value === null || value === undefined) return null;
@@ -652,7 +603,6 @@ function evaluateReference(node, ctx) {
     }
     if (staticField(path) !== undefined) return staticField(path);
     if (ctx.vars && Object.prototype.hasOwnProperty.call(ctx.vars, root)) {
-      // e.g. param.amount in the mapping of a sub-process start
       let value = ctx.vars[root];
       for (let i = 1; i < path.length; i++) {
         if (value === null || value === undefined) return null;
@@ -669,7 +619,6 @@ function evaluateReference(node, ctx) {
     }
     throw new IvyScriptError("Unknown variable '" + root + "'. Process data is available as in. or out.", { pos: node.pos, kind: 'field' });
   }
-  // member access on a computed value, e.g. ("a" + "b").length — only methods are supported
   throw new IvyScriptError("Cannot read '" + node.prop + "' here", { pos: node.pos, kind: 'unsupported' });
 }
 
@@ -677,7 +626,6 @@ function evaluateCall(node, ctx) {
   const path = dottedName(node.callee);
   const isLocal = path && ctx.locals && ctx.locals.has(path[0]);
   if (!isLocal && staticMethod(path)) return staticMethod(path)(node.args.map(a => evaluate(a, ctx)), ctx, node.pos);
-  // static methods the surroundings provide, e.g. CircuitBreakerSignal.stopAll()
   if (path && ctx.statics && ctx.statics[path.join('.')]) return ctx.statics[path.join('.')](node.args.map(a => evaluate(a, ctx)));
   if (path && path[0] === 'ivy') {
     if (path.length === 3 && path[1] === 'log' && LOG_LEVELS.includes(path[2])) {
@@ -700,7 +648,6 @@ function evaluateCall(node, ctx) {
     if (typeof target === 'boolean' && method === 'toString') return String(target);
     if (target instanceof IvyScriptError && method === 'getMessage') return target.javaMessage || target.message;
     if (target && target.__class && method === 'toString') return text(target);
-    // a caught BPM error, as an Error Boundary Event hands it to the process data
     if (target && target.__bpmError && method === 'getMessage') return target.message;
     if (target && target.__bpmError && method === 'getErrorCode') return target.errorCode;
     if (target && target.__bpmError && method === 'getAttribute') {
@@ -712,7 +659,6 @@ function evaluateCall(node, ctx) {
       target.attributes[text(args[0])] = args[1];
       return undefined;
     }
-    // an object the surroundings created, e.g. new DecisionMaker(...)
     if (target && target.__native && typeof target[method] === 'function') return target[method](...args);
     throw new IvyScriptError("The method '" + method + "()' is not part of this simulation", { pos: node.callee.pos, kind: 'unsupported' });
   }
@@ -736,13 +682,11 @@ function coerce(field, value, pos) {
   if (/(^|\.)Boolean$/.test(type)) return value === null || value === undefined ? null : value === true || text(value) === 'true';
   // dates and times travel as ISO text in the simulation
   if (/^(Date|DateTime|Time|Duration|java\.time\.(LocalDate|LocalDateTime|LocalTime))$/.test(type)) return value === null || value === undefined ? null : text(value);
-  // a list: its elements as they are
   if (/^(java\.util\.)?List</.test(type)) {
     if (value === null || value === undefined) return null;
     if (Array.isArray(value)) return value;
     throw new IvyScriptError('Only a list can be assigned to ' + field.name + ', which is a ' + type, { pos, kind: 'runtime' });
   }
-  // every other type is a class: only an object of that class fits (or nothing)
   if (value === null || value === undefined) return null;
   if (isTyped(value) && value.__type === type) return value;
   const what = isTyped(value) ? 'A ' + value.__type + ' object' : typeof value === 'string' ? 'A String' : 'This value';
@@ -756,7 +700,6 @@ function assign(targetNode, value, ctx) {
     return;
   }
   if (path && ctx.locals && ctx.locals.has(path[0])) {
-    // a field of the object of a local, e.g. line.amount in a loop over the lines
     let container = ctx.locals.get(path[0]);
     for (let i = 1; i < path.length - 1; i++) container = isTyped(container) ? container[path[i]] : null;
     if (!isTyped(container)) {
@@ -801,7 +744,6 @@ function assign(targetNode, value, ctx) {
   if (ctx.onAssign) ctx.onAssign(field.name, ctx.data[field.name]);
 }
 
-/** Statically checks field references without running anything. */
 function check(node, ctx) {
   if (!node) return;
   switch (node.type) {
@@ -836,7 +778,6 @@ function check(node, ctx) {
       if (!path || !isDataRoot(path[0]) || path.length < 2) {
         throw new IvyScriptError('Only process data fields such as in.summary can be assigned', { pos: node.target.pos, kind: 'field' });
       }
-      // a field of a nested data class, e.g. in.member.type, as assign() writes it when the script runs
       let type = fieldOf(ctx, path[1], node.target.pos).type || 'String';
       for (let i = 2; i < path.length; i++) type = subField(ctx, type, path, i, node.target.pos).type || 'String';
       check(node.value, ctx);
@@ -880,21 +821,6 @@ function check(node, ctx) {
   }
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
-
-/**
- * @typedef {Object} ScriptContext
- * @property {Object} data                         process data values (shared by in. and out.)
- * @property {{name:string,type?:string}[]} fields data class fields
- * @property {string} [dataClassName]
- * @property {Object} [classes]                     other data classes by full name: { name, fields }
- * @property {Object} [cms]                         CMS objects by path (see macro.js)
- * @property {(level:string,message:string)=>void} [log]
- * @property {(field:string,value:any)=>void} [onAssign]
- * @property {Object} [vars]                       extra variables, e.g. { result }
- */
-
-/** Runs a script step. Throws IvyScriptError. */
 export function runScript(source, ctx) {
   const scope = { ...ctx, locals: new Map() };
   parseScript(source).forEach(stmt => execute(stmt, scope));
@@ -948,17 +874,14 @@ function execute(stmt, ctx) {
   }
 }
 
-/** Evaluates one expression and returns its value. Throws IvyScriptError. */
 export function evalExpression(source, ctx) {
   return evaluate(parseExpression(source), ctx);
 }
 
-/** Executes `<target> = value`, the way the agent maps its result. Throws IvyScriptError. */
 export function assignTo(target, value, ctx) {
   assign(parseExpression(target), value, ctx);
 }
 
-/** Returns null when the script would run, otherwise the IvyScriptError describing why not. */
 export function validateScript(source, ctx) {
   try {
     const scope = { ...ctx, localNames: new Set() };
@@ -970,7 +893,6 @@ export function validateScript(source, ctx) {
   }
 }
 
-/** Validates a single expression; `assignable` additionally requires an in./out. field. */
 export function validateExpression(source, ctx, { assignable = false } = {}) {
   try {
     const node = parseExpression(source);
@@ -983,7 +905,6 @@ export function validateExpression(source, ctx, { assignable = false } = {}) {
   }
 }
 
-/** Converts a character offset into a 1-based line/column pair. */
 export function positionOf(source, pos) {
   const before = String(source).slice(0, pos);
   const line = before.split('\n').length;

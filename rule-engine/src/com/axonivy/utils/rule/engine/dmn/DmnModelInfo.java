@@ -21,27 +21,12 @@ import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-/**
- * What a .dmn file offers: its decisions, the inputs each decision needs and the results it gives.
- * Read with the XML parser of the JDK, without a DMN engine.
- */
 public record DmnModelInfo(String name, String namespace, List<Input> inputs, List<Decision> decisions) {
 
-  /**
-   * @param typeRef the type as the file declares it, e.g. <code>tSupplierRating</code>
-   * @param type the type for a reader: an item definition resolved to what it is, e.g. <code>string</code>,
-   *          <code>list of number</code> or <code>structure</code>; null if the file declares none
-   */
   public record Input(String id, String name, String typeRef, String type) {}
 
-  /** A result of a decision, with its type for a reader. */
   public record Output(String name, String type) {}
 
-  /**
-   * @param requiredInputs names of all inputs the decision depends on, directly or through other decisions
-   * @param outputs what the decision gives: one result named like the decision, or the entries of a structure when
-   *          its decision table has several output columns
-   */
   public record Decision(String id, String name, String typeRef, List<String> requiredInputs, List<Output> outputs) {}
 
   public Optional<Decision> decision(String decisionName) {
@@ -52,41 +37,32 @@ public record DmnModelInfo(String name, String namespace, List<Input> inputs, Li
     return inputs().stream().map(Input::name).toList();
   }
 
-  /** @return the type of each input for a reader, by its name; inputs without a declared type are left out */
   public Map<String, String> inputTypes() {
     var types = new LinkedHashMap<String, String>();
     inputs().stream().filter(input -> input.type() != null).forEach(input -> types.put(input.name(), input.type()));
     return types;
   }
 
-  /** @return e.g. <code>purchaseAmount (number), type (string)</code> */
   public static String describe(Collection<String> names, Map<String, String> types) {
     return names.stream()
         .map(name -> types.get(name) == null ? name : name + " (" + types.get(name) + ")")
         .collect(Collectors.joining(", "));
   }
 
-  /** @return the inputs a decision needs with their types, e.g. <code>purchaseAmount (number), type (string)</code> */
   public String describeInputs(Decision decision) {
     return describe(decision.requiredInputs(), inputTypes());
   }
 
-  /** @return the results of a decision with their types, e.g. <code>discount (number)</code> */
   public static String describeOutputs(Decision decision) {
     return describe(decision.outputs().stream().map(Output::name).toList(), outputTypes(decision));
   }
 
-  /** @return the type of each result of a decision for a reader, by its name */
   public static Map<String, String> outputTypes(Decision decision) {
     var types = new LinkedHashMap<String, String>();
     decision.outputs().stream().filter(output -> output.type() != null).forEach(output -> types.put(output.name(), output.type()));
     return types;
   }
 
-  /**
-   * @param xml content of a .dmn file
-   * @throws IllegalArgumentException if the content is not a DMN file
-   */
   public static DmnModelInfo parse(String xml) {
     Element definitions = root(xml);
     var items = new HashMap<String, Element>();
@@ -157,11 +133,6 @@ public record DmnModelInfo(String name, String namespace, List<Input> inputs, Li
     return List.of(new Output(name, typeLabel(typeRef, items, 0)));
   }
 
-  /**
-   * A type for a reader: a FEEL type as it is (<code>number</code>, <code>date and time</code>), an item definition
-   * resolved to what it stands for (<code>tSupplierRating</code> → <code>string</code>), a structure as
-   * <code>structure</code>, a collection as <code>list of …</code>.
-   */
   private static String typeLabel(String typeRef, Map<String, Element> items, int depth) {
     if (typeRef == null || typeRef.isBlank()) {
       return null;

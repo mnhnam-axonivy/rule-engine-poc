@@ -24,9 +24,8 @@ import ch.ivyteam.ivy.security.exec.Sudo;
 import jakarta.ws.rs.core.Response;
 
 /**
- * The bridge to the tab "Rule Management" of the Axon Ivy Portal: the callable sub process Portal/RuleManagement,
- * called the way the Portal calls it. The Portal knows nothing of the rule engine but these signatures, so they
- * and the JDK types they answer with are a contract. The decision runtime is replaced by {@link MockRuntime}.
+ * The Portal knows nothing of the rule engine but the signatures of Portal/RuleManagement, so they and the JDK types
+ * they answer with are a contract.
  */
 @IvyProcessTest(enableWebServer = true)
 @SuppressWarnings("unchecked")
@@ -243,7 +242,6 @@ class TestRuleManagement {
     return request.get();
   }
 
-  /** Calls a start of the bridge as the Portal does: found by its signature in the security context. */
   private static Map<String, Object> call(String signature, Map<String, Object> params) {
     return Sudo.get(() -> {
       SubProcessCallStartEvent start = find(signature).get(0);

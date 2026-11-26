@@ -68,8 +68,6 @@
   </build>
   <profiles>
     <profile>
-      <!-- mvn verify -Pweb.test: starts an Axon Ivy Engine of its own, deploys the projects to it
-           and runs the *WebIT classes against it over HTTP -->
       <id>web.test</id>
       <build>
         <plugins>

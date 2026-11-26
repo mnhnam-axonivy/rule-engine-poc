@@ -1,14 +1,3 @@
-/**
- * Preview of the tutorial without an Axon Ivy engine.
- *
- * It serves the real page of rule-engine-doc — Tutorial.xhtml with its scripts, styles and
- * Markdown — after resolving the few JSF bits the engine would normally render (the Markdown
- * in the dialog data and the CMS labels). Use it to develop a walkthrough and to check how it sits in
- * the tutorial:
- *
- *   npm run preview            →  http://127.0.0.1:4310/
- *   …/?renderer=canvas         force the 2D fallback renderer
- */
 import http from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
@@ -16,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseYaml } from '../runtime/model/yaml.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const project = resolve(here, '../../..'); // rule-engine-doc
+const project = resolve(here, '../../..');
 const resources = join(project, 'webContent/resources');
 const cms = join(project, 'cms');
 const DIALOG = 'dialog/com/axonivy/utils/rule/engine/doc/Tutorial/Tutorial.xhtml';
@@ -26,7 +15,6 @@ const TYPES = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; char
 const escapeHtml = text => String(text).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const read = file => readFileSync(file, 'utf8');
 
-/** What the dialog data holds as pages[id]: the Markdown at /Tutorial/guide-<id> of the CMS. */
 function markdown(id) {
   const file = join(cms, 'Tutorial', 'guide-' + id + '.md');
   return existsSync(file) ? read(file) : '';
@@ -86,7 +74,6 @@ function handle(req, res) {
   }
 }
 
-/** Starts the preview server; resolves with { url, close }. Port 0 picks a free port. */
 export function start(port = 4310) {
   return new Promise((resolveStart, reject) => {
     const server = http.createServer(handle);

@@ -15,9 +15,6 @@ import com.axonivy.utils.rule.engine.runtime.api.model.Message;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-/**
- * Evaluates decisions of a {@link CompiledModel} with JSON like input.
- */
 @ApplicationScoped
 public class DmnEvaluator {
 
@@ -28,12 +25,6 @@ public class DmnEvaluator {
     }
   }
 
-  /**
-   * @param model the version to evaluate
-   * @param decision name of the decision to evaluate, or null to evaluate all decisions of the model
-   * @param input values by input name. Strings are converted to dates, times and durations where the model asks for them.
-   * @return the result of every evaluated decision by name
-   */
   public Evaluation evaluate(CompiledModel model, String decision, Map<String, Object> input) {
     var runtime = model.runtime();
     DMNContext context = new DynamicDMNContextBuilder(runtime.newContext(), model.dmnModel())

@@ -28,11 +28,6 @@ import com.axonivy.portal.rule.RuleVersion;
 import ch.ivy.addon.portalkit.util.PermissionUtils;
 import ch.ivyteam.ivy.environment.Ivy;
 
-/**
- * The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine, their
- * versions, and the DMN editor of Apache KIE to change them. Everything goes through {@link RuleEngineBridge}; the
- * editor itself runs in the browser (rule-management.js).
- */
 @Named
 @ViewScoped
 public class RuleManagementBean implements Serializable {
@@ -64,7 +59,6 @@ public class RuleManagementBean implements Serializable {
     load();
   }
 
-  /** Reads the state of the runtime and its models again. */
   public void refresh() {
     load();
   }
@@ -88,14 +82,10 @@ public class RuleManagementBean implements Serializable {
     filteredModels = null;
   }
 
-  // ── the editor ────────────────────────────────────────────────────────────────
-
-  /** Opens the active version of a rule, or the .dmn file of its project if the runtime does not know it yet. */
   public void edit(RuleModel model) {
     open(model.name(), null);
   }
 
-  /** Opens a version from the list of versions. */
   public void editVersion(RuleVersion version) {
     open(versionsOf.name(), version.version());
   }
@@ -126,7 +116,6 @@ public class RuleManagementBean implements Serializable {
     load();
   }
 
-  /** Stores what the editor holds as a new version; the request parameter activate says whether it goes live. */
   public void save() {
     if (!allowed()) {
       return;
@@ -150,7 +139,6 @@ public class RuleManagementBean implements Serializable {
     load();
   }
 
-  /** Lets the DMN engine check what the editor holds, without storing it. */
   public void validate() {
     if (!allowed()) {
       return;
@@ -168,8 +156,6 @@ public class RuleManagementBean implements Serializable {
       error(new RuleEngineError(RuleEngineError.INVALID_MODEL, cms("Messages/Invalid", editModel), findings));
     }
   }
-
-  // ── versions ──────────────────────────────────────────────────────────────────
 
   public void showVersions(RuleModel model) {
     versionsOf = model;
@@ -220,8 +206,6 @@ public class RuleManagementBean implements Serializable {
     loadVersions();
   }
 
-  // ── what the page shows ───────────────────────────────────────────────────────
-
   /** EL sees only the components of a record, so derived values come from here. */
   public String decisionNames(RuleModel model) {
     return String.join(", ", model.decisions());
@@ -235,7 +219,6 @@ public class RuleManagementBean implements Serializable {
     return StringUtils.isBlank(source) ? "" : cms("Source/" + source);
   }
 
-  /** @return an ISO-8601 time of the runtime in the date format of the Portal */
   public String time(String iso) {
     if (StringUtils.isBlank(iso)) {
       return "";
@@ -249,7 +232,6 @@ public class RuleManagementBean implements Serializable {
     }
   }
 
-  /** @return what is open in the editor, e.g. "Version 3 · Active" or "dmn/invoice-discount.dmn of rule-engine-demo" */
   public String getEditorState() {
     if (editVersion == null) {
       return cms("ProjectFile", StringUtils.defaultString(editProject));
@@ -272,8 +254,6 @@ public class RuleManagementBean implements Serializable {
         .map(candidate -> version.equals(candidate.activeVersion()) ? RuleVersion.ACTIVE : null)
         .orElse(null);
   }
-
-  // ── helpers ───────────────────────────────────────────────────────────────────
 
   /** Admin Settings are for administrators; the bean checks it again, the tab is not the only way in. */
   private static boolean allowed() {
@@ -319,8 +299,6 @@ public class RuleManagementBean implements Serializable {
   private static String cms(String key, Object... params) {
     return params.length == 0 ? Ivy.cms().co(CMS + key) : Ivy.cms().co(CMS + key, List.of(params));
   }
-
-  // ── getters and setters ───────────────────────────────────────────────────────
 
   public String getRuntimeUrl() {
     return runtimeUrl;

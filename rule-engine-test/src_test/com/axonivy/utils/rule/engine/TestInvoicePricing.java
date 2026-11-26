@@ -20,11 +20,6 @@ import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import ch.ivyteam.ivy.environment.AppFixture;
 import tools.jackson.databind.JsonNode;
 
-/**
- * The callable InvoicePricing of the demo: the lines are summed, the customer tier and the order amount go to the
- * runtime by name, the discount comes back into the invoice by name and is applied. The runtime is
- * {@link MockRuntime}, answering what the real runtime answers for the sample invoice.
- */
 @IvyProcessTest(enableWebServer = true)
 class TestInvoicePricing {
 

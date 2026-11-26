@@ -24,7 +24,6 @@ export const theme = {
 
   scriptIconBg: '#d0e0fd',
   scriptIcon: '#4c82f5',
-  // the icon of the Business Rule Task: RULE_TILE in glyphs.js
 
   card: '#252526',
   cardBorder: '#4a4a4a',
@@ -43,7 +42,6 @@ export const theme = {
   lineHeight: 15
 };
 
-/** '#rrggbb' → [r, g, b] in 0..1, for shader uniforms. */
 export function rgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];

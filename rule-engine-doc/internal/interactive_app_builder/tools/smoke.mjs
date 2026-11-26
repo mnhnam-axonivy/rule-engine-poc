@@ -1,17 +1,3 @@
-/**
- * Browser check of the built walkthroughs inside the (previewed) tutorial.
- *
- *   npm run smoke            opens the tutorial in headless Chrome/Edge, reads every page, plays
- *                            every walkthrough from its button, then uses the simulator like a
- *                            learner, and reports pass/fail
- *   npm run smoke -- --url=<link of the process start "Rule Engine Tutorial">
- *                            the same against the page an Axon Ivy Engine serves, with its theme
- *
- * Every request that leaves the server of the page is blocked and counted as a failure: the
- * tutorial must work offline. Screenshots of each stage land in .preview/ (.preview/engine/
- * with --url).
- * Set CHROME_PATH if the browser is not found automatically.
- */
 import puppeteer from 'puppeteer-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -21,7 +7,7 @@ import { start } from '../preview/server.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 const engineUrl = (process.argv.find(arg => arg.startsWith('--url=')) || '').slice('--url='.length);
 const shots = resolve(here, engineUrl ? '../.preview/engine' : '../.preview');
-const PACE = 6; // the walkthrough plays this much faster than a learner sees it
+const PACE = 6;
 
 const browserPath = process.env.CHROME_PATH || [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -55,7 +41,6 @@ const browser = await puppeteer.launch({
   args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist', '--hide-scrollbars', '--force-color-profile=srgb']
 });
 
-/** Opens the tutorial; collects console problems and blocks anything that is not the preview server. */
 async function openTutorial(query = '', viewport = { width: 1440, height: 900 }) {
   const page = await browser.newPage();
   await page.setViewport({ ...viewport, deviceScaleFactor: 1 });
@@ -74,7 +59,6 @@ async function openTutorial(query = '', viewport = { width: 1440, height: 900 })
   return { page, problems, external };
 }
 
-/** Runs `fn(app, ...args)` in the page against the mounted simulation. */
 const withApp = (page, fn, ...args) => page.evaluate((source, params) => {
   const handle = window.reInteractive.instances()[0];
   return new Function('app', 'handle', 'args', 'return (' + source + ')(app, handle, ...args)')(handle.app, handle, params);
@@ -86,7 +70,6 @@ const waitForStatus = (page, statuses, timeout = 45000) => page.waitForFunction(
 
 const settle = (page, ms = 350) => new Promise(r => setTimeout(r, ms));
 
-/** Screenshot of the walkthrough dialog, or of the visible page when it is closed. */
 async function shot(page, name) {
   const clip = await page.evaluate(() => {
     const target = document.querySelector('.re-walkthrough') || document.documentElement;
@@ -104,15 +87,10 @@ async function showPage(page, id) {
   await page.waitForSelector('#re-article h1', { timeout: 10000 });
 }
 
-/**
- * Opens the walkthrough dialog with a button of the page, by default the one next to the title;
- * the walkthrough starts at once.
- */
 async function openWalkthrough(page, button = '#re-article .re-title-row .re-walkthrough-btn') {
   await page.click(button);
   await page.waitForSelector('.re-walkthrough .re-interactive-host', { timeout: 10000 });
   await page.waitForFunction(() => { const h = window.reInteractive.instances()[0]; return h && h.app.stage.width > 0; }, { timeout: 10000 });
-  // record every note the walkthrough shows, in order
   await page.evaluate(() => {
     const tour = window.reInteractive.instances()[0].app.tour;
     window.__notes = [];
@@ -123,7 +101,6 @@ async function openWalkthrough(page, button = '#re-article .re-title-row .re-wal
   });
 }
 
-/** Waits until the walkthrough shows the given note, and pauses it there. */
 async function atNote(page, key) {
   await page.waitForFunction(k => {
     const tour = window.reInteractive.instances()[0].app.tour;
@@ -145,7 +122,6 @@ const inApp = (page, selector) => page.evaluate(sel => {
   el.click();
 }, selector);
 
-/** The ### questions of the n-th ## part of the open page. */
 const questionsOfPart = (page, n) => page.evaluate(part => {
   const out = [];
   let index = 0;
@@ -156,14 +132,6 @@ const questionsOfPart = (page, n) => page.evaluate(part => {
   return out;
 }, n);
 
-/**
- * Plays the walkthrough of a page from its button to its end.
- * @param {string} id        page id, e.g. '04', or page and part, e.g. '11-3' for the walkthrough
- *                           next to the third ## heading of page 11
- * @param {string[]} stops   notes to stop at for a screenshot, in the order they appear
- * @param {string[]} wanted  notes that must have been shown
- * @param {(page, key: string) => Promise<void>} [atStop]  looks at the page at every stop
- */
 async function playWalkthrough(id, stops, wanted, atStop = null, viewport = undefined) {
   console.log('\nGuide ' + id + ': walkthrough' + (viewport ? ', ' + viewport.width + ' × ' + viewport.height : ''));
   const [pageId, part] = id.split('-');
@@ -196,19 +164,14 @@ async function playWalkthrough(id, stops, wanted, atStop = null, viewport = unde
   return page;
 }
 
-/** Closes the end card of the walkthrough, which leaves the editable simulator. */
 async function explore(page) {
   await inApp(page, '.tour-card .btn, .tour-card button');
   await settle(page, 500);
   return withApp(page, app => app.mode);
 }
 
-// ── The path and the pages ───────────────────────────────────────────────────
-
 const PAGE_IDS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'];
-/** The pages with a walkthrough next to their title. */
 const TITLE_WALKTHROUGHS = ['01', '02', '03', '04', '05', '06', '07', '08'];
-/** The pages in parts: their ## headings, and the walkthroughs of the parts that have one, by the number of the part. */
 const PARTS = {
   '11': { headings: ['Setup', 'Mapping and fields', 'When rules change', 'Errors'], walkthroughs: { 3: 'guide-11-3' } }
 };
@@ -244,7 +207,6 @@ console.log('Tutorial: the path and the pages');
   await settle(page, 200);
   await shot(page, '00-overview-end');
 
-  // a section opens its page right there
   const section = '[data-page="04"] [data-section="What is sent when a field is empty?"]';
   await page.click('#re-steps ' + section + ' .re-step-section-link');
   await settle(page, 300);
@@ -255,7 +217,6 @@ console.log('Tutorial: the path and the pages');
   check(opened.page === '04' && opened.top !== null && opened.top >= 0 && opened.top < 120, 'a section opens its page at that section (heading at ' + opened.top + ' px)');
   await page.evaluate(() => window.showIndex());
 
-  // ▶ on a section plays the walkthrough from that chapter, Play from the start
   await page.click('#re-steps ' + section + ' .re-step-chapter-play');
   await page.waitForSelector('.re-walkthrough .re-interactive-host', { timeout: 10000 });
   await page.waitForFunction(() => { const h = window.reInteractive.instances()[0]; return h && h.app.tour.state === 'playing'; }, { timeout: 10000 });
@@ -342,7 +303,6 @@ console.log('Tutorial: the path and the pages');
   await page.close();
 }
 
-// ── Guide 01: What is DMN? — a decision table and "Try it" ──────────────────
 {
   const seen = {};
   const lookAtTable = async (page, key) => {
@@ -404,12 +364,9 @@ console.log('Tutorial: the path and the pages');
   await page.close();
 }
 
-// ── Guide 02: How the rule engine works — the architecture ───────────────────
 {
-  // at a stop on the tab "Architecture": what is lit, whether the camera shows the block the note is about, and
-  // whether the note keeps clear of what is lit
   const lookAtArchitectureInto = seen => async (page, key) => {
-    await settle(page, 700); // the camera moves the diagram
+    await settle(page, 700);
     seen.push(await page.evaluate(k => {
       const handle = window.reInteractive.instances()[0];
       const root = handle.host.shadowRoot;
@@ -479,7 +436,6 @@ console.log('Tutorial: the path and the pages');
   check(view.db === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo), 'it starts with an empty database: ' + view.db);
   const panelShown = () => page.evaluate(() => getComputedStyle(window.reInteractive.instances()[0].host.shadowRoot.querySelector('.panel')).display !== 'none');
   check(!await panelShown(), 'the tab has no bottom panel');
-  // the details of a block: a drawer on the right, that changes with the block and closes again
   const drawer = () => page.evaluate(() => {
     const root = window.reInteractive.instances()[0].host.shadowRoot;
     const details = root.querySelector('.arch-details');
@@ -544,11 +500,10 @@ console.log('Tutorial: the path and the pages');
   await page.close();
 }
 
-// ── Guide 02 again, inside a small frame as in the Axon Ivy Portal ───────────
 {
   const seen = [];
   const lookAround = async (page, key) => {
-    await settle(page, 700); // the camera moves the diagram
+    await settle(page, 700);
     seen.push(await page.evaluate(k => {
       const handle = window.reInteractive.instances()[0];
       const root = handle.host.shadowRoot;
@@ -581,8 +536,6 @@ console.log('Tutorial: the path and the pages');
   await page.close();
 }
 
-// ── Guides 03 and 04: the first decision, and an existing DMN decision ───────
-/** At a stop: the quote of the note, the open tab, the last call, the log and what the elements say. */
 const lookAround = seen => async (page, key) => {
   seen[key] = await page.evaluate(() => {
     const app = window.reInteractive.instances()[0].app;
@@ -603,7 +556,6 @@ const lookAround = seen => async (page, key) => {
 };
 
 {
-  // page 03: the first decision, what the runtime holds, a runtime that does not answer
   let seen = {};
   let page = await playWalkthrough('03',
     ['request', 'response', 'mapped', 'applied', 'where', 'versionOne', 'lastCall', 'stored', 'unreachable', 'notPriced'],
@@ -634,7 +586,6 @@ const lookAround = seen => async (page, key) => {
   check(await page.evaluate(() => window.reInteractive.instances()[0].host.shadowRoot.querySelectorAll('.data-list li').length) >= 5, 'the process data shows the lines, one per row');
   await shot(page, '03-91-process-data');
 
-  // change a rule in the table of the file, the way a learner types into a cell
   await inApp(page, '[data-tab="dmn:invoice-discount"]');
   await settle(page);
   await withApp(page, app => {
@@ -652,7 +603,6 @@ const lookAround = seen => async (page, key) => {
   check(second.percent === 3 && second.version === 2 && second.versions.join() === 'RETIRED,ACTIVE', 'the changed file is version 2 and decides the next run: 3 %');
   await shot(page, '03-93-after-edit');
 
-  // stop the runtime with the switch of the panel: the boundary event catches the error
   await inApp(page, '.panel-tab[data-tab="runtime"]');
   await inApp(page, '.rt-switch-btn.stopped');
   await inApp(page, '.run-btn.primary');
@@ -661,19 +611,16 @@ const lookAround = seen => async (page, key) => {
   check(stopped.status === 'completed' && stopped.code === 'rule:engine:unreachable' && stopped.executed.includes('f10'), 'runtime stopped: rule:engine:unreachable is caught, the process ends at "not priced"');
   await shot(page, '03-94-runtime-stopped');
 
-  // Reset puts everything back
   await inApp(page, '.rt-switch-btn.running');
   await page.evaluate(() => window.reInteractive.instances()[0].app.reset());
   const reset = await withApp(page, app => ({ versions: app.runtime.modelNames().length, cell: app.dmnControls['invoice-discount:discount.r6.o1'].value, state: app.runtime.state }));
   check(reset.versions === 0 && reset.cell === '2' && reset.state === 'running', 'Reset: the runtime is empty and the file is the one of the tutorial again');
 
-  // the dialog closes with Escape and releases the simulation
   await page.keyboard.press('Escape');
   await settle(page, 300);
   check(await page.evaluate(() => !document.querySelector('.re-walkthrough') && window.reInteractive.instances().length === 0), 'Escape closes the walkthrough and disposes the simulation');
   await page.close();
 
-  // page 04: the one field, mapping by name, null, and a Script that prepares a value
   seen = {};
   page = await playWalkthrough('04',
     ['decisionField', 'enough', 'levelZero', 'levelOne', 'foundIn', 'resultsBack', 'sentNull', 'dashMatches', 'newInput', 'mappingError', 'caught', 'loop', 'preparedSent', 'preparedResult'],
@@ -696,7 +643,6 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── Guide 06: Change rules without deployment ────────────────────────────────
 {
   const seen = {};
   const page = await playWalkthrough('06',
@@ -737,7 +683,6 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── Guide 05: Create a new DMN from scratch ──────────────────────────────────
 {
   const seen = {};
   const page = await playWalkthrough('05',
@@ -773,7 +718,6 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── Guide 08: Handle errors ──────────────────────────────────────────────────
 {
   const page = await playWalkthrough('08',
     ['stopped', 'cut', 'thrown', 'caught', 'code', 'narrow', 'unhandled', 'off', 'notLoaded', 'timeoutSet', 'timedOut'],
@@ -795,7 +739,6 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── Guide 07: Edit rules in the Portal ───────────────────────────────────────
 {
   const seen = {};
   const lookAroundPortal = async (page, key) => {
@@ -875,9 +818,7 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── Guide 11: Frequently asked questions ─────────────────────────────────────
 {
-  // when rules change
   const seen = {};
   const page = await playWalkthrough('11-3',
     ['before', 'after', 'sameProcess', 'inputsSent', 'portalDecides', 'stillPortal', 'draftBeside', 'rolledBack', 'backAgain', 'unreachable', 'notPriced'],
@@ -898,7 +839,6 @@ const lookAround = seen => async (page, key) => {
   await page.close();
 }
 
-// ── The 2D fallback and a narrow window ──────────────────────────────────────
 if (engineUrl) {
   console.log('');
   console.log('Fallback renderer: not checked with --url, the preview switches it on with ?renderer=canvas');

@@ -3,14 +3,6 @@ package com.axonivy.portal.rule;
 import java.io.Serializable;
 import java.util.Map;
 
-/**
- * A version of a rule on the decision runtime. Every change is a new version; exactly one is active.
- *
- * @param status DRAFT, APPROVED, ACTIVE or RETIRED
- * @param source PROJECT (deployed with an Ivy project), PORTAL (saved in the Portal) or API
- * @param createdAt ISO-8601 time, like the other times
- * @param created only after a save: false if the runtime had exactly this content already
- */
 public record RuleVersion(String model, int version, String status, String source, String author, String description,
     String createdAt, String activatedAt, String activatedBy, String effectiveDate, Integer previousVersion,
     Boolean created) implements Serializable {

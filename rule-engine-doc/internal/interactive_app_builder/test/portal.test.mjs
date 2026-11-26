@@ -1,10 +1,3 @@
-/**
- * The scenario of the lesson "Edit rules in the Portal", without any UI: the rules of the demo do not read the
- * customer of an invoice; in the Portal the rule owner adds the input customer and a key account rule at the top
- * of the table; the same process gives the same invoice a higher discount. The Business Rule Task has to behave
- * like the connector's RuleTaskExecutor, which sends what the version that answers needs. The real runtime decides
- * the same version in RuleEngineContainerTest.
- */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -1,14 +1,4 @@
 # syntax=docker/dockerfile:1
-#
-# Axon Ivy Rules Engine - decision runtime
-# One generic image for all customers: DMN models are loaded at runtime through the API, never built into the image.
-# The image contains the rule engine and its embedded database. Mount a volume at /data to keep the versions.
-#
-# Built from this folder; it needs nothing else of the repository. In the root of the repository:
-#
-#   docker build -t axonivy/rule-engine-runtime:dev rule-engine/runtime
-#   docker compose build                     (the same, from docker-compose.yml)
-#
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml pom.xml

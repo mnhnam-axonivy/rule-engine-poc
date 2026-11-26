@@ -6,9 +6,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-/**
- * A DMN model to store as a new version.
- */
 @Schema(name = "RegisterVersionRequest", description = "A DMN model to store as a new version.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RegisterVersionRequest(

@@ -1,8 +1,3 @@
-/**
- * The panel below the editor: the Axon Ivy Runtime Log, the decision runtime (the last call of
- * a Business Rule Task and the versions the runtime holds), and the process data — the three
- * places where a run becomes visible.
- */
 import { h, clear } from '../util.js';
 import { icon } from './icons.js';
 
@@ -14,7 +9,6 @@ export function formatTime(date) {
     pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds()) + '.' + pad(date.getMilliseconds(), 3);
 }
 
-/** Message text with URLs marked up, as the log viewer does. */
 function logMessage(text) {
   const parts = [];
   let last = 0;
@@ -68,7 +62,6 @@ export class BottomPanel {
     this.update();
   }
 
-  /** Reflects the app state (active tab, open/closed). */
   update() {
     const { panelTab, panelOpen } = this.app.state;
     Object.keys(this.tabButtons).forEach(id => {
@@ -81,8 +74,6 @@ export class BottomPanel {
     this.root.classList.toggle('collapsed', !panelOpen);
     if (panelTab === 'log') this.logView.scrollTop = this.logView.scrollHeight;
   }
-
-  // ── Runtime log ────────────────────────────────────────────────────────────
 
   logLine(entry) {
     const line = h('div.log-line', null,
@@ -116,9 +107,6 @@ export class BottomPanel {
     this.renderLog();
   }
 
-  // ── Decision runtime ───────────────────────────────────────────────────────
-
-  /** Shows the given call of a Business Rule Task in its current phase ('request', 'thinking', 'response', …). */
   setCall(call, phase) {
     this.call = call;
     this.phase = phase;
@@ -131,7 +119,6 @@ export class BottomPanel {
     const runtime = app.runtime;
     const view = clear(this.runtimeView);
 
-    // the container: where it runs, and whether it answers
     const states = ['running', 'slow', 'stopped'];
     view.append(h('div.rt-state', { 'data-tour': 'state' },
       h('span.rt-title', null, icon('database', 14), h('strong', null, t('runtime.title')), h('code', null, runtime.url)),
@@ -146,7 +133,6 @@ export class BottomPanel {
     view.append(this.versionsView());
   }
 
-  /** The last call of a Business Rule Task: what went to the runtime and what came back. */
   callView() {
     const { app } = this;
     const t = app.t;
@@ -190,7 +176,6 @@ export class BottomPanel {
           h('span', null, t('runtime.rule', { n: call.rule.index + 1 }),
             h('code', null, call.rule.inputs.join('  |  ') + '  →  ' + call.rule.outputs.join(', ')),
             call.rule.annotation ? h('span.rt-note', null, call.rule.annotation) : null)) : null,
-        // a whole model: the rule each table chose, a function once per call (one per line of an invoice)
         !call.rule && (call.rules || []).length ? h('div.rt-rules', { 'data-tour': 'matched' },
           h('div.msg-role', null, t('runtime.rules')),
           h('table.rt-map', null, h('tbody', null, call.rules.slice(0, 16).map(rule => h('tr', null,
@@ -205,7 +190,6 @@ export class BottomPanel {
     return box;
   }
 
-  /** The versions the runtime holds for every model, with what a rule owner can do to them. */
   versionsView() {
     const { app } = this;
     const t = app.t;
@@ -243,18 +227,12 @@ export class BottomPanel {
     return box;
   }
 
-  // ── Process data ───────────────────────────────────────────────────────────
-
   setData(data, changedField = null) {
     this.data = data;
     this.changed = changedField;
     this.renderData();
   }
 
-  /**
-   * A value of the process data: text, the fields of a data class object, a list one element per line.
-   * Objects inside objects and the elements of a list are shown in one line each.
-   */
   dataValue(value, depth = 0) {
     if (Array.isArray(value)) {
       if (!value.length) return h('span.muted', null, '[ ]');
@@ -273,7 +251,6 @@ export class BottomPanel {
     })));
   }
 
-  /** An object or a list in one line: its simple values joined, e.g. Laptop 14" · 4 · 1200. */
   dataLine(value) {
     const text = v => (v === null || v === undefined ? 'null' : Array.isArray(v) ? '[' + v.length + ']'
       : typeof v === 'object' ? '{…}' : String(v));

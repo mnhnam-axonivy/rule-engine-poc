@@ -5,14 +5,14 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
-public final class Json {
+public final class JsonConverter {
 
   private static final ObjectMapper MAPPER = JsonMapper.builder()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
       .configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true)
       .build();
 
-  private Json() {}
+  private JsonConverter() {}
 
   public static String toJson(Object value) {
     return MAPPER.writeValueAsString(value);

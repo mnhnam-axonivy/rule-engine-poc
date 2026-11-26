@@ -114,16 +114,16 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 
 ## How the REST client is built
 
-The connector calls the runtime with REST elements of Axon Ivy:
+The connector calls the runtime in Java, with JAX-RS on the REST client of Axon Ivy:
 
-- `process/RuleEngine/RuntimeCall.p.json`: a callable with one start per operation (`evaluate`, `registerVersion`,
-  `activate`, ...). Each start runs a REST element on the REST client `ruleEngine`, so the calls appear in the
-  tracing of the engine, and rest-clients.yaml is the place for TLS settings. A start answers the HTTP status and the
-  body; an error status does not throw, so the error code of the runtime reaches Java.
-- `client.process.RuntimeUrlFeature`, registered on `ruleEngine`: sends each call to the URL of the
-  `RuntimeConnection` (the variable `RuleEngine.Url`) and keeps the path of the element.
-- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`). Each method runs its
-  start with `SubProcessCall`, and turns failures into exceptions for unreachable, timeout and error answers.
+- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`). Each method is one
+  JAX-RS call on the REST client `ruleEngine` of rest-clients.yaml (`Ivy.rest().client`), so the calls appear in the
+  tracing of the engine, and rest-clients.yaml is the place for TLS settings. Its `JsonFeature` maps the records to
+  JSON and back. Failures become exceptions for unreachable, timeout and error answers; an error answer keeps the
+  error code of the runtime.
+- `client.internal.RuntimeUrlFeature`, registered on `ruleEngine`: sends each call to the base URL of the client
+  (the variable `RuleEngine.Url`) and keeps the path of the call. `RequestLogFilter` logs the calls when
+  `RuleEngine.LogRequests` is on.
 - The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`, sent as JSON. The runtime
   has records of its own; `ContractTest` fails if the two do not have the same fields.
 - Tests replace the runtime by `MockRuntime`, a REST service of the test project.

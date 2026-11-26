@@ -8,12 +8,16 @@
 
   <modules>
     <!-- decision runtime: Quarkus service with the DMN engine and its database, shipped as container image -->
-    <module>rule-engine/runtime</module>
+    <module>rule-engine-runtime</module>
     <!-- Ivy connector: Business Rule Task, client of the runtime, DMN generator -->
     <module>rule-engine</module>
     <module>rule-engine-demo</module>
     <module>rule-engine-test</module>
     <module>rule-engine-product</module>
+    <module>rule-engine-doc</module>
+    <!-- Axon Ivy Portal, built from source alongside the rules projects -->
+    <module>portal-components</module>
+    <module>portal</module>
   </modules>
 
   <build>

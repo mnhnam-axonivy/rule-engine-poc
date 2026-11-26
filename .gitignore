@@ -26,4 +26,4 @@ node_modules/
 .env
 
 # decision runtime: local database of dev mode
-rule-engine/runtime/data/
+rule-engine-runtime/data/

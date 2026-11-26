@@ -6,7 +6,7 @@
 #
 # Built from this folder; it needs nothing else of the repository. In the root of the repository:
 #
-#   docker build -t axonivy/rule-engine-runtime:dev rule-engine/runtime
+#   docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime
 #   docker compose build                     (the same, from docker-compose.yml)
 #
 FROM maven:3.9-eclipse-temurin-21 AS build

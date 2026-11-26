@@ -12,7 +12,7 @@ This page gets you from nothing to your first decision: start the decision runti
 | --- | --- | --- |
 | Axon Ivy Designer 14.0.1 or newer | The projects are built for Axon Ivy 14. | You are reading this page in it. |
 | Docker with Docker Compose | The decision runtime runs as a container. Docker Desktop and Rancher Desktop (dockerd) both work. | `docker compose version` |
-| The repository `rule-engine` on your disk | It contains the Docker Compose file and the source of the runtime image. | The folder with `docker-compose.yml` |
+| The repository `rule-engine` on your disk | It contains the Docker Compose file and the project `rule-engine-runtime`, the source of the runtime image. | The folder with `docker-compose.yml` |
 | Port 8090 free | The runtime listens there by default. | `docker compose up` complains if it is taken. |
 
 Optional, but recommended once you write your own rules: the [Apache KIE DMN editor for VS Code](https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle). It shows a `.dmn` file as decision tables and a diagram instead of XML.

@@ -16,10 +16,10 @@
     <kie.version>10.2.0</kie.version>
     <compiler-plugin.version>3.14.0</compiler-plugin.version>
     <surefire-plugin.version>3.5.3</surefire-plugin.version>
-    <!-- The Ivy connector, the project this folder lies in. Only the tests compile two of its packages: its API
+    <!-- The Ivy connector, the project next to this one. Only the tests compile two of its packages: its API
          records (ContractTest) and its DMN generator (GeneratedDmnTest). The runtime and its image contain neither,
          so the Docker build needs nothing but this folder. -->
-    <connector.sources>${project.basedir}/../src</connector.sources>
+    <connector.sources>${project.basedir}/../rule-engine/src</connector.sources>
     <skipITs>true</skipITs>
     <!-- DMN editor of the page /editor/: the standalone build of the Apache KIE DMN editor, same KIE release as
          the engine. Not on Maven Central, so the build takes it from npm, checks it and keeps it in the local

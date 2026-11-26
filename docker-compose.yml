@@ -11,7 +11,7 @@ services:
   rule-engine:
     image: axonivy/rule-engine-runtime:dev
     build:
-      context: rule-engine/runtime
+      context: rule-engine-runtime
     container_name: axonivy-rule-engine
     ports:
       - "${RULE_ENGINE_PORT:-8090}:8080"

@@ -54,7 +54,6 @@ public final class RuleEngine {
         .connectTimeout(config.connectTimeout())
         .readTimeout(config.timeout())
         .logRequests(config.logRequests())
-        .logResponses(config.logRequests())
         .build();
   }
 

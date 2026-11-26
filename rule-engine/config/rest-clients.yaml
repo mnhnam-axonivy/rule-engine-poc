@@ -1,6 +1,9 @@
 # yaml-language-server: $schema=https://json-schema.axonivy.com/14.0/config/rest-clients.json
 RestClients:
-  # Transport to the decision runtime. The URL is taken from the variable RuleEngine.Url at runtime,
-  # this client is the place to configure TLS and other connection properties.
+  # The decision runtime, called by the REST elements of the callable RuleEngine/RuntimeCall.
+  # This client is the place to configure TLS and other connection properties.
   ruleEngine:
+    # A placeholder without path: RuntimeUrlFeature sends each call to the variable RuleEngine.Url instead.
     Url: http://localhost:8090
+    Features:
+      - com.axonivy.utils.rule.engine.client.process.RuntimeUrlFeature

@@ -1,14 +1,14 @@
 package com.axonivy.utils.rule.engine.portal;
 
 import java.lang.ref.SoftReference;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig;
-import com.axonivy.utils.rule.engine.client.http.ivy.IvyHttpClient;
-import com.axonivy.utils.rule.engine.client.http.ivy.IvyHttpClientBuilder;
+import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 
 import ch.ivyteam.ivy.environment.Ivy;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -90,14 +90,17 @@ public class DmnEditorScript {
     if (script != null && script.url().equals(url)) {
       return script;
     }
-    var http = (IvyHttpClient) new IvyHttpClientBuilder()
-        .connectTimeout(RuleEngineConfig.fromVariables().connectTimeout())
+    var config = RuleEngineConfig.fromVariables();
+    String text = RuleEngineClient.builder()
+        .baseUrl(config.url())
+        .connectTimeout(config.connectTimeout())
         .readTimeout(DOWNLOAD_TIMEOUT)
-        .build();
-    byte[] content = http.download(url);
-    if (content == null) {
+        .build()
+        .editorScript();
+    if (text == null) {
       return null;
     }
+    byte[] content = text.getBytes(StandardCharsets.UTF_8);
     script = new Script(url, content, "\"" + sha256(content) + "\"");
     cached = new SoftReference<>(script);
     return script;

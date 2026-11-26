@@ -3,13 +3,9 @@ package com.axonivy.utils.rule.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.api.ActivateRequest;
@@ -21,91 +17,40 @@ import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableException;
-import com.axonivy.utils.rule.engine.client.http.HttpClient;
-import com.axonivy.utils.rule.engine.client.http.HttpClientBuilder;
-import com.axonivy.utils.rule.engine.client.http.HttpClientBuilderLoader;
-import com.axonivy.utils.rule.engine.client.http.HttpException;
-import com.axonivy.utils.rule.engine.client.http.HttpMethod;
-import com.axonivy.utils.rule.engine.client.http.HttpRequest;
-import com.axonivy.utils.rule.engine.client.http.SuccessfulHttpResponse;
-import com.axonivy.utils.rule.engine.client.http.ivy.IvyHttpClientBuilder;
-import com.axonivy.utils.rule.engine.client.http.log.LoggingHttpClient;
+import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
 
-import ch.ivyteam.ivy.environment.IvyTest;
-import jakarta.ws.rs.ProcessingException;
+import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
+import jakarta.ws.rs.core.Response;
 
 /**
- * The client of the decision runtime: requests, answers and failures. The HTTP transport is replaced.
+ * The client of the decision runtime: requests, answers and failures. Each call runs a REST element of the callable
+ * RuleEngine/RuntimeCall; the runtime is replaced by {@link MockRuntime}.
  */
-@IvyTest
+@IvyProcessTest(enableWebServer = true)
 class TestRuleEngineClient {
 
-  /** A transport that records the requests and answers what the test wants. */
-  static class RecordingHttp implements HttpClientBuilder, HttpClient {
+  private static final EvaluateRequest REQUEST = EvaluateRequest.builder().decision("discount").build();
 
-    final List<HttpRequest> requests = new ArrayList<>();
-    Function<HttpRequest, String> answer = request -> "{}";
-    Duration connectTimeout;
-    Duration readTimeout;
-
-    @Override
-    public SuccessfulHttpResponse execute(HttpRequest request) {
-      requests.add(request);
-      return SuccessfulHttpResponse.builder().statusCode(200).body(answer.apply(request)).build();
-    }
-
-    @Override
-    public Duration connectTimeout() {
-      return connectTimeout;
-    }
-
-    @Override
-    public HttpClientBuilder connectTimeout(Duration timeout) {
-      this.connectTimeout = timeout;
-      return this;
-    }
-
-    @Override
-    public Duration readTimeout() {
-      return readTimeout;
-    }
-
-    @Override
-    public HttpClientBuilder readTimeout(Duration timeout) {
-      this.readTimeout = timeout;
-      return this;
-    }
-
-    @Override
-    public HttpClient build() {
-      return this;
-    }
+  @BeforeEach
+  void setup() {
+    MockRuntime.reset();
   }
 
-  private final RecordingHttp http = new RecordingHttp();
-
-  private RuleEngineClient client() {
+  private static RuleEngineClient client() {
     return RuleEngineClient.builder()
-        .httpClientBuilder(http)
-        .baseUrl("http://rules:8080/")
+        .baseUrl(MockRuntime.url())
         .apiKey("secret")
         .readTimeout(Duration.ofSeconds(3))
         .build();
   }
 
   @Test
-  void ivyRestClient_isTheDefaultTransport() {
-    assertThat(HttpClientBuilderLoader.loadHttpClientBuilder())
-        .as("the Ivy REST client integrates into the tracing tools of the engine")
-        .isInstanceOf(IvyHttpClientBuilder.class);
-  }
-
-  @Test
   void evaluate_sendsModelDecisionAndInput() {
-    http.answer = request -> """
+    MockRuntime.onEvaluate(call -> MockRuntime.json(200, """
         {"model":"discount","version":4,"decision":"discount","result":15,"results":{"discount":15},
          "messages":[{"severity":"WARN","message":"careful"}],"somethingNew":true}
-        """;
+        """));
+
     var response = client().evaluate("discount", EvaluateRequest.builder()
         .decision("discount")
         .input("purchaseAmount", 1500)
@@ -118,61 +63,84 @@ class TestRuleEngineClient {
     assertThat(response.results()).containsEntry("discount", 15);
     assertThat(response.messages()).hasSize(1);
 
-    var request = http.requests.get(0);
-    assertThat(request.method()).isEqualTo(HttpMethod.POST);
-    assertThat(request.url()).isEqualTo("http://rules:8080/api/models/discount/evaluate");
-    assertThat(request.headers()).containsEntry("X-API-Key", List.of("secret"))
-        .containsEntry("Content-Type", List.of("application/json"));
-    assertThat(request.body()).isEqualTo("{\"decision\":\"discount\",\"input\":{\"purchaseAmount\":1500,\"type\":null}}");
-    assertThat(http.readTimeout).isEqualTo(Duration.ofSeconds(3));
-    assertThat(http.connectTimeout).as("default").isEqualTo(Duration.ofSeconds(5));
+    var call = MockRuntime.calls("evaluate").get(0);
+    assertThat(call.model()).isEqualTo("discount");
+    assertThat(call.apiKey()).isEqualTo("secret");
+    assertThat(call.body().get("decision").asString()).isEqualTo("discount");
+    assertThat(call.body().get("input").get("purchaseAmount").asInt()).isEqualTo(1500);
+    assertThat(call.body().get("input").get("type").isNull()).as("null inputs are sent").isTrue();
   }
 
   @Test
   void versions_areManaged() {
-    http.answer = request -> """
-        {"model":"discount","version":2,"status":"ACTIVE","source":"PORTAL","author":"rule.editor",
-         "createdAt":"2026-11-15T06:04:04.722313Z","activatedAt":"2026-11-15T07:00:00+01:00","previousVersion":1,"created":true}
-        """;
+    MockRuntime.onRegister(call -> MockRuntime.json(201, """
+        {"model":"discount","version":2,"status":"DRAFT","source":"PORTAL","author":"rule.editor",
+         "createdAt":"2026-11-15T06:04:04.722313Z","previousVersion":1,"created":true}
+        """));
     var client = client();
 
     var registered = client.registerVersion("discount", RegisterVersionRequest.builder()
         .content("<definitions/>").author("rule.editor").source(VersionSource.PORTAL).activate(false).build());
     assertThat(registered.version()).isEqualTo(2);
-    assertThat(registered.status()).isEqualTo(VersionStatus.ACTIVE);
+    assertThat(registered.status()).isEqualTo(VersionStatus.DRAFT);
     assertThat(registered.source()).isEqualTo(VersionSource.PORTAL);
     assertThat(registered.createdAt().getYear()).isEqualTo(2026);
     assertThat(registered.previousVersion()).isEqualTo(1);
-    assertThat(http.requests.get(0).url()).isEqualTo("http://rules:8080/api/models/discount/versions");
-    assertThat(http.requests.get(0).body())
-        .isEqualTo("{\"content\":\"<definitions/>\",\"author\":\"rule.editor\",\"source\":\"PORTAL\",\"activate\":false}");
+    var register = MockRuntime.calls("register").get(0);
+    assertThat(register.model()).isEqualTo("discount");
+    assertThat(register.body().get("content").asString()).isEqualTo("<definitions/>");
+    assertThat(register.body().get("activate").asBoolean()).isFalse();
 
-    client.approve("discount", 2);
-    client.activate("discount", 2, ActivateRequest.now("rule.approver"));
-    client.rollback("discount", "rule approver");
-    client.retire("discount", 1);
-    assertThat(http.requests).extracting(HttpRequest::url).containsExactly(
-        "http://rules:8080/api/models/discount/versions",
-        "http://rules:8080/api/models/discount/versions/2/approve",
-        "http://rules:8080/api/models/discount/versions/2/activate",
-        "http://rules:8080/api/models/discount/rollback?user=rule+approver",
-        "http://rules:8080/api/models/discount/versions/1/retire");
-    assertThat(http.requests.get(2).body()).isEqualTo("{\"user\":\"rule.approver\"}");
+    assertThat(client.approve("discount", 2).status()).isEqualTo(VersionStatus.APPROVED);
+    assertThat(client.activate("discount", 2, ActivateRequest.now("rule.approver")).version()).isEqualTo(2);
+    assertThatThrownBy(() -> client.rollback("discount", "rule approver"))
+        .as("the mock has no version to roll back to")
+        .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> assertThat(ex.code()).isEqualTo("INVALID_STATE"));
+    assertThat(client.retire("discount", 1).status()).isEqualTo(VersionStatus.RETIRED);
 
-    http.answer = request -> "[]";
+    assertThat(MockRuntime.calls()).extracting(MockRuntime.Call::operation)
+        .containsExactly("register", "approve", "activate", "rollback", "retire");
+    assertThat(MockRuntime.calls("activate").get(0).body().get("user").asString()).isEqualTo("rule.approver");
+    assertThat(MockRuntime.calls("rollback").get(0).body().get("user").asString())
+        .as("the query parameter is encoded").isEqualTo("rule approver");
+  }
+
+  @Test
+  void everyOperation_reachesItsEndpoint() {
+    MockRuntime.model("discount", "discount", "amount");
+    MockRuntime.versions("discount", "[]");
+    MockRuntime.content("discount", 1, "<definitions/>");
+    MockRuntime.editorScript("console.log('editor');");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+    var client = client();
+
+    assertThat(client.evaluate("discount", 1, REQUEST).results()).containsEntry("discount", 15);
+    assertThat(client.validate("<definitions/>").valid()).isTrue();
+    assertThat(client.models()).extracting(info -> info.name()).containsExactly("discount");
+    assertThat(client.model("discount").activeVersion()).isEqualTo(1);
     assertThat(client.versions("discount")).isEmpty();
-    assertThat(client.models()).isEmpty();
+    assertThat(client.version("discount", 1).status()).isEqualTo(VersionStatus.ACTIVE);
+    assertThat(client.content("discount", 1)).isEqualTo("<definitions/>");
+    assertThat(client.editorScript()).isEqualTo("console.log('editor');");
+    assertThat(client.isReady()).isTrue();
+    client.deleteModel("discount");
+
+    assertThat(MockRuntime.calls()).extracting(MockRuntime.Call::operation).containsExactly(
+        "evaluateVersion", "validate", "models", "model", "versions", "version", "content", "editorScript", "delete");
+    assertThat(MockRuntime.calls("evaluateVersion").get(0).body().get("version").asInt()).isEqualTo(1);
+    assertThat(MockRuntime.calls("validate").get(0).body().get("content").asString()).isEqualTo("<definitions/>");
+    assertThat(MockRuntime.calls()).filteredOn(call -> !call.operation().equals("editorScript"))
+        .extracting(MockRuntime.Call::apiKey).containsOnly("secret");
+
+    MockRuntime.editorScript(null);
+    assertThat(client.editorScript()).as("the runtime serves no editor").isNull();
   }
 
   @Test
   void errorAnswer_becomesApiException() {
-    http.answer = request -> {
-      throw new HttpException(422, """
-          {"code":"EVALUATION_FAILED","message":"Evaluation failed: type mismatch",
-           "details":[{"severity":"ERROR","message":"type mismatch","type":"ERROR_EVAL_NODE"}]}
-          """);
-    };
-    assertThatThrownBy(() -> client().evaluate("discount", EvaluateRequest.builder().build()))
+    MockRuntime.onEvaluate(call -> MockRuntime.error(422, "EVALUATION_FAILED", "Evaluation failed: type mismatch",
+        "type mismatch"));
+    assertThatThrownBy(() -> client().evaluate("discount", REQUEST))
         .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> {
           assertThat(ex.statusCode()).isEqualTo(422);
           assertThat(ex.code()).isEqualTo(RuleEngineApiException.EVALUATION_FAILED);
@@ -181,60 +149,60 @@ class TestRuleEngineClient {
           assertThat(ex.isModelMissing()).isFalse();
         });
 
-    http.answer = request -> {
-      throw new HttpException(502, "<html>Bad Gateway</html>");
-    };
-    assertThatThrownBy(() -> client().model("discount"))
+    MockRuntime.onEvaluate(call -> Response.status(502).type("text/html").entity("<html>Bad Gateway</html>").build());
+    assertThatThrownBy(() -> client().evaluate("discount", REQUEST))
         .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> {
           assertThat(ex.statusCode()).isEqualTo(502);
           assertThat(ex.code()).isEqualTo(RuleEngineApiException.UNKNOWN);
           assertThat(ex.getMessage()).contains("502").contains("Bad Gateway");
         });
 
-    http.answer = request -> {
-      throw new HttpException(404, "{\"code\":\"MODEL_NOT_FOUND\",\"message\":\"Model 'x' is not loaded.\"}");
-    };
+    // the mock answers 404 MODEL_NOT_FOUND for a model it does not know
     assertThatThrownBy(() -> client().model("x"))
         .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> assertThat(ex.isModelMissing()).isTrue());
   }
 
   @Test
   void transportFailures_becomeTimeoutOrUnreachable() {
-    http.answer = request -> {
-      throw new ProcessingException(new SocketTimeoutException("Read timed out"));
-    };
-    assertThatThrownBy(() -> client().model("discount"))
+    MockRuntime.onEvaluate(call -> {
+      sleep(3000);
+      return MockRuntime.results(1, "{}");
+    });
+    var impatient = RuleEngineClient.builder().baseUrl(MockRuntime.url()).readTimeout(Duration.ofSeconds(1)).build();
+    assertThatThrownBy(() -> impatient.evaluate("discount", REQUEST))
         .isInstanceOf(RuleEngineTimeoutException.class)
-        .hasMessageContaining("http://rules:8080/");
+        .hasMessageContaining(MockRuntime.url());
 
-    http.answer = request -> {
-      throw new ProcessingException(new ConnectException("Connection refused"));
-    };
-    assertThatThrownBy(() -> client().model("discount"))
+    var nobody = RuleEngineClient.builder().baseUrl("http://localhost:9").connectTimeout(Duration.ofSeconds(2)).build();
+    assertThatThrownBy(() -> nobody.model("discount"))
         .isInstanceOf(RuleEngineUnreachableException.class)
+        .hasMessageContaining("http://localhost:9")
         .hasMessageContaining("RuleEngine.Url");
-
-    http.answer = request -> {
-      throw new ProcessingException(new SocketTimeoutException("Connect timed out"));
-    };
-    assertThatThrownBy(() -> client().model("discount")).isInstanceOf(RuleEngineUnreachableException.class);
-    assertThat(client().isReady()).isFalse();
+    assertThat(nobody.isReady()).isFalse();
   }
 
   @Test
-  void secretsAreMaskedInLogs() {
-    var request = HttpRequest.builder().method(HttpMethod.GET).url("http://rules:8080", "api/models")
-        .addHeader("X-API-Key", "secret").addHeader("Accept", "application/json").build();
-    assertThat(LoggingHttpClient.format(request.headers()))
-        .contains("[X-API-Key: ***]")
-        .contains("[Accept: application/json]")
-        .doesNotContain("secret");
+  void withoutApiKey_theHeaderIsEmpty() {
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{}"));
+
+    RuleEngineClient.builder().baseUrl(MockRuntime.url()).build().evaluate("discount", REQUEST);
+
+    // a REST element sends a header whose value is null as empty header; the runtime treats both as no key
+    assertThat(MockRuntime.calls("evaluate").get(0).apiKey()).isNullOrEmpty();
   }
 
   @Test
   void baseUrlIsRequired() {
-    assertThatThrownBy(() -> RuleEngineClient.builder().httpClientBuilder(http).build())
+    assertThatThrownBy(() -> RuleEngineClient.builder().build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("baseUrl");
+  }
+
+  private static void sleep(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+    }
   }
 }

@@ -11,6 +11,7 @@ import ch.ivyteam.ivy.environment.Ivy;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.annotation.security.PermitAll;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -235,6 +236,47 @@ public class MockRuntime {
     var call = new Call("activate", model, request, headers.getHeaderString("X-API-Key"));
     CALLS.add(call);
     return activate.apply(call);
+  }
+
+  @POST
+  @Path("api/models/{model}/versions/{version}/approve")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response approve(@PathParam("model") String model, @PathParam("version") int version,
+      @Context HttpHeaders headers) {
+    CALLS.add(new Call("approve", model, MAPPER.createObjectNode().put("version", version),
+        headers.getHeaderString("X-API-Key")));
+    return json(200, "{\"model\":\"" + model + "\",\"version\":" + version + ",\"status\":\"APPROVED\"}");
+  }
+
+  @POST
+  @Path("api/models/{model}/versions/{version}/retire")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response retire(@PathParam("model") String model, @PathParam("version") int version,
+      @Context HttpHeaders headers) {
+    CALLS.add(new Call("retire", model, MAPPER.createObjectNode().put("version", version),
+        headers.getHeaderString("X-API-Key")));
+    return json(200, "{\"model\":\"" + model + "\",\"version\":" + version + ",\"status\":\"RETIRED\"}");
+  }
+
+  @DELETE
+  @Path("api/models/{model}")
+  public Response delete(@PathParam("model") String model, @Context HttpHeaders headers) {
+    CALLS.add(new Call("delete", model, null, headers.getHeaderString("X-API-Key")));
+    MODELS.remove(model);
+    return Response.noContent().build();
+  }
+
+  @POST
+  @Path("api/models/{model}/versions/{version}/evaluate")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response evaluateVersion(@PathParam("model") String model, @PathParam("version") int version, String body,
+      @Context HttpHeaders headers) {
+    var request = (ObjectNode) parse(body);
+    request.put("version", version);
+    var call = new Call("evaluateVersion", model, request, headers.getHeaderString("X-API-Key"));
+    CALLS.add(call);
+    return evaluate.apply(call);
   }
 
   @POST

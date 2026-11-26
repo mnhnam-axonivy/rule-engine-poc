@@ -1,0 +1,1959 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "19C4B2F0A1E35D02",
+  "kind" : "CALLABLE_SUB",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.client.process.RuntimeCallData"
+  },
+  "elements" : [
+    {
+      "id" : "f0",
+      "type" : "CallSubStart",
+      "name" : "evaluate(RuntimeConnection,String,String)",
+      "config" : {
+        "signature" : "evaluate",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The request as JSON"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.body" : "param.body"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 64
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f3",
+          "to" : "f1"
+        }
+      ]
+    },
+    {
+      "id" : "f1",
+      "type" : "RestClientCall",
+      "name" : "evaluate",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/evaluate",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : "<%=in.body%>"
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 64
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f4",
+          "to" : "f2"
+        }
+      ]
+    },
+    {
+      "id" : "f2",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 64
+        }
+      }
+    },
+    {
+      "id" : "f5",
+      "type" : "CallSubStart",
+      "name" : "evaluateVersion(RuntimeConnection,String,Integer,String)",
+      "config" : {
+        "signature" : "evaluateVersion",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The request as JSON"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version",
+            "out.body" : "param.body"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 160
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f8",
+          "to" : "f6"
+        }
+      ]
+    },
+    {
+      "id" : "f6",
+      "type" : "RestClientCall",
+      "name" : "evaluateVersion",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}/evaluate",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : "<%=in.body%>"
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 160
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f9",
+          "to" : "f7"
+        }
+      ]
+    },
+    {
+      "id" : "f7",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 160
+        }
+      }
+    },
+    {
+      "id" : "f10",
+      "type" : "CallSubStart",
+      "name" : "registerVersion(RuntimeConnection,String,String)",
+      "config" : {
+        "signature" : "registerVersion",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The request as JSON"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.body" : "param.body"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 256
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f13",
+          "to" : "f11"
+        }
+      ]
+    },
+    {
+      "id" : "f11",
+      "type" : "RestClientCall",
+      "name" : "registerVersion",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : "<%=in.body%>"
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 256
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f14",
+          "to" : "f12"
+        }
+      ]
+    },
+    {
+      "id" : "f12",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 256
+        }
+      }
+    },
+    {
+      "id" : "f15",
+      "type" : "CallSubStart",
+      "name" : "validate(RuntimeConnection,String)",
+      "config" : {
+        "signature" : "validate",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The request as JSON"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.body" : "param.body"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 352
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f18",
+          "to" : "f16"
+        }
+      ]
+    },
+    {
+      "id" : "f16",
+      "type" : "RestClientCall",
+      "name" : "validate",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/validate",
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : "<%=in.body%>"
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 352
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f19",
+          "to" : "f17"
+        }
+      ]
+    },
+    {
+      "id" : "f17",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 352
+        }
+      }
+    },
+    {
+      "id" : "f20",
+      "type" : "CallSubStart",
+      "name" : "models(RuntimeConnection)",
+      "config" : {
+        "signature" : "models",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 448
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f23",
+          "to" : "f21"
+        }
+      ]
+    },
+    {
+      "id" : "f21",
+      "type" : "RestClientCall",
+      "name" : "models",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models",
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 448
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f24",
+          "to" : "f22"
+        }
+      ]
+    },
+    {
+      "id" : "f22",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 448
+        }
+      }
+    },
+    {
+      "id" : "f25",
+      "type" : "CallSubStart",
+      "name" : "model(RuntimeConnection,String)",
+      "config" : {
+        "signature" : "model",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 544
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f28",
+          "to" : "f26"
+        }
+      ]
+    },
+    {
+      "id" : "f26",
+      "type" : "RestClientCall",
+      "name" : "model",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 544
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f29",
+          "to" : "f27"
+        }
+      ]
+    },
+    {
+      "id" : "f27",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 544
+        }
+      }
+    },
+    {
+      "id" : "f30",
+      "type" : "CallSubStart",
+      "name" : "versions(RuntimeConnection,String)",
+      "config" : {
+        "signature" : "versions",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 640
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f33",
+          "to" : "f31"
+        }
+      ]
+    },
+    {
+      "id" : "f31",
+      "type" : "RestClientCall",
+      "name" : "versions",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 640
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f34",
+          "to" : "f32"
+        }
+      ]
+    },
+    {
+      "id" : "f32",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 640
+        }
+      }
+    },
+    {
+      "id" : "f35",
+      "type" : "CallSubStart",
+      "name" : "version(RuntimeConnection,String,Integer)",
+      "config" : {
+        "signature" : "version",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 736
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f38",
+          "to" : "f36"
+        }
+      ]
+    },
+    {
+      "id" : "f36",
+      "type" : "RestClientCall",
+      "name" : "version",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 736
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f39",
+          "to" : "f37"
+        }
+      ]
+    },
+    {
+      "id" : "f37",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 736
+        }
+      }
+    },
+    {
+      "id" : "f40",
+      "type" : "CallSubStart",
+      "name" : "content(RuntimeConnection,String,Integer)",
+      "config" : {
+        "signature" : "content",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 832
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f43",
+          "to" : "f41"
+        }
+      ]
+    },
+    {
+      "id" : "f41",
+      "type" : "RestClientCall",
+      "name" : "content",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}/content",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/xml",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 832
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f44",
+          "to" : "f42"
+        }
+      ]
+    },
+    {
+      "id" : "f42",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 832
+        }
+      }
+    },
+    {
+      "id" : "f45",
+      "type" : "CallSubStart",
+      "name" : "approve(RuntimeConnection,String,Integer)",
+      "config" : {
+        "signature" : "approve",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 928
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f48",
+          "to" : "f46"
+        }
+      ]
+    },
+    {
+      "id" : "f46",
+      "type" : "RestClientCall",
+      "name" : "approve",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}/approve",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : ""
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 928
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f49",
+          "to" : "f47"
+        }
+      ]
+    },
+    {
+      "id" : "f47",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 928
+        }
+      }
+    },
+    {
+      "id" : "f50",
+      "type" : "CallSubStart",
+      "name" : "activate(RuntimeConnection,String,Integer,String)",
+      "config" : {
+        "signature" : "activate",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The request as JSON"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version",
+            "out.body" : "param.body"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1024
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f53",
+          "to" : "f51"
+        }
+      ]
+    },
+    {
+      "id" : "f51",
+      "type" : "RestClientCall",
+      "name" : "activate",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}/activate",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : "<%=in.body%>"
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1024
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f54",
+          "to" : "f52"
+        }
+      ]
+    },
+    {
+      "id" : "f52",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1024
+        }
+      }
+    },
+    {
+      "id" : "f55",
+      "type" : "CallSubStart",
+      "name" : "retire(RuntimeConnection,String,Integer)",
+      "config" : {
+        "signature" : "retire",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.version" : "param.version"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1120
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f58",
+          "to" : "f56"
+        }
+      ]
+    },
+    {
+      "id" : "f56",
+      "type" : "RestClientCall",
+      "name" : "retire",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/versions/{version}/retire",
+          "templateParams" : {
+            "model" : "in.model",
+            "version" : "in.version"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : ""
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1120
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f59",
+          "to" : "f57"
+        }
+      ]
+    },
+    {
+      "id" : "f57",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1120
+        }
+      }
+    },
+    {
+      "id" : "f60",
+      "type" : "CallSubStart",
+      "name" : "rollback(RuntimeConnection,String,String)",
+      "config" : {
+        "signature" : "rollback",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            },
+            {
+              "name" : "user",
+              "type" : "String",
+              "desc" : "Who rolls back"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model",
+            "out.user" : "param.user"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1216
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f63",
+          "to" : "f61"
+        }
+      ]
+    },
+    {
+      "id" : "f61",
+      "type" : "RestClientCall",
+      "name" : "rollback",
+      "config" : {
+        "method" : "POST",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}/rollback",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "queryParams" : {
+            "user" : "in.user"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "body" : {
+          "type" : "RAW",
+          "raw" : ""
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1216
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f64",
+          "to" : "f62"
+        }
+      ]
+    },
+    {
+      "id" : "f62",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1216
+        }
+      }
+    },
+    {
+      "id" : "f65",
+      "type" : "CallSubStart",
+      "name" : "deleteModel(RuntimeConnection,String)",
+      "config" : {
+        "signature" : "deleteModel",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            },
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model on the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection",
+            "out.model" : "param.model"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1312
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f68",
+          "to" : "f66"
+        }
+      ]
+    },
+    {
+      "id" : "f66",
+      "type" : "RestClientCall",
+      "name" : "deleteModel",
+      "config" : {
+        "method" : "DELETE",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "api/models/{model}",
+          "templateParams" : {
+            "model" : "in.model"
+          },
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1312
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f69",
+          "to" : "f67"
+        }
+      ]
+    },
+    {
+      "id" : "f67",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1312
+        }
+      }
+    },
+    {
+      "id" : "f70",
+      "type" : "CallSubStart",
+      "name" : "ready(RuntimeConnection)",
+      "config" : {
+        "signature" : "ready",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1408
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f73",
+          "to" : "f71"
+        }
+      ]
+    },
+    {
+      "id" : "f71",
+      "type" : "RestClientCall",
+      "name" : "ready",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "q/health/ready",
+          "headers" : {
+            "Accept" : "application/json",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1408
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f74",
+          "to" : "f72"
+        }
+      ]
+    },
+    {
+      "id" : "f72",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1408
+        }
+      }
+    },
+    {
+      "id" : "f75",
+      "type" : "CallSubStart",
+      "name" : "editorScript(RuntimeConnection)",
+      "config" : {
+        "signature" : "editorScript",
+        "input" : {
+          "params" : [
+            {
+              "name" : "connection",
+              "type" : "com.axonivy.utils.rule.engine.client.process.RuntimeConnection",
+              "desc" : "URL, API key and timeouts of the runtime"
+            }
+          ],
+          "map" : {
+            "out.connection" : "param.connection"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "status",
+              "type" : "Integer",
+              "desc" : "HTTP status of the answer"
+            },
+            {
+              "name" : "body",
+              "type" : "String",
+              "desc" : "The answer of the runtime"
+            }
+          ],
+          "map" : {
+            "result.status" : "in.status",
+            "result.body" : "in.responseBody"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 1504
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f78",
+          "to" : "f76"
+        }
+      ]
+    },
+    {
+      "id" : "f76",
+      "type" : "RestClientCall",
+      "name" : "editorScript",
+      "config" : {
+        "method" : "GET",
+        "target" : {
+          "clientId" : "ruleEngine",
+          "path" : "editor/lib/dmn-editor.js",
+          "headers" : {
+            "Accept" : "*/*",
+            "X-Requested-By" : "\"ivy\"",
+            "X-API-Key" : "in.connection.apiKey"
+          },
+          "properties" : {
+            "ruleengine.base.uri" : "in.connection.baseUrl",
+            "jersey.config.client.readTimeout" : "in.connection.readTimeoutMillis",
+            "jersey.config.client.connectTimeout" : "in.connection.connectTimeoutMillis"
+          }
+        },
+        "response" : {
+          "entity" : {
+            "type" : "String",
+            "map" : {
+              "out.responseBody" : "result"
+            },
+            "code" : "out.status = response.getStatus();"
+          },
+          "statusError" : ">> Ignore Error"
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 288,
+          "y" : 1504
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f79",
+          "to" : "f77"
+        }
+      ]
+    },
+    {
+      "id" : "f77",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 480,
+          "y" : 1504
+        }
+      }
+    }
+  ]
+}

@@ -31,12 +31,10 @@ COPY --from=build --chown=1001:0 /build/target/quarkus-app/lib/ /app/lib/
 COPY --from=build --chown=1001:0 /build/target/quarkus-app/*.jar /app/
 COPY --from=build --chown=1001:0 /build/target/quarkus-app/app/ /app/app/
 COPY --from=build --chown=1001:0 /build/target/quarkus-app/quarkus/ /app/quarkus/
-COPY --chown=1001:0 docker/healthcheck.sh /app/healthcheck.sh
 COPY LICENSE NOTICE /licenses/
 
 USER 1001
 WORKDIR /app
 VOLUME /data
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 CMD ["bash", "/app/healthcheck.sh"]
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/quarkus-run.jar"]

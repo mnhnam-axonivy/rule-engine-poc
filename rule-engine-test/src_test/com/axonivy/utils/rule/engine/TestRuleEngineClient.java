@@ -23,8 +23,8 @@ import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import jakarta.ws.rs.core.Response;
 
 /**
- * The client of the decision runtime: requests, answers and failures. Each call runs a REST element of the callable
- * RuleEngine/RuntimeCall; the runtime is replaced by {@link MockRuntime}.
+ * The client of the decision runtime: requests, answers and failures. Each call goes through the REST client
+ * ruleEngine of Axon Ivy; the runtime is replaced by {@link MockRuntime}.
  */
 @IvyProcessTest(enableWebServer = true)
 class TestRuleEngineClient {

@@ -22,7 +22,7 @@ public final class ExceptionMapper {
   private ExceptionMapper() {}
 
   /**
-   * @param ex what the REST element threw: its cause is the failure of the connection, e.g. a timeout
+   * @param ex what the REST client threw: its cause is the failure of the connection, e.g. a timeout
    */
   public static RuntimeException map(String baseUrl, Exception ex) {
     if (ex instanceof RuleEngineException known) {

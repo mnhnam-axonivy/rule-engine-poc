@@ -1,4 +1,4 @@
-package com.axonivy.utils.rule.engine.client.process;
+package com.axonivy.utils.rule.engine.client.internal;
 
 import java.net.URI;
 
@@ -9,9 +9,9 @@ import jakarta.ws.rs.core.Feature;
 import jakarta.ws.rs.core.FeatureContext;
 
 /**
- * Sends a call of a REST element to the runtime named by the property {@value #BASE_URI}, i.e. the variable
- * <code>RuleEngine.Url</code>. The path of the element is kept. Registered on the client <code>ruleEngine</code> in
- * rest-clients.yaml, whose own Url must have no path.
+ * Sends a call of the client <code>ruleEngine</code> to the runtime named by the property {@value #BASE_URI}: the
+ * base URL of the RuleEngineClient, i.e. the variable <code>RuleEngine.Url</code>. The path of the call is kept.
+ * Registered on the client in rest-clients.yaml, whose own Url must have no path.
  */
 public class RuntimeUrlFeature implements Feature {
 

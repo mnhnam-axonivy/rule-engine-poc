@@ -43,7 +43,7 @@ export const strings = {
     'tour.stored.text': 'The version lies in the database of the container, on the volume `rule-engine-data`. It is still there after a restart.',
 
     'tour.stopped.title': 'The runtime is down',
-    'tour.stopped.text': 'The container is stopped, as if `docker compose up` had not run.',
+    'tour.stopped.text': 'The container is stopped, as if `docker run` had not run.',
     'tour.unreachable.title': 'rule:engine:unreachable',
     'tour.unreachable.text': 'The element cannot reach the runtime and throws `rule:engine:unreachable`: the first line of the table on this page.',
     'tour.caught.title': 'Caught',

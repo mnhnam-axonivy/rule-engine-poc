@@ -45,13 +45,19 @@ Edit the `.dmn` files in the browser with the DMN editor of the decision runtime
 The runtime is a container that holds the rule engine and its database. All versions of all models are
 stored in the volume and are loaded again after a restart.
 
-```yaml
-@docker-compose.yml@
+```bash
+docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data \
+       --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> axonivy/rule-engine-runtime:dev
 ```
 
-```
-docker compose up -d
-```
+| Part | What it does |
+| --- | --- |
+| `-p 8090:8080` | The runtime on port 8090 of the host. |
+| `-v rule-engine-data:/data` | Keeps every version of every model in the volume `rule-engine-data`. Back it up like a database. |
+| `-e RULE_ENGINE_API_KEY=<secret>` | Protects the API. Leave it out for local development only: without a key the API is open. |
+
+`docker stop axonivy-rule-engine` stops it, `docker start axonivy-rule-engine` starts it again. For a new image,
+remove the container with `docker rm -f axonivy-rule-engine` and run it again: the versions stay in the volume.
 
 Check it: `http://localhost:8090/q/health/ready`. The API is described at `http://localhost:8090/q/swagger-ui`,
 the DMN editor is at `http://localhost:8090/editor/`.
@@ -65,9 +71,19 @@ Set the URL of the runtime in the variables of your application. For production 
 @variables.yaml@
 ```
 
-TLS: terminate it at a reverse proxy in front of the runtime, or give the runtime a certificate
-(see the comments in the Docker Compose file). Trust settings of the engine side belong to the REST client
-`ruleEngine` in `rest-clients.yaml`.
+TLS: terminate it at a reverse proxy in front of the runtime, or give the runtime a certificate. The runtime then
+serves HTTPS on port 8443 and no plain HTTP:
+
+```bash
+docker run -d --name axonivy-rule-engine -p 8443:8443 -v rule-engine-data:/data -v "$PWD/certs:/certs:ro" \
+       --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> \
+       -e QUARKUS_HTTP_SSL_CERTIFICATE_FILES=/certs/tls.crt \
+       -e QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES=/certs/tls.key \
+       -e QUARKUS_HTTP_INSECURE_REQUESTS=disabled \
+       axonivy/rule-engine-runtime:dev
+```
+
+Trust settings of the engine side belong to the REST client `ruleEngine` in `rest-clients.yaml`.
 
 ### 3. Use the Business Rule Task
 

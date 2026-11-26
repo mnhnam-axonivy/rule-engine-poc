@@ -11,12 +11,12 @@ The decision runtime is another system. It can be down, slow, or it can refuse a
 Stop the container and click **Apply rules** on the page of **Rule Engine Demo: invoice discount**:
 
 ```bash
-docker compose stop
+docker stop axonivy-rule-engine
 ```
 
 The Business Rule Task cannot connect and throws `rule:engine:unreachable`. The same happens when `RuleEngine.Url` points to a wrong host or port.
 
-In the demo the process does not fail. An **Error Boundary Event** on the element catches the error, and the process continues on another path to the end **not priced**. It returns the error, and the page shows it in red. Start the container again with `docker compose start`.
+In the demo the process does not fail. An **Error Boundary Event** on the element catches the error, and the process continues on another path to the end **not priced**. It returns the error, and the page shows it in red. Start the container again with `docker start axonivy-rule-engine`.
 
 ---
 

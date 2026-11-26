@@ -11,9 +11,9 @@ This page gets you from nothing to your first decision: start the decision runti
 | You need | Why | Check |
 | --- | --- | --- |
 | Axon Ivy Designer 14.0.1 or newer | The projects are built for Axon Ivy 14. | You are reading this page in it. |
-| Docker with Docker Compose | The decision runtime runs as a container. Docker Desktop and Rancher Desktop (dockerd) both work. | `docker compose version` |
-| The repository `rule-engine` on your disk | It contains the Docker Compose file and the source of the runtime image. | The folder with `docker-compose.yml` |
-| Port 8090 free | The runtime listens there by default. | `docker compose up` complains if it is taken. |
+| Docker | The decision runtime runs as a container. Docker Desktop and Rancher Desktop (dockerd) both work. | `docker version` |
+| The repository `rule-engine` on your disk | It contains the project `rule-engine-runtime`, the source of the runtime image. | The folder with `rule-engine-runtime` |
+| Port 8090 free | The runtime listens there by default. | `docker run` complains if it is taken. |
 
 Optional, but recommended once you write your own rules: the [Apache KIE DMN editor for VS Code](https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle). It shows a `.dmn` file as decision tables and a diagram instead of XML.
 
@@ -23,13 +23,19 @@ You do **not** need Java or Maven for this tutorial. The runtime image is built 
 
 ## Step 1: Start the decision runtime
 
-Open a terminal in the folder of the repository, the one with `docker-compose.yml`, and run:
+Open a terminal in the folder of the repository, the one with `rule-engine-runtime`, and build the image:
 
 ```bash
-docker compose up -d --build
+docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime
 ```
 
-The first run builds the image and takes a few minutes. After that the container starts in seconds.
+The first build takes a few minutes. Then start the container:
+
+```bash
+docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data --restart unless-stopped axonivy/rule-engine-runtime:dev
+```
+
+It starts in seconds. Port 8090 of your computer leads to port 8080 of the container.
 
 Check that it is ready:
 
@@ -39,13 +45,13 @@ curl http://localhost:8090/q/health/ready
 
 The answer contains `"status": "UP"` and `"activeModels": 0`. The runtime starts **empty**. It gets its models from your project, as you will see in step 3.
 
-> The container holds the rule engine and its database. Every version of every model is stored in the Docker volume `rule-engine-data` and is loaded again after a restart. `docker compose down` keeps the volume, `docker compose down -v` deletes it.
+> The container holds the rule engine and its database. Every version of every model is stored in the Docker volume `rule-engine-data` and is loaded again after a restart. `docker stop axonivy-rule-engine` stops the container, `docker start axonivy-rule-engine` starts it again. `docker rm -f axonivy-rule-engine` removes it and keeps the volume; `docker volume rm rule-engine-data` then deletes the versions.
 
 ---
 
 ## Step 2: Check the connection
 
-The connector reads where the runtime is from the variables of your application. The defaults fit the Docker Compose file, so for this tutorial there is nothing to change.
+The connector reads where the runtime is from the variables of your application. The defaults fit the container of step 1, so for this tutorial there is nothing to change.
 
 ```yaml
 Variables:
@@ -136,10 +142,11 @@ Or look at it in the browser: `http://localhost:8090/editor/` is the DMN editor 
 
 | What you see | Cause | What to do |
 | --- | --- | --- |
-| The page says `rule:engine:unreachable` | The container is not running, or `RuleEngine.Url` points somewhere else. | `docker compose ps`, then `docker compose up -d`. Compare the port with `RuleEngine.Url`. |
-| `docker compose up` fails with "port is already allocated" | Something else uses port 8090. | Create a file `.env` next to `docker-compose.yml` with the line `RULE_ENGINE_PORT=8091`, run `docker compose up -d` again and set `RuleEngine.Url` to `http://localhost:8091`. |
+| The page says `rule:engine:unreachable` | The container is not running, or `RuleEngine.Url` points somewhere else. | `docker ps -a --filter name=axonivy-rule-engine`, then `docker start axonivy-rule-engine`. Compare the port with `RuleEngine.Url`. |
+| `docker run` fails with "port is already allocated" | Something else uses port 8090. | Remove the container it created, `docker rm axonivy-rule-engine`, run `docker run` again with `-p 8091:8080` instead of `-p 8090:8080`, and set `RuleEngine.Url` to `http://localhost:8091`. |
+| `docker run` fails with "The container name ... is already in use" | The container exists from an earlier run. | `docker start axonivy-rule-engine` starts it. To start it from a new image, `docker rm -f axonivy-rule-engine` first; the versions stay in the volume. |
 | The page says `rule:engine:dmn` and "A valid API key is required" | The container was started with `RULE_ENGINE_API_KEY`, the engine has no or another key. | Set `RuleEngine.ApiKey` to the same value. |
-| The health check is not `UP` after a minute | The container is still starting or has stopped. | `docker compose logs rule-engine` shows why. |
+| The health check is not `UP` after a minute | The container is still starting or has stopped. | `docker logs axonivy-rule-engine` shows why. |
 
 The callable of the demo catches these errors, ends at **not priced** and returns the error, which the page shows in red. How a process reacts to them is the topic of [Handle errors].
 

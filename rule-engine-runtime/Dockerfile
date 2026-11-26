@@ -1,17 +1,17 @@
 # syntax=docker/dockerfile:1
 #
-# Axon Ivy Rules Engine - decision runtime
-# One generic image for all customers: DMN models are loaded at runtime through the API, never built into the image.
-# The image contains the rule engine and its embedded database. Mount a volume at /data to keep the versions.
+# Axon Ivy Rules Engine - decision runtime, built without Java or Maven on the host.
+# Maven runs inside Docker and writes target/docker, as `mvn package` does on a host. The image is then built from
+# what it wrote, with the instructions of src/main/docker/Dockerfile: the image is described there.
+# DockerfileTest fails if the stage of the image below is not the same as that file.
 #
 # Built from this folder; it needs nothing else of the repository. In the root of the repository:
 #
-#   docker build -t axonivy/rule-engine-runtime:dev rule-engine/runtime
-#   docker compose build                     (the same, from docker-compose.yml)
+#   docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime
 #
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
-COPY pom.xml pom.xml
+COPY pom.xml LICENSE NOTICE ./
 COPY src/main src/main
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q package -Dmaven.test.skip=true
 
@@ -27,16 +27,14 @@ RUN useradd --uid 1001 --create-home --shell /usr/sbin/nologin rules \
     && mkdir -p /data /app /licenses \
     && chown -R 1001:0 /data /app
 
-COPY --from=build --chown=1001:0 /build/target/quarkus-app/lib/ /app/lib/
-COPY --from=build --chown=1001:0 /build/target/quarkus-app/*.jar /app/
-COPY --from=build --chown=1001:0 /build/target/quarkus-app/app/ /app/app/
-COPY --from=build --chown=1001:0 /build/target/quarkus-app/quarkus/ /app/quarkus/
-COPY --chown=1001:0 docker/healthcheck.sh /app/healthcheck.sh
-COPY LICENSE NOTICE /licenses/
+COPY --from=build --chown=1001:0 /build/target/docker/quarkus-app/lib/ /app/lib/
+COPY --from=build --chown=1001:0 /build/target/docker/quarkus-app/*.jar /app/
+COPY --from=build --chown=1001:0 /build/target/docker/quarkus-app/app/ /app/app/
+COPY --from=build --chown=1001:0 /build/target/docker/quarkus-app/quarkus/ /app/quarkus/
+COPY --from=build /build/target/docker/LICENSE /build/target/docker/NOTICE /licenses/
 
 USER 1001
 WORKDIR /app
 VOLUME /data
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 CMD ["bash", "/app/healthcheck.sh"]
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/quarkus-run.jar"]

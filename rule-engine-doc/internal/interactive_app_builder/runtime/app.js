@@ -1135,7 +1135,7 @@ export class DesignerApp {
     if (this.variablesInfo && this.variablesCode) this.updateVariablesInfo();
   }
 
-  /** 'running' | 'slow' | 'stopped': what `docker compose up` and `stop` do to the container. */
+  /** 'running' | 'slow' | 'stopped': what `docker start` and `docker stop` do to the container. */
   setRuntimeState(state) {
     this.runtime.state = state;
     this.refreshRuntimeViews();

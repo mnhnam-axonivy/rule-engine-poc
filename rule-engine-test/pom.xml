@@ -12,7 +12,7 @@
   <version>14.0.1-SNAPSHOT</version>
   <packaging>iar</packaging>
   <properties>
-    <!-- image of the decision runtime used by the container tests: docker compose build -->
+    <!-- image of the decision runtime used by the container tests: docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime -->
     <rule.engine.image>axonivy/rule-engine-runtime:dev</rule.engine.image>
   </properties>
   <dependencies>

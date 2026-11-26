@@ -25,7 +25,7 @@ back. Every request that leaves the runtime is blocked and counts as a failure. 
 afterwards.
 
 ```
-docker compose build                 # in the repository root, after a change of the runtime
+docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime   # in the repository root, after a change of the runtime
 cd internal/editor-smoke
 npm install                          # once
 npm run smoke                        # 33 checks, screenshots in .preview/

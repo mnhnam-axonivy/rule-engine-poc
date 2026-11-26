@@ -22,14 +22,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>..</directory>
-      <outputDirectory>/</outputDirectory>
-      <includes>
-        <include>docker-compose.yml</include>
-      </includes>
-    </fileSet>
-    <fileSet>
-      <directory>../rule-engine/runtime</directory>
+      <directory>../rule-engine-runtime</directory>
       <outputDirectory>/</outputDirectory>
       <includes>
         <include>openapi.yaml</include>

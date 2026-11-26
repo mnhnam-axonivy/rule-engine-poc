@@ -46,6 +46,8 @@ Rules change more often than processes. That is why they live apart: the runtime
 
 In your own project you add one dependency, `rule-engine`.
 
+The repository has one more project, `rule-engine-runtime`. It is not an Ivy project, and the Designer does not import it: it is the source of the container image, below.
+
 The **Axon Ivy Portal** is not one of these projects and does not require any of them. It looks for the callable sub process `Portal/RuleManagement` of `rule-engine` in the security context, the way it finds Smart Workflow, and only then shows the tab Rule Management. [Edit rules in the Portal] shows it.
 
 ---
@@ -65,7 +67,7 @@ The container `axonivy-rule-engine` runs the image `axonivy/rule-engine-runtime`
 | --- | --- |
 | Port 8090 | Port 8090 of your computer leads to port 8080 of the container. |
 | Volume `rule-engine-data` | Holds the file of the database. The versions are still there after the container was replaced. |
-| Folder `rule-engine/runtime` | The image is built from it, by `docker compose up -d --build`. |
+| Project `rule-engine-runtime` | The source of the image: a Maven project, not an Ivy project. `docker build` builds the image from it. |
 
 ---
 

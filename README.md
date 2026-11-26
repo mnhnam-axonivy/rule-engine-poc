@@ -65,17 +65,19 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 
 ## How the REST client is built
 
-The client of the connector follows the design of LangChain4j:
+The connector calls the runtime with REST elements of Axon Ivy:
 
-- `client.http`: the transport abstraction `HttpClient`, `HttpClientBuilder`, `HttpRequest`,
-  `SuccessfulHttpResponse`, `HttpException` and `LoggingHttpClient`. Tests pass a fake transport to
-  `RuleEngineClient.builder().httpClientBuilder(...)`.
-- `client.http.ivy`: the default transport. It uses the REST client `ruleEngine` of Axon Ivy (Jersey), the same
-  way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
-- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`, custom headers),
-  and exceptions for unreachable, timeout and error answers.
-- The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`. The runtime has records
-  of its own; `ContractTest` fails if the two do not have the same fields.
+- `process/RuleEngine/RuntimeCall.p.json`: a callable with one start per operation (`evaluate`, `registerVersion`,
+  `activate`, ...). Each start runs a REST element on the REST client `ruleEngine`, so the calls appear in the
+  tracing of the engine, and rest-clients.yaml is the place for TLS settings. A start answers the HTTP status and the
+  body; an error status does not throw, so the error code of the runtime reaches Java.
+- `client.process.RuntimeUrlFeature`, registered on `ruleEngine`: sends each call to the URL of the
+  `RuntimeConnection` (the variable `RuleEngine.Url`) and keeps the path of the element.
+- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`). Each method runs its
+  start with `SubProcessCall`, and turns failures into exceptions for unreachable, timeout and error answers.
+- The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`, sent as JSON. The runtime
+  has records of its own; `ContractTest` fails if the two do not have the same fields.
+- Tests replace the runtime by `MockRuntime`, a REST service of the test project.
 
 ## Spike result: runtime loading (MARP-4893)
 

@@ -3,9 +3,7 @@ package com.axonivy.utils.rule.engine.client;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.function.Supplier;
 
 import com.axonivy.utils.rule.engine.api.ActivateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
@@ -17,46 +15,64 @@ import com.axonivy.utils.rule.engine.api.ValidationResult;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.client.internal.ExceptionMapper;
-import com.axonivy.utils.rule.engine.client.internal.Json;
+import com.axonivy.utils.rule.engine.client.internal.RequestLogFilter;
 import com.axonivy.utils.rule.engine.client.internal.RuntimeUrlFeature;
 
 import ch.ivyteam.ivy.environment.Ivy;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import tools.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response.Status;
 
 /**
- * Client of the decision runtime of the Axon Ivy Rules Engine.
- *
- * <pre><code>
- * RuleEngineClient client = RuleEngineClient.builder()
- *     .baseUrl("http://localhost:8090")
- *     .apiKey("secret")
- *     .readTimeout(Duration.ofSeconds(10))
- *     .build();
- * EvaluateResponse response = client.evaluate("discount", EvaluateRequest.builder()
- *     .decision("discount")
- *     .input("purchaseAmount", 1500)
- *     .input("type", "Gold")
- *     .build());
- * </code></pre>
- *
- * Each operation calls the runtime through the REST client {@value #REST_CLIENT} of rest-clients.yaml, the REST
- * client of Axon Ivy: the calls appear in the tracing of the engine, and rest-clients.yaml is the place for TLS
- * settings. All methods throw a {@link RuleEngineException}: unreachable, timeout or an error answer of the runtime.
+ * Client of the decision runtime, through the Axon Ivy REST client <code>ruleEngine</code> of rest-clients.yaml.
+ * Failures are thrown as {@link RuleEngineException}.
  */
 public class RuleEngineClient {
 
-  /** Name of the REST client in rest-clients.yaml. */
-  public static final String REST_CLIENT = "ruleEngine";
-
-  private static final String CONNECT_TIMEOUT = "jersey.config.client.connectTimeout";
-  private static final String READ_TIMEOUT = "jersey.config.client.readTimeout";
+  private static final String REST_CLIENT = "ruleEngine";
   private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(10);
-  private static final Logger LOG = LoggerFactory.getLogger(RuleEngineClient.class);
+  private static final Entity<String> NO_BODY = Entity.json("");
+
+  private interface Paths {
+    String MODELS = "api/models";
+    String MODEL = MODELS + "/{" + Params.MODEL + "}";
+    String EVALUATE = MODEL + "/evaluate";
+    String ROLLBACK = MODEL + "/rollback";
+    String VERSIONS = MODEL + "/versions";
+    String VERSION = VERSIONS + "/{" + Params.VERSION + "}";
+    String EVALUATE_VERSION = VERSION + "/evaluate";
+    String CONTENT = VERSION + "/content";
+    String APPROVE = VERSION + "/approve";
+    String ACTIVATE = VERSION + "/activate";
+    String RETIRE = VERSION + "/retire";
+    String VALIDATE = "api/validate";
+    String READY = "q/health/ready";
+    String EDITOR_SCRIPT = "editor/lib/dmn-editor.js";
+  }
+
+  private interface Params {
+    String MODEL = "model";
+    String VERSION = "version";
+    String USER = "user";
+    String CONTENT = "content";
+  }
+
+  private interface Headers {
+    String API_KEY = "X-API-Key";
+    String REQUESTED_BY = "X-Requested-By";
+    String REQUESTED_BY_IVY = "ivy";
+  }
+
+  private interface JerseyProperties {
+    String CONNECT_TIMEOUT = "jersey.config.client.connectTimeout";
+    String READ_TIMEOUT = "jersey.config.client.readTimeout";
+  }
 
   private final String baseUrl;
   private final String apiKey;
@@ -79,210 +95,140 @@ public class RuleEngineClient {
     return new Builder();
   }
 
-  /** Evaluates the active version of a model. */
   public EvaluateResponse evaluate(String model, EvaluateRequest request) {
-    String answer = request("api/models/{model}/evaluate").model(model).post(Json.toJson(request));
-    return Json.fromJson(answer, EvaluateResponse.class);
+    return call(() -> json(modelTarget(Paths.EVALUATE, model)).post(Entity.json(request), EvaluateResponse.class));
   }
 
-  /** Evaluates a specific version, e.g. to test a draft before it goes live. */
   public EvaluateResponse evaluate(String model, int version, EvaluateRequest request) {
-    String answer = request("api/models/{model}/versions/{version}/evaluate").model(model).version(version)
-        .post(Json.toJson(request));
-    return Json.fromJson(answer, EvaluateResponse.class);
+    return call(() -> json(versionTarget(Paths.EVALUATE_VERSION, model, version))
+        .post(Entity.json(request), EvaluateResponse.class));
   }
 
-  /** Stores a DMN file as a new version. Content that is already stored does not create another version. */
   public ModelVersion registerVersion(String model, RegisterVersionRequest request) {
-    String answer = request("api/models/{model}/versions").model(model).post(Json.toJson(request));
-    return Json.fromJson(answer, ModelVersion.class);
+    return call(() -> json(modelTarget(Paths.VERSIONS, model)).post(Entity.json(request), ModelVersion.class));
   }
 
-  /** Checks a DMN file with the DMN validator without storing it. */
   public ValidationResult validate(String dmn) {
-    String body = Json.toJson(Map.of("content", dmn == null ? "" : dmn));
-    return Json.fromJson(request("api/validate").post(body), ValidationResult.class);
+    var body = Entity.json(Map.of(Params.CONTENT, dmn == null ? "" : dmn));
+    return call(() -> json(target(Paths.VALIDATE)).post(body, ValidationResult.class));
   }
 
   public List<ModelInfo> models() {
-    return Json.fromJson(request("api/models").get(), new TypeReference<List<ModelInfo>>() {});
+    return call(() -> json(target(Paths.MODELS)).get(new GenericType<List<ModelInfo>>() {}));
   }
 
   public ModelInfo model(String model) {
-    return Json.fromJson(request("api/models/{model}").model(model).get(), ModelInfo.class);
+    return call(() -> json(modelTarget(Paths.MODEL, model)).get(ModelInfo.class));
   }
 
-  /** @return the versions of a model, newest first */
+  /** @return newest first */
   public List<ModelVersion> versions(String model) {
-    return Json.fromJson(request("api/models/{model}/versions").model(model).get(),
-        new TypeReference<List<ModelVersion>>() {});
+    return call(() -> json(modelTarget(Paths.VERSIONS, model)).get(new GenericType<List<ModelVersion>>() {}));
   }
 
   public ModelVersion version(String model, int version) {
-    String answer = request("api/models/{model}/versions/{version}").model(model).version(version).get();
-    return Json.fromJson(answer, ModelVersion.class);
+    return call(() -> json(versionTarget(Paths.VERSION, model, version)).get(ModelVersion.class));
   }
 
-  /** @return the DMN file of a version, e.g. to export it back into the Ivy project */
+  /** @return the DMN file of the version */
   public String content(String model, int version) {
-    return request("api/models/{model}/versions/{version}/content").model(model).version(version)
-        .accept(MediaType.APPLICATION_XML).get();
+    return call(() -> request(versionTarget(Paths.CONTENT, model, version), MediaType.APPLICATION_XML)
+        .get(String.class));
   }
 
-  /** Releases a draft for activation. */
   public ModelVersion approve(String model, int version) {
-    String answer = request("api/models/{model}/versions/{version}/approve").model(model).version(version).post("");
-    return Json.fromJson(answer, ModelVersion.class);
+    return call(() -> json(versionTarget(Paths.APPROVE, model, version)).post(NO_BODY, ModelVersion.class));
   }
 
-  /** Makes a version the active one, now or at an effective date. Live on the runtime without restart. */
   public ModelVersion activate(String model, int version, ActivateRequest request) {
-    String body = Json.toJson(request == null ? ActivateRequest.now(null) : request);
-    String answer = request("api/models/{model}/versions/{version}/activate").model(model).version(version).post(body);
-    return Json.fromJson(answer, ModelVersion.class);
+    var body = Entity.json(request == null ? ActivateRequest.now(null) : request);
+    return call(() -> json(versionTarget(Paths.ACTIVATE, model, version)).post(body, ModelVersion.class));
   }
 
-  /** Withdraws a version that is not active. */
   public ModelVersion retire(String model, int version) {
-    String answer = request("api/models/{model}/versions/{version}/retire").model(model).version(version).post("");
-    return Json.fromJson(answer, ModelVersion.class);
+    return call(() -> json(versionTarget(Paths.RETIRE, model, version)).post(NO_BODY, ModelVersion.class));
   }
 
-  /** Activates the version that was active before the current one. */
   public ModelVersion rollback(String model, String user) {
-    String answer = request("api/models/{model}/rollback").model(model).query("user", user).post("");
-    return Json.fromJson(answer, ModelVersion.class);
+    var target = modelTarget(Paths.ROLLBACK, model);
+    var withUser = user == null ? target : target.queryParam(Params.USER, user);
+    return call(() -> json(withUser).post(NO_BODY, ModelVersion.class));
   }
 
-  /** Removes a model with all its versions. */
   public void deleteModel(String model) {
-    request("api/models/{model}").model(model).delete();
+    call(() -> json(modelTarget(Paths.MODEL, model)).delete(String.class));
   }
 
-  /** @return true if the runtime is up and has loaded its active versions */
   public boolean isReady() {
     try {
-      request("q/health/ready").get();
+      call(() -> json(target(Paths.READY)).get(String.class));
       return true;
     } catch (RuleEngineException ex) {
       return false;
     }
   }
 
-  /** @return the script of the DMN editor that the runtime serves for its page /editor/, or null if it has none */
+  /** @return null if the runtime serves no DMN editor */
   public String editorScript() {
     try {
-      return request("editor/lib/dmn-editor.js").accept(MediaType.WILDCARD).get();
+      return call(() -> request(target(Paths.EDITOR_SCRIPT), MediaType.WILDCARD).get(String.class));
     } catch (RuleEngineApiException ex) {
-      if (ex.statusCode() == 404) {
+      if (ex.statusCode() == Status.NOT_FOUND.getStatusCode()) {
         return null;
       }
       throw ex;
     }
   }
 
-  /** @return the base URL of the runtime this client talks to */
   public String baseUrl() {
     return baseUrl;
   }
 
-  private Request request(String path) {
-    return new Request(path);
+  private WebTarget target(String path) {
+    var target = Ivy.rest().client(REST_CLIENT).path(path);
+    return logRequests ? target.register(new RequestLogFilter()) : target;
   }
 
-  private static String name(String model) {
+  private WebTarget modelTarget(String path, String model) {
     if (model == null || model.isBlank()) {
       throw new IllegalArgumentException("model cannot be null or blank");
     }
-    return model.trim();
+    return target(path).resolveTemplate(Params.MODEL, model.trim());
+  }
+
+  private WebTarget versionTarget(String path, String model, int version) {
+    return modelTarget(path, model).resolveTemplate(Params.VERSION, version);
+  }
+
+  private Invocation.Builder json(WebTarget target) {
+    return request(target, MediaType.APPLICATION_JSON);
+  }
+
+  private Invocation.Builder request(WebTarget target, String mediaType) {
+    return target.request(mediaType)
+        // the URL of the REST client in rest-clients.yaml is a placeholder: RuntimeUrlFeature replaces it by baseUrl
+        .property(RuntimeUrlFeature.BASE_URI, baseUrl)
+        .property(JerseyProperties.CONNECT_TIMEOUT, connectTimeoutMillis)
+        .property(JerseyProperties.READ_TIMEOUT, readTimeoutMillis)
+        // Axon Ivy REST services refuse modifying calls without it (CSRF protection)
+        .header(Headers.REQUESTED_BY, Headers.REQUESTED_BY_IVY)
+        // a null value removes the header: without an API key, none is sent
+        .header(Headers.API_KEY, apiKey);
+  }
+
+  private <T> T call(Supplier<T> call) {
+    try {
+      return call.get();
+    } catch (WebApplicationException ex) {
+      throw ExceptionMapper.answer(ex.getResponse());
+    } catch (ProcessingException ex) {
+      throw ExceptionMapper.map(baseUrl, ex);
+    }
   }
 
   private static int millis(Duration duration, Duration fallback) {
     Duration value = duration == null ? fallback : duration;
     return (int) Math.min(Integer.MAX_VALUE, value.toMillis());
-  }
-
-  /**
-   * One call of the runtime. The REST client of rest-clients.yaml has a placeholder URL: {@link RuntimeUrlFeature}
-   * sends the call to the base URL of this client and keeps the path.
-   */
-  private final class Request {
-
-    private final String path;
-    private WebTarget target;
-    private String accept = MediaType.APPLICATION_JSON;
-
-    private Request(String path) {
-      this.path = path;
-      this.target = Ivy.rest().client(REST_CLIENT).path(path);
-    }
-
-    private Request model(String model) {
-      target = target.resolveTemplate("model", name(model));
-      return this;
-    }
-
-    private Request version(int version) {
-      target = target.resolveTemplate("version", version);
-      return this;
-    }
-
-    private Request query(String name, Object value) {
-      if (value != null) {
-        target = target.queryParam(name, value);
-      }
-      return this;
-    }
-
-    private Request accept(String mediaType) {
-      accept = mediaType;
-      return this;
-    }
-
-    private String get() {
-      return send("GET", null);
-    }
-
-    private String delete() {
-      return send("DELETE", null);
-    }
-
-    private String post(String json) {
-      return send("POST", Entity.entity(json, MediaType.APPLICATION_JSON));
-    }
-
-    /** @return the body of a successful answer */
-    private String send(String method, Entity<String> body) {
-      if (logRequests) {
-        LOG.info("Rule engine request: {} {} {}", method, path, body == null ? "" : body.getEntity());
-      }
-      int status;
-      String answer;
-      try {
-        var invocation = target
-            .property(RuntimeUrlFeature.BASE_URI, baseUrl)
-            .property(CONNECT_TIMEOUT, connectTimeoutMillis)
-            .property(READ_TIMEOUT, readTimeoutMillis)
-            .request(accept)
-            .header("X-Requested-By", "ivy");
-        if (apiKey != null) {
-          invocation = invocation.header("X-API-Key", apiKey);
-        }
-        try (Response response = body == null ? invocation.method(method) : invocation.method(method, body)) {
-          status = response.getStatus();
-          answer = response.hasEntity() ? response.readEntity(String.class) : null;
-        }
-      } catch (RuntimeException ex) {
-        throw ExceptionMapper.map(baseUrl, ex);
-      }
-      if (logRequests) {
-        LOG.info("Rule engine response: {} {}", status, answer);
-      }
-      if (status < 200 || status > 299) {
-        throw ExceptionMapper.answer(status, answer);
-      }
-      return answer;
-    }
   }
 
   public static final class Builder {
@@ -295,31 +241,28 @@ public class RuleEngineClient {
 
     private Builder() {}
 
-    /** @param baseUrl base URL of the runtime, e.g. "http://localhost:8090" */
+    /** @param baseUrl e.g. "http://localhost:8090" */
     public Builder baseUrl(String baseUrl) {
       this.baseUrl = baseUrl;
       return this;
     }
 
-    /** @param apiKey shared secret of the runtime, sent as header "X-API-Key" */
     public Builder apiKey(String apiKey) {
       this.apiKey = apiKey;
       return this;
     }
 
-    /** @param connectTimeout how long to wait for the connection. Default: 5 seconds. */
     public Builder connectTimeout(Duration connectTimeout) {
       this.connectTimeout = connectTimeout;
       return this;
     }
 
-    /** @param readTimeout how long to wait for the answer of the runtime. Default: 10 seconds. */
     public Builder readTimeout(Duration readTimeout) {
       this.readTimeout = readTimeout;
       return this;
     }
 
-    /** @param logRequests true logs every request and its response; the API key is never logged */
+    /** The API key is never logged. */
     public Builder logRequests(boolean logRequests) {
       this.logRequests = logRequests;
       return this;

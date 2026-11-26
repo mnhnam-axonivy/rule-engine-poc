@@ -14,6 +14,8 @@ import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableException;
 
+import jakarta.ws.rs.core.Response;
+
 /**
  * Turns the failures of a call of the runtime into the exceptions of the rule engine client.
  */
@@ -50,13 +52,19 @@ public final class ExceptionMapper {
     return new RuleEngineException("The call to the rule engine at " + baseUrl + " failed: " + ex.getMessage(), ex);
   }
 
+  /** @param response the error answer that JAX-RS hands over with its WebApplicationException */
+  public static RuleEngineApiException answer(Response response) {
+    String body = response.hasEntity() ? response.readEntity(String.class) : null;
+    return answer(response.getStatus(), body);
+  }
+
   /**
    * @param status a client (4XX) or server (5XX) error
    * @param body the answer, an {@link ErrorResponse} if it comes from the runtime
    */
   public static RuleEngineApiException answer(int status, String body) {
     try {
-      ErrorResponse error = Json.fromJson(body, ErrorResponse.class);
+      ErrorResponse error = JsonConverter.fromJson(body, ErrorResponse.class);
       if (error != null && (error.code() != null || error.message() != null)) {
         return new RuleEngineApiException(status, error.code(), error.message(), error.details(), null);
       }

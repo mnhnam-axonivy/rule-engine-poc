@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
+import java.time.OffsetDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -187,8 +188,29 @@ class TestRuleEngineClient {
 
     RuleEngineClient.builder().baseUrl(MockRuntime.url()).build().evaluate("discount", REQUEST);
 
-    // a REST element sends a header whose value is null as empty header; the runtime treats both as no key
     assertThat(MockRuntime.calls("evaluate").get(0).apiKey()).isNullOrEmpty();
+  }
+
+  @Test
+  void logRequests_keepsRequestAndAnswer() {
+    MockRuntime.onEvaluate(call -> MockRuntime.results(3, "{\"discount\":15}"));
+    var logging = RuleEngineClient.builder().baseUrl(MockRuntime.url()).logRequests(true).build();
+
+    var response = logging.evaluate("discount", REQUEST);
+
+    assertThat(response.version()).isEqualTo(3);
+    assertThat(response.results()).containsEntry("discount", 15);
+    assertThat(MockRuntime.calls("evaluate").get(0).body().get("decision").asString()).isEqualTo("discount");
+  }
+
+  @Test
+  void activate_sendsTheEffectiveDateAsIsoDate() {
+    var effective = OffsetDateTime.parse("2026-12-01T08:00:00+01:00");
+    client().activate("discount", 2, ActivateRequest.at("rule.approver", effective));
+
+    var sent = MockRuntime.calls("activate").get(0).body().get("effectiveDate");
+    assertThat(sent.isString()).as("a date, not a timestamp").isTrue();
+    assertThat(OffsetDateTime.parse(sent.asString()).toInstant()).isEqualTo(effective.toInstant());
   }
 
   @Test

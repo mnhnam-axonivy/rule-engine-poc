@@ -65,14 +65,16 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 
 ## How the REST client is built
 
-The connector calls the runtime in Java, with the REST client of Axon Ivy:
+The connector calls the runtime in Java, with JAX-RS on the REST client of Axon Ivy:
 
-- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`). Each method calls one
-  endpoint of the runtime on the REST client `ruleEngine` of rest-clients.yaml (`Ivy.rest().client`), so the calls
-  appear in the tracing of the engine, and rest-clients.yaml is the place for TLS settings. Failures become
-  exceptions for unreachable, timeout and error answers; an error answer keeps the error code of the runtime.
+- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`). Each method is one
+  JAX-RS call on the REST client `ruleEngine` of rest-clients.yaml (`Ivy.rest().client`), so the calls appear in the
+  tracing of the engine, and rest-clients.yaml is the place for TLS settings. Its `JsonFeature` maps the records to
+  JSON and back. Failures become exceptions for unreachable, timeout and error answers; an error answer keeps the
+  error code of the runtime.
 - `client.internal.RuntimeUrlFeature`, registered on `ruleEngine`: sends each call to the base URL of the client
-  (the variable `RuleEngine.Url`) and keeps the path of the call.
+  (the variable `RuleEngine.Url`) and keeps the path of the call. `RequestLogFilter` logs the calls when
+  `RuleEngine.LogRequests` is on.
 - The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`, sent as JSON. The runtime
   has records of its own; `ContractTest` fails if the two do not have the same fields.
 - Tests replace the runtime by `MockRuntime`, a REST service of the test project.

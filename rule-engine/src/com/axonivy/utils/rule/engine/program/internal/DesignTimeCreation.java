@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import com.axonivy.utils.rule.engine.BusinessRuleTask;
-import com.axonivy.utils.rule.engine.client.internal.Json;
+import com.axonivy.utils.rule.engine.client.internal.JsonConverter;
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 
@@ -129,7 +129,7 @@ public final class DesignTimeCreation {
       if (!json.contains(BusinessRuleTask.class.getName()) || !json.contains(Conf.CREATE_NEW)) {
         return pending;
       }
-      JsonNode root = Json.mapper().readTree(json);
+      JsonNode root = JsonConverter.mapper().readTree(json);
       String dataClass = root.path("config").path("data").asString("");
       if (!dataClass.isBlank()) {
         collect(root.path("elements"), dataClass, pending);

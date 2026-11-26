@@ -6,4 +6,10 @@ RestClients:
     # A placeholder without path: RuntimeUrlFeature sends each call to the variable RuleEngine.Url instead.
     Url: http://localhost:8090
     Features:
+      - ch.ivyteam.ivy.rest.client.mapper.JsonFeature
       - com.axonivy.utils.rule.engine.client.internal.RuntimeUrlFeature
+    Properties:
+      # answers of a newer runtime may have fields this connector does not know yet
+      JSON.Deserialization.FAIL_ON_UNKNOWN_PROPERTIES: false
+      # decimal results of a decision keep their exact value
+      JSON.Deserialization.USE_BIG_DECIMAL_FOR_FLOATS: true

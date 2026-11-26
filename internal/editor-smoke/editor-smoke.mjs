@@ -2,7 +2,7 @@
  * Browser check of the DMN editor page of the decision runtime (/editor/).
  *
  *   npm run smoke            starts a throwaway runtime container from axonivy/rule-engine-runtime:dev
- *                            (build it first: docker compose build), protected by an API key, runs the
+ *                            (build it first: docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime), protected by an API key, runs the
  *                            checks in headless Chrome/Edge and removes the container again
  *   npm run smoke -- --url=http://localhost:8090/ [--key=<api key>]
  *                            the same against a runtime that runs already. It adds versions to it!

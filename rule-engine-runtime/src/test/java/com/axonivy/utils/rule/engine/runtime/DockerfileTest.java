@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The image is built two ways: from target/docker after {@code mvn package}, with src/main/docker/Dockerfile, and with
- * Maven inside Docker, with the Dockerfile of the project (docker compose). Both have to build the same image.
+ * Maven inside Docker, with the Dockerfile of the project, without Java on the host. Both have to build the same image.
  */
 class DockerfileTest {
 
@@ -20,11 +20,11 @@ class DockerfileTest {
   private static final String MAVEN_OUTPUT = "/build/target/docker/";
 
   @Test
-  void composeBuildsTheImageOfSrcMainDocker() throws IOException {
-    var compose = imageStage(Path.of("Dockerfile")).stream()
+  void buildInsideDockerMakesTheImageOfSrcMainDocker() throws IOException {
+    var insideDocker = imageStage(Path.of("Dockerfile")).stream()
         .map(line -> line.replace(FROM_MAVEN_STAGE, "").replace(MAVEN_OUTPUT, ""))
         .toList();
-    assertThat(compose).as("the last stage of Dockerfile, with the files of the Maven stage")
+    assertThat(insideDocker).as("the last stage of Dockerfile, with the files of the Maven stage")
         .isEqualTo(imageStage(Path.of("src/main/docker/Dockerfile")));
   }
 

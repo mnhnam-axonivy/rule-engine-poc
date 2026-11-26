@@ -9,8 +9,9 @@
 #   mvn package -f rule-engine-runtime
 #   docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime/target/docker
 #
-# Without Java on the host, rule-engine-runtime/Dockerfile builds the same image with Maven inside Docker
-# (docker compose build). DockerfileTest fails if the two do not describe the same image.
+# Without Java on the host, rule-engine-runtime/Dockerfile builds the same image with Maven inside Docker:
+# docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime. DockerfileTest fails if the two do not
+# describe the same image.
 #
 FROM eclipse-temurin:21-jre
 LABEL org.opencontainers.image.title="Axon Ivy Rules Engine" \

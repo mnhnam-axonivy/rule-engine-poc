@@ -67,7 +67,7 @@ The container `axonivy-rule-engine` runs the image `axonivy/rule-engine-runtime`
 | --- | --- |
 | Port 8090 | Port 8090 of your computer leads to port 8080 of the container. |
 | Volume `rule-engine-data` | Holds the file of the database. The versions are still there after the container was replaced. |
-| Project `rule-engine-runtime` | The source of the image: a Maven project, not an Ivy project. `docker compose up -d --build` builds the image from it. |
+| Project `rule-engine-runtime` | The source of the image: a Maven project, not an Ivy project. `docker build` builds the image from it. |
 
 ---
 

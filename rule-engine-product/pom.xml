@@ -7,7 +7,6 @@
 
   <properties>
     <variables.yaml.file>../rule-engine/config/variables.yaml</variables.yaml.file>
-    <compose.yaml.file>../docker-compose.yml</compose.yaml.file>
   </properties>
 
   <build>
@@ -45,8 +44,6 @@
                 </copy>
                 <loadfile property="variables.yaml" srcFile="${variables.yaml.file}" encoding="UTF-8" failonerror="false" />
                 <replace file="${project.build.directory}/README.md" token="@variables.yaml@" value="${variables.yaml}" />
-                <loadfile property="compose.yaml" srcFile="${compose.yaml.file}" encoding="UTF-8" failonerror="false" />
-                <replace file="${project.build.directory}/README.md" token="@docker-compose.yml@" value="${compose.yaml}" />
               </target>
             </configuration>
             <goals>

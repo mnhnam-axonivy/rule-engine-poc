@@ -23,7 +23,7 @@ User documentation: [rule-engine-product/README.md](rule-engine-product/README.m
 | Module | Content |
 | --- | --- |
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator, Java API `RuleEngine`. |
-| [rule-engine-runtime](rule-engine-runtime) | The decision runtime, a Quarkus service and REST API, not an Ivy project: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Its generic image: `mvn package` writes the build context to `target/docker`, with the Dockerfile of `src/main/docker`; the `Dockerfile` of the folder builds the same image with Maven inside Docker, for compose. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
+| [rule-engine-runtime](rule-engine-runtime) | The decision runtime, a Quarkus service and REST API, not an Ivy project: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Its generic image: `mvn package` writes the build context to `target/docker`, with the Dockerfile of `src/main/docker`; the `Dockerfile` of the folder builds the same image with Maven inside Docker, without Java on the host. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount; a page to change the invoice and see the rule that decided. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector: with a mocked runtime and against the real container. |
 | [rule-engine-product](rule-engine-product) | Market product: README, product.json. |
@@ -36,27 +36,29 @@ repository. Both build the same image.
 
 | Build with | Commands | What happens |
 | --- | --- | --- |
-| Docker only | `docker compose build` | Maven runs inside Docker, with [rule-engine-runtime/Dockerfile](rule-engine-runtime/Dockerfile). No Java or Maven on the host. |
+| Docker only | `docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime` | Maven runs inside Docker, with [rule-engine-runtime/Dockerfile](rule-engine-runtime/Dockerfile). No Java or Maven on the host. |
 | Maven | `mvn package -f rule-engine-runtime`, then `docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime/target/docker` | Java 21 or newer and Maven on the host. `mvn package` writes the build context of the image to `rule-engine-runtime/target/docker`: the Dockerfile of [src/main/docker](rule-engine-runtime/src/main/docker/Dockerfile), `LICENSE`, `NOTICE` and the application in `quarkus-app/`. |
 
 Then start it:
 
-```
-docker compose up -d              # decision runtime on http://localhost:8090, with the image built before
-docker compose up -d --build      # the same, and builds the image with Docker only first
-docker compose down               # stop it; the versions of the models stay in the volume
-```
-
-[docker-compose.yml](docker-compose.yml) maps port 8090 to port 8080 of the container, keeps the versions in the
-volume `rule-engine-data` and passes `RULE_ENGINE_API_KEY` from the environment or a file `.env`. The same without
-compose:
-
-```
+```bash
 docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data \
-       -e RULE_ENGINE_API_KEY=<secret> axonivy/rule-engine-runtime:dev
+       --restart unless-stopped axonivy/rule-engine-runtime:dev
 ```
 
-This volume is not the one compose uses: compose puts the name of the repository folder in front of it.
+| Part | What it does |
+| --- | --- |
+| `-p 8090:8080` | The runtime on `http://localhost:8090`, the default of `RuleEngine.Url`. Another port: `-p 8091:8080`, and set `RuleEngine.Url` to it. |
+| `-v rule-engine-data:/data` | Keeps every version of every model in the volume `rule-engine-data`, also when the container is replaced. |
+| `--restart unless-stopped` | Starts the runtime again with Docker, unless you stopped it. |
+| `-e RULE_ENGINE_API_KEY=<secret>` | Not needed on your machine. Protects `/api`; the engine sends the same secret, `RuleEngine.ApiKey`. `--env-file .env` reads it from a file instead. |
+
+| To | Run |
+| --- | --- |
+| Stop it, start it again | `docker stop axonivy-rule-engine`, `docker start axonivy-rule-engine` |
+| See why it does not start | `docker logs axonivy-rule-engine` |
+| Use a new image | `docker rm -f axonivy-rule-engine`, then `docker run` as above. The versions stay in the volume. |
+| Delete all versions | `docker rm -f axonivy-rule-engine`, then `docker volume rm rule-engine-data` |
 
 Import `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
 an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click **Apply rules**.

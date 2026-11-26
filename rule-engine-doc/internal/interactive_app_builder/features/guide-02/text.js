@@ -34,7 +34,7 @@ export const strings = {
     'tour.portal.text': 'Rule owners change rules in the Axon Ivy Portal, at Admin Settings › Rule Management. The Portal does not depend on the rule engine: it finds `Portal/RuleManagement` of the connector in the security context. Page 06 shows it.',
 
     'tour.image.title': 'One image',
-    'tour.image.text': 'The container runs the image `axonivy/rule-engine-runtime`. There is no Axon Ivy in it, and none of your rules. It is built from the project `rule-engine-runtime`, which is not an Ivy project: `docker compose up -d --build` builds it and starts it.',
+    'tour.image.text': 'The container runs the image `axonivy/rule-engine-runtime`. There is no Axon Ivy in it, and none of your rules. It is built from the project `rule-engine-runtime`, which is not an Ivy project: `docker build` builds it, `docker run` starts it.',
     'tour.api.title': 'REST API',
     'tour.api.text': 'The door of the container: store a version, evaluate a decision, activate, roll back. Port 8090 of your computer leads to it.',
     'tour.engine.title': 'DMN engine',

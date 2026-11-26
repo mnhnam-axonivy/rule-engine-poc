@@ -41,7 +41,8 @@ import ch.ivyteam.ivy.environment.AppFixture;
  * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, REST,
  * DMN engine and the database of the runtime. The discount of the demo invoice is decided by dmn/invoice-discount.dmn
  * of rule-engine-demo.
- * <p>Build the image first: <code>docker compose build</code>, then <code>mvn verify -Pcontainer.test</code>.</p>
+ * <p>Build the image first: <code>docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime</code>, then
+ * <code>mvn verify -Pcontainer.test</code>.</p>
  */
 @IvyProcessTest
 class RuleEngineContainerTest {

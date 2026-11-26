@@ -22,7 +22,7 @@ node_modules/
 .idea/
 *.iml
 
-# docker compose: local values such as RULE_ENGINE_API_KEY
+# local values such as RULE_ENGINE_API_KEY, for docker run --env-file .env
 .env
 
 # decision runtime: local database of dev mode

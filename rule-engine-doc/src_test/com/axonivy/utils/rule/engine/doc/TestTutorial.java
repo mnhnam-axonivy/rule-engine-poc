@@ -45,7 +45,7 @@ class TestTutorial {
     }
     assertThat(pages.get("01")).startsWith("# What is DMN?").contains("## Read a decision table", "## First match wins");
     assertThat(pages.get("02")).startsWith("# How the rule engine works").contains("## The decision runtime container");
-    assertThat(pages.get("03")).contains("## Prerequisites").contains("docker compose up -d");
+    assertThat(pages.get("03")).contains("## Prerequisites").contains("docker run -d");
     assertThat(pages.get("04")).startsWith("# Use an existing DMN decision")
         .contains("## Which fields do I have to fill in?", "## How does the element find a field by name?")
         .contains("## How do I prepare a value for the decision?");

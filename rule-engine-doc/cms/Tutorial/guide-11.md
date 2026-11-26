@@ -8,15 +8,15 @@ Short answers, grouped like the tutorial. Each answer links to the page that exp
 
 ### Do I need Java or Maven to try the rule engine?
 
-No. The decision runtime is built inside Docker, and the projects run in the Designer. You need Docker with Docker Compose and a free port 8090, see [Set up and run your first decision].
+No. The decision runtime is built inside Docker, and the projects run in the Designer. You need Docker and a free port 8090, see [Set up and run your first decision].
 
 ### The process ends at "not priced" and the log says `rule:engine:unreachable`. What is wrong?
 
-The Business Rule Task cannot reach the decision runtime: the container is not running, or `RuleEngine.Url` points to another host or port. Check with `docker compose ps` and compare the port. The table *If it does not work* on [Set up and run your first decision] lists the usual causes.
+The Business Rule Task cannot reach the decision runtime: the container is not running, or `RuleEngine.Url` points to another host or port. Check with `docker ps -a --filter name=axonivy-rule-engine` and compare the port. The table *If it does not work* on [Set up and run your first decision] lists the usual causes.
 
 ### Where are the versions of my rules stored? Are they lost when the container stops?
 
-In the database of the runtime, in the Docker volume `rule-engine-data`. `docker compose down` keeps the volume, `docker compose down -v` deletes it. In production, mount and back up a volume for `/data`, see [Run it in production].
+In the database of the runtime, in the Docker volume `rule-engine-data`. Removing the container, `docker rm -f axonivy-rule-engine`, keeps the volume; `docker volume rm rule-engine-data` deletes it. In production, mount and back up a volume for `/data`, see [Run it in production].
 
 ---
 

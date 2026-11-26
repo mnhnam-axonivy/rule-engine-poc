@@ -84,7 +84,7 @@ class TutorialWebIT {
     assertThat(markdown("03"))
         .as("page 03 is the setup")
         .contains("## Prerequisites")
-        .contains("docker compose up -d");
+        .contains("docker run -d");
     assertThat(markdown("04"))
         .as("Markdown is escaped, so the browser shows the XML in it as written")
         .contains("&lt;dependency&gt;")

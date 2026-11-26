@@ -16,9 +16,9 @@ export const strings = {
     'tour.chapter.timeout': 'Timeout',
 
     'tour.running.title': 'The decision runtime',
-    'tour.running.text': 'The container listens on `http://localhost:8090`. This switch stands in for `docker compose start` and `stop`.',
+    'tour.running.text': 'The container listens on `http://localhost:8090`. This switch stands in for `docker start` and `docker stop`.',
     'tour.stopped.title': 'Stopped',
-    'tour.stopped.text': 'The container is down now, as after `docker compose stop`.',
+    'tour.stopped.text': 'The container is down now, as after `docker stop axonivy-rule-engine`.',
     'tour.cut.title': 'Nothing answers',
     'tour.cut.text': 'The engine and the process are fine. The container is down, so a call of the connector reaches nothing.',
     'tour.thrown.title': 'A BPMN error',

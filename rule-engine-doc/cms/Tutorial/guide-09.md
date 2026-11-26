@@ -19,7 +19,18 @@ A call without the right key is refused, and the Business Rule Task throws `rule
 
 Keep the runtime away from the browsers of your users. The Portal and the connector call it from the engine, so only the engine needs to reach it. Its editor page, `/editor/`, is meant for development and for administrators; in production rule owners use the Portal, as on [Edit rules in the Portal].
 
-For HTTPS, terminate TLS at a reverse proxy in front of the runtime, or give the runtime a certificate: the Docker Compose file has the settings as comments (`QUARKUS_HTTP_SSL_CERTIFICATE_FILES`, `QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES`). Trust settings on the engine side belong to the REST client `ruleEngine` of the connector.
+For HTTPS, terminate TLS at a reverse proxy in front of the runtime, or give the runtime a certificate. It then serves HTTPS on port 8443 and no plain HTTP:
+
+```bash
+docker run -d --name axonivy-rule-engine -p 8443:8443 -v rule-engine-data:/data -v "$PWD/certs:/certs:ro" \
+       --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> \
+       -e QUARKUS_HTTP_SSL_CERTIFICATE_FILES=/certs/tls.crt \
+       -e QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES=/certs/tls.key \
+       -e QUARKUS_HTTP_INSECURE_REQUESTS=disabled \
+       axonivy/rule-engine-runtime:dev
+```
+
+Trust settings on the engine side belong to the REST client `ruleEngine` of the connector.
 
 ---
 
@@ -27,9 +38,8 @@ For HTTPS, terminate TLS at a reverse proxy in front of the runtime, or give the
 
 The runtime stores every version of every model in a database file under `/data` in the container. Mount a volume there, or the versions of your rule owners are gone with the next container:
 
-```yaml
-volumes:
-  - rule-engine-data:/data
+```bash
+docker run ... -v rule-engine-data:/data ... axonivy/rule-engine-runtime:dev
 ```
 
 Back the volume up like any other database. Several runtime instances need one shared database instead of a file each; the store is JPA, so that is a matter of configuration and a driver.

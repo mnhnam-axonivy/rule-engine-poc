@@ -89,7 +89,7 @@ A chapter directs the simulator through the director `d` (see `runtime/ui/tour.j
 async function unreachable(d) {
   await d.panel('runtime');                                  // open the panel "Decision runtime"
   await d.note('running', { target: 'runtime:state' });      // text tour.running.* next to the state switch
-  await d.runtime('stopped');                                // docker compose stop
+  await d.runtime('stopped');                                // docker stop axonivy-rule-engine
   await d.panel(null);
   await d.run({                                              // run the process, stop at these moments
     on: {

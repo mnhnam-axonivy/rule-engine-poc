@@ -60,6 +60,28 @@ docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data 
 | Use a new image | `docker rm -f axonivy-rule-engine`, then `docker run` as above. The versions stay in the volume. |
 | Delete all versions | `docker rm -f axonivy-rule-engine`, then `docker volume rm rule-engine-data` |
 
+### All in one with Maven
+
+```bash
+mvn clean install -f rule-engine-runtime
+```
+
+Builds and tests the runtime, builds the image from `target/docker`, removes the container `axonivy-rule-engine`
+even if it runs, and runs the new image in its place, with the options of the `docker run` above. The image is built
+before the old container is removed, so a failed build leaves the old one running. The versions stay in the volume.
+
+| Property | Default |
+| --- | --- |
+| `docker.port` | `8090` |
+| `docker.volume` | `rule-engine-data` |
+| `docker.api-key` | empty: the API is open |
+| `docker.container` | `axonivy-rule-engine` |
+| `docker.image` | `axonivy/rule-engine-runtime:dev` |
+| `docker.skip` | `false`. `-Ddocker.skip=true` installs without Docker: no image, the container stays as it is. |
+
+For example `mvn clean install -f rule-engine-runtime -Ddocker.api-key=<secret>`. `mvn install` in the root of the
+repository does the same for the runtime; `mvn verify` and `mvn package` never touch Docker.
+
 Import `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
 an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click **Apply rules**.
 The variable `RuleEngine.Url` points to `http://localhost:8090` by default.
@@ -88,6 +110,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | `mvn test -Pperformance -f rule-engine-runtime` | Performance baseline, written to `rule-engine-runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090, database in `rule-engine-runtime/data`. |
 | `mvn package -f rule-engine-runtime` | Runtime with its tests, and the build context of its image in `rule-engine-runtime/target/docker`. `DockerfileTest` fails if the two Dockerfiles do not describe the same image. |
+| `mvn clean install -f rule-engine-runtime` | The same, then the new image replaces the running container, see [All in one with Maven](#all-in-one-with-maven). |
 
 ## How the REST client is built
 

@@ -29,6 +29,16 @@
     <dmn.editor.file>dmn-editor-standalone-${dmn.editor.version}.tgz</dmn.editor.file>
     <dmn.editor.url>https://registry.npmjs.org/@kie-tools/dmn-editor-standalone/-/${dmn.editor.file}</dmn.editor.url>
     <dmn.editor.cache>${settings.localRepository}/.cache/kie-tools</dmn.editor.cache>
+    <!-- mvn install: builds the image from target/docker, removes the container even if it runs, and runs the new
+         image in its place (executions docker-*). The versions of the models stay in the volume.
+         -Ddocker.skip=true: none of it, e.g. on a machine without Docker. -->
+    <docker.skip>false</docker.skip>
+    <docker.image>axonivy/rule-engine-runtime:dev</docker.image>
+    <docker.container>axonivy-rule-engine</docker.container>
+    <docker.port>8090</docker.port>
+    <docker.volume>rule-engine-data</docker.volume>
+    <!-- RULE_ENGINE_API_KEY of the container; empty: the API is open, for your machine only -->
+    <docker.api-key></docker.api-key>
   </properties>
 
   <dependencyManagement>
@@ -153,6 +163,77 @@
                   </includes>
                 </resource>
               </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- mvn install: the new image replaces the running container. In this order: a failed build of the image
+             leaves the old container running. -->
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <executable>docker</executable>
+          <skip>${docker.skip}</skip>
+        </configuration>
+        <executions>
+          <execution>
+            <id>docker-build</id>
+            <phase>install</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <arguments>
+                <argument>build</argument>
+                <argument>-t</argument>
+                <argument>${docker.image}</argument>
+                <argument>${project.build.directory}/docker</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>docker-remove</id>
+            <phase>install</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <arguments>
+                <argument>rm</argument>
+                <argument>-f</argument>
+                <argument>${docker.container}</argument>
+              </arguments>
+              <!-- no container of that name yet: older Docker versions answer 1 -->
+              <successCodes>
+                <successCode>0</successCode>
+                <successCode>1</successCode>
+              </successCodes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>docker-run</id>
+            <phase>install</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <arguments>
+                <argument>run</argument>
+                <argument>-d</argument>
+                <argument>--name</argument>
+                <argument>${docker.container}</argument>
+                <argument>-p</argument>
+                <argument>${docker.port}:8080</argument>
+                <argument>-v</argument>
+                <argument>${docker.volume}:/data</argument>
+                <argument>--restart</argument>
+                <argument>unless-stopped</argument>
+                <argument>-e</argument>
+                <argument>RULE_ENGINE_API_KEY=${docker.api-key}</argument>
+                <argument>${docker.image}</argument>
+              </arguments>
             </configuration>
           </execution>
         </executions>

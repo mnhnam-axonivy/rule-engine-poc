@@ -120,6 +120,44 @@
         </executions>
       </plugin>
       <plugin>
+        <!-- target/docker: the build context of the image, `docker build target/docker`. The Dockerfile of
+             src/main/docker, LICENSE, NOTICE and the application. Runs after the build of Quarkus, which is declared
+             above it and bound to the same phase. Quarkus keeps writing to target/quarkus-app: with its output
+             directory moved, it would also put the OpenAPI files into the context. -->
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>docker-context</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/docker</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/docker</directory>
+                </resource>
+                <resource>
+                  <directory>${project.basedir}</directory>
+                  <includes>
+                    <include>LICENSE</include>
+                    <include>NOTICE</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>${project.build.directory}</directory>
+                  <includes>
+                    <include>quarkus-app/**</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${compiler-plugin.version}</version>
         <configuration>

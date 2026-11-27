@@ -65,12 +65,13 @@ test('portal: with the key account rule of the Portal, the same process gives th
   assert.equal(other.data.invoice.discountReason, 'Silver customer', 'only the key account');
 });
 
-test('portal: a version from the project would be replaced by the file, so the file decides what is sent', async () => {
+test('portal: the active version decides what is sent, also one from another project', async () => {
   const env = setup();
   await env.run();
   env.runtime.register(MODEL, withKeyAccount(env.runtime.active(MODEL).dmn), { source: 'PROJECT', author: 'another project', activate: true });
   const result = await env.run();
-  assert.ok(!callOf(result).mappings.some(m => m.name === 'customer'), 'only the inputs of the file');
+  assert.ok(callOf(result).mappings.some(m => m.name === 'customer'), 'the inputs of the active version');
+  assert.equal(result.data.invoice.discountReason, 'Key account: framework contract', 'the unchanged file is not stored again');
 });
 
 test('portal: rolled back, the invoice gets the discount of before', async () => {

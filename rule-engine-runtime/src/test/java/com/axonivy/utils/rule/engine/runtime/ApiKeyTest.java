@@ -28,7 +28,7 @@ class ApiKeyTest {
     given().get("/api/models").then().statusCode(401).body("code", equalTo("UNAUTHORIZED"));
     given().header("X-API-Key", "wrong").get("/api/models").then().statusCode(401);
     given().contentType(ContentType.XML).body(TestModels.discount(15))
-        .post("/api/models/secured/versions").then().statusCode(401);
+        .put("/api/models/secured/versions/1").then().statusCode(401);
 
     given().header("X-API-Key", "s3cret").get("/api/models").then().statusCode(200);
     given().header("Authorization", "Bearer s3cret").get("/api/models").then().statusCode(200);

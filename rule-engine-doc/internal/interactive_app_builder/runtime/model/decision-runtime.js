@@ -1,7 +1,8 @@
 /**
- * Stand-in for the decision runtime, the container of the Axon Ivy Rules Engine. It keeps the
- * versions of every model and evaluates decisions, following the rules of the real runtime
- * (rule-engine-runtime: VersionStore, VersionService):
+ * Stand-in for the versions of the application and the decision runtime of the Axon Ivy Rules Engine.
+ * It keeps the versions of every model, as the connector stores them in the files of the application
+ * (rule-engine: VersionStore), and evaluates decisions as the runtime does with the versions it holds
+ * in memory (rule-engine-runtime: ModelRegistry, DecisionService):
  *
  *   - content that is already stored does not create another version
  *   - the first version of a model goes live at once
@@ -9,7 +10,9 @@
  *   - a version that was activated from the Portal is never replaced by a deployment
  *   - exactly one version of a model is active; a rollback activates the one before it
  *
- * Error codes are the ones of the runtime API: MODEL_NOT_FOUND, NO_ACTIVE_VERSION,
+ * The runtime keeps nothing: `loaded` is what it holds in memory, lost when the container stops.
+ *
+ * Error codes are the ones of the connector and the runtime: MODEL_NOT_FOUND, NO_ACTIVE_VERSION,
  * DECISION_NOT_FOUND, EVALUATION_FAILED, INVALID_STATE.
  */
 import { decisionOf, evaluationOrder, requiredInputs, fingerprint, cloneDmn } from './dmn.js';
@@ -101,6 +104,13 @@ export class DecisionRuntime {
     /** 'running' | 'slow' (answers too late) | 'stopped' (the container is down) */
     this.state = 'running';
     this.models = new Map(); // name → [{ version, status, source, author, dmn, hash, previousVersion }]
+    /** The versions the runtime holds in memory, as model#version: loaded before their first evaluation. */
+    this.loaded = new Set();
+  }
+
+  /** What `docker stop` does to the memory of the runtime: the versions are loaded again later. */
+  stop() {
+    this.loaded.clear();
   }
 
   versions(model) {
@@ -116,10 +126,10 @@ export class DecisionRuntime {
   }
 
   /**
-   * POST /api/models/{model}/versions
+   * VersionStore.register, after the runtime checked the file (POST /api/validate)
    * @param {Object} dmn  the model as read by parseDmn
    * @param {{ source?: 'PROJECT'|'PORTAL'|'API', author?: string, activate?: boolean }} [options]
-   *   `activate` not set: the runtime decides by the source of truth rule
+   *   `activate` not set: the store decides by the source of truth rule
    * @returns {{ entry: Object, created: boolean }}
    */
   register(model, dmn, { source = 'API', author = '', activate } = {}) {
@@ -152,22 +162,22 @@ export class DecisionRuntime {
   }
 
   #require(model, version) {
-    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "Model '" + model + "' is not loaded.");
+    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "There is no model '" + model + "'.");
     const entry = this.versions(model).find(candidate => candidate.version === version);
     if (!entry) throw new RuntimeError('VERSION_NOT_FOUND', 404, "Model '" + model + "' has no version " + version + '.');
     return entry;
   }
 
-  /** POST /api/models/{model}/versions/{version}/activate */
+  /** VersionStore.activate */
   activate(model, version) {
     const entry = this.#require(model, version);
     this.#activate(entry, false);
     return entry;
   }
 
-  /** POST /api/models/{model}/rollback */
+  /** VersionStore.rollback */
   rollback(model) {
-    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "Model '" + model + "' is not loaded.");
+    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "There is no model '" + model + "'.");
     const active = this.active(model);
     if (!active) throw new RuntimeError('NO_ACTIVE_VERSION', 409, "Model '" + model + "' has no active version.");
     if (active.previousVersion === null) {
@@ -179,7 +189,8 @@ export class DecisionRuntime {
   }
 
   /**
-   * POST /api/models/{model}/evaluate
+   * The active version, loaded into the memory of the runtime if it does not hold it, then
+   * POST /api/models/{model}/versions/{version}/evaluate
    * @param {string|null} decision  the decision to evaluate, or null for all decisions of the model
    * @param {Object} input          values by the name of the DMN input
    * @returns {{ model, version, decision, results, matched, calls }}  `matched`: by decision name, the indexes of
@@ -187,9 +198,10 @@ export class DecisionRuntime {
    * @throws {RuntimeError}
    */
   evaluate(model, decision, input) {
-    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "Model '" + model + "' is not loaded.");
+    if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "There is no model '" + model + "'.");
     const active = this.active(model);
     if (!active) throw new RuntimeError('NO_ACTIVE_VERSION', 409, "Model '" + model + "' has no active version. Activate one of its versions first.");
+    this.loaded.add(model + '#' + active.version);
     const dmn = active.dmn;
     if (decision && !decisionOf(dmn, decision)) {
       throw new RuntimeError('DECISION_NOT_FOUND', 404, "Model '" + model + "' version " + active.version + " has no decision '" + decision +

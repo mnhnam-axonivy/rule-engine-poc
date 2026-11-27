@@ -31,6 +31,8 @@ import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.portal.RuleManagement;
 import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
 import com.axonivy.utils.rule.engine.test.TestData;
+import com.axonivy.utils.rule.engine.test.mock.TestStore;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.bpm.engine.client.BpmClient;
@@ -38,9 +40,9 @@ import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import ch.ivyteam.ivy.environment.AppFixture;
 
 /**
- * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, REST,
- * DMN engine and the database of the runtime. The discount of the demo invoice is decided by dmn/invoice-discount.dmn
- * of rule-engine-demo.
+ * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, the versions in the
+ * file area of the application, REST and the DMN engine of the runtime. The discount of the demo invoice is decided by
+ * dmn/invoice-discount.dmn of rule-engine-demo.
  * <p>Build the image first: <code>docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime</code>, then
  * <code>mvn verify -Pcontainer.test</code>.</p>
  */
@@ -75,7 +77,7 @@ class RuleEngineContainerTest {
     fixture.var(Var.API_KEY, API_KEY);
     fixture.var(Var.AUTO_DEPLOY, "true");
     fixture.var(Var.MODEL_PREFIX, "");
-    ModelDeployer.reset();
+    TestStore.clear();
     ProjectDmnFiles.refresh();
   }
 
@@ -95,8 +97,9 @@ class RuleEngineContainerTest {
     assertThat(decided).as("the version that decided is stored on the case").isNotNull().isPositive();
     var version = RuleEngine.versions(DEMO).stream().filter(ModelVersion::isActive).findFirst().orElseThrow();
     assertThat(version.version()).isEqualTo(decided);
-    assertThat(version.source()).as("registered from the project on its first use").isEqualTo(VersionSource.PROJECT);
-    assertThat(version.author()).contains("rule-engine-demo");
+    assertThat(version.source()).as("stored from the project on its first use").isEqualTo(VersionSource.PROJECT);
+    assertThat(version.author()).as("the application and its version").matches(".+ v\\d+");
+    assertThat(version.description()).contains("rule-engine-demo");
     assertThat(DiscountTable.of(decided).matching(invoice)).as("the rule the page marks").isEqualTo(6);
   }
 
@@ -177,7 +180,7 @@ class RuleEngineContainerTest {
     int projectVersion = TestBusinessRuleTask.decidedBy(initialExecution, DEMO);
 
     // a rule owner raises the discount of Silver customers
-    String current = RuleEngine.client().content(DEMO, projectVersion);
+    String current = VersionStore.current().content(DEMO, projectVersion);
     String changed = current.replace(SILVER, SILVER.replace("<text>2</text>", "<text>3</text>"));
     assertThat(changed).isNotEqualTo(current);
     ModelVersion draft = RuleEngine.register(DEMO, changed, "rule.editor", "Silver customers get 3%");
@@ -197,7 +200,7 @@ class RuleEngineContainerTest {
     assertThat(DiscountTable.of(draft.version()).rules().get(5).getOutputs()).as("the table the page shows")
         .containsExactly("3", "\"Silver customer\"");
 
-    // the project is deployed again: its file is registered, but the version of the Portal stays active
+    // the project is deployed again: its file is stored, but the version of the Portal stays active
     ModelDeployer.reset();
     var deployed = RuleEngine.deploy(Project.current());
     assertThat(deployed).extracting(ModelVersion::model).contains(DEMO, "discount");
@@ -212,27 +215,39 @@ class RuleEngineContainerTest {
 
   @Test
   void versionWithEffectiveDate_goesLiveLater() {
-    var client = RuleEngine.client();
+    var store = VersionStore.current();
     String model = "effective-" + System.nanoTime();
-    String dmn = RuleEngine.client().content("discount", activeVersion(client));
-    client.registerVersion(model, RegisterVersionRequest.builder().content(dmn).source(VersionSource.API).build());
-    ModelVersion later = client.registerVersion(model, RegisterVersionRequest.builder()
+    String dmn = ProjectDmnFiles.load(ProjectDmnFiles.find(Project.current(), "discount").orElseThrow()).content();
+    ModelDeployer.register(RuleEngine.client(), store, model,
+        RegisterVersionRequest.builder().content(dmn).source(VersionSource.API).build());
+    ModelVersion later = ModelDeployer.register(RuleEngine.client(), store, model, RegisterVersionRequest.builder()
         .content(dmn.replace("<text>15</text>", "<text>30</text>"))
         .source(VersionSource.PORTAL)
         .effectiveDate(OffsetDateTime.now().plusSeconds(3))
         .build());
     assertThat(later.status()).isEqualTo(VersionStatus.APPROVED);
     var input = Map.<String, Object>of("purchaseAmount", 1500, "type", "Gold", "country", "CH");
-    assertThat(client.evaluate(model, request(input)).results()).containsEntry("discount", 15);
+    assertThat(RuleEngine.evaluate(model, null, input).results()).containsEntry("discount", 15);
 
     long deadline = System.currentTimeMillis() + 30_000;
     Object discount = 15;
     while (!Integer.valueOf(30).equals(discount) && System.currentTimeMillis() < deadline) {
       sleep(500);
-      discount = client.evaluate(model, request(input)).results().get("discount");
+      discount = RuleEngine.evaluate(model, null, input).results().get("discount");
     }
     assertThat(discount).as("active at the effective date, on its own").isEqualTo(30);
-    client.deleteModel(model);
+    store.delete(model);
+  }
+
+  @Test
+  void versionsTheRuntimeDropped_areLoadedAgain(BpmClient client) {
+    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getTotal()).isEqualByComparingTo("9016.00");
+    assertThat(RuleEngine.client().loaded()).extracting(loaded -> loaded.model()).contains(DEMO);
+
+    RuleEngine.client().unload(DEMO);
+
+    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getTotal()).isEqualByComparingTo("9016.00");
+    assertThat(RuleEngine.versions(DEMO)).as("nothing new is stored").hasSize(1);
   }
 
   @Test
@@ -316,20 +331,6 @@ class RuleEngineContainerTest {
   private static int silverDiscount(Invoice invoice) {
     assertThat(invoice.getDiscountReason()).isEqualTo("Silver customer");
     return invoice.getDiscountPercent().intValue();
-  }
-
-  private static int activeVersion(com.axonivy.utils.rule.engine.client.RuleEngineClient client) {
-    try {
-      return client.model("discount").activeVersion();
-    } catch (RuleEngineApiException notYetLoaded) {
-      return RuleEngine.deploy(Project.current()).stream()
-          .filter(version -> version.model().equals("discount"))
-          .findFirst().orElseThrow().version();
-    }
-  }
-
-  private static com.axonivy.utils.rule.engine.api.EvaluateRequest request(Map<String, Object> input) {
-    return com.axonivy.utils.rule.engine.api.EvaluateRequest.builder().input(input).build();
   }
 
   private static void sleep(long millis) {

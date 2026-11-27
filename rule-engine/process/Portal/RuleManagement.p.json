@@ -775,6 +775,105 @@
       }
     },
     {
+      "id" : "f24",
+      "type" : "CallSubStart",
+      "name" : "ruleManagementRetire(String,Integer)",
+      "config" : {
+        "signature" : "ruleManagementRetire",
+        "input" : {
+          "params" : [
+            {
+              "name" : "model",
+              "type" : "String",
+              "desc" : "Name of the model: the name of its .dmn file"
+            },
+            {
+              "name" : "version",
+              "type" : "Integer",
+              "desc" : "Number of the version, not the active one"
+            }
+          ],
+          "map" : {
+            "out.model" : "param.model",
+            "out.version" : "param.version"
+          }
+        },
+        "result" : {
+          "params" : [
+            {
+              "name" : "result",
+              "type" : "Object",
+              "desc" : "The answer, made of JDK types: String, Integer, Boolean, List, Map"
+            },
+            {
+              "name" : "error",
+              "type" : "Object",
+              "desc" : "null on success, else a Map with code, message and details"
+            }
+          ],
+          "map" : {
+            "result.result" : "in.#result",
+            "result.error" : "in.#error"
+          }
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 96,
+          "y" : 832
+        },
+        "labelOffset" : {
+          "x" : 13,
+          "y" : 37
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f116",
+          "to" : "f25"
+        }
+      ]
+    },
+    {
+      "id" : "f25",
+      "type" : "Script",
+      "name" : "Withdraws a version",
+      "config" : {
+        "output" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.portal.RuleManagement;",
+            "import com.axonivy.utils.rule.engine.portal.RuleManagementAnswer;",
+            "",
+            "RuleManagementAnswer answer = RuleManagement.retire(in.#model, in.#version);",
+            "in.result = answer.result();",
+            "in.error = answer.error();"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : {
+          "x" : 448,
+          "y" : 832
+        }
+      },
+      "connect" : [
+        {
+          "id" : "f117",
+          "to" : "f26"
+        }
+      ]
+    },
+    {
+      "id" : "f26",
+      "type" : "CallSubEnd",
+      "visual" : {
+        "at" : {
+          "x" : 640,
+          "y" : 832
+        }
+      }
+    },
+    {
       "id" : "f99",
       "type" : "ProcessAnnotation",
       "name" : "The bridge to the tab Rule Management of the Axon Ivy Portal. The Portal finds these starts by their signatures in the security context and shows the tab only if they are there. Only JDK types cross, the Portal needs no class of the rule engine.",

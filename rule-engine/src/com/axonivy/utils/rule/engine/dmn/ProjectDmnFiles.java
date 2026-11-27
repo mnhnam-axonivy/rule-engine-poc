@@ -20,7 +20,7 @@ import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
 
 /**
- * The .dmn files of an Ivy project. They are the source of the versions that a project registers on the runtime.
+ * The .dmn files of an Ivy project. They are the source of the versions that a project stores.
  */
 public final class ProjectDmnFiles {
 
@@ -34,8 +34,9 @@ public final class ProjectDmnFiles {
    * @param model name of the model: the file name without extension
    * @param path location of the file
    * @param project name of the project that owns the file
+   * @param application the Ivy application of the project and its version, e.g. <code>invoice-app v3</code>
    */
-  public record DmnFile(String model, Path path, String project, String projectCoordinates) {
+  public record DmnFile(String model, Path path, String project, String projectVersion, String application) {
 
     /** @return path of the file inside of its project, e.g. <code>dmn/discount.dmn</code> */
     public String relativePath(Path projectDirectory) {
@@ -105,7 +106,7 @@ public final class ProjectDmnFiles {
           .filter(path -> !isIgnored(root.relativize(path)))
           .filter(Files::isRegularFile)
           .sorted()
-          .map(path -> new DmnFile(modelName(path), path, project.name(), coordinates(project)))
+          .map(path -> new DmnFile(modelName(path), path, project.name(), version(project), application(project)))
           .toList();
     } catch (IOException | RuntimeException ex) {
       Ivy.log().warn("Cannot list the .dmn files of project " + project.name(), ex);
@@ -191,10 +192,18 @@ public final class ProjectDmnFiles {
     return false;
   }
 
-  private static String coordinates(Project project) {
+  private static String version(Project project) {
     try {
-      var maven = project.mavenCoordinates();
-      return maven.id() + ":" + maven.version();
+      return project.mavenCoordinates().version();
+    } catch (RuntimeException ex) {
+      return null;
+    }
+  }
+
+  private static String application(Project project) {
+    try {
+      var app = project.app();
+      return app.name() + " v" + app.version();
     } catch (RuntimeException ex) {
       return project.name();
     }

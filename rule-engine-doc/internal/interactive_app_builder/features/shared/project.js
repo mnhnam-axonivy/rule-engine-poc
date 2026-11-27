@@ -22,7 +22,7 @@ export const VARIABLES = `Variables:
     ApiKey: ""
     # Seconds to wait for a decision
     TimeoutSeconds: "10"
-    # Register the .dmn files of the project on the runtime
+    # Store the .dmn files of the project as versions
     AutoDeploy: "true"
 `;
 

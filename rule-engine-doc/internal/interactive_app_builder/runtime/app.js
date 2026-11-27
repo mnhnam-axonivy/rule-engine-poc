@@ -1138,6 +1138,7 @@ export class DesignerApp {
   /** 'running' | 'slow' | 'stopped': what `docker start` and `docker stop` do to the container. */
   setRuntimeState(state) {
     this.runtime.state = state;
+    if (state === 'stopped') this.runtime.stop();
     this.refreshRuntimeViews();
     this.emit({ type: 'runtime', state });
   }

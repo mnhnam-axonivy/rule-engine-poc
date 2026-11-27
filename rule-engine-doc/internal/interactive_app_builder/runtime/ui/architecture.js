@@ -5,16 +5,17 @@
  *     Axon Ivy Portal    (Rule Management)
  *     ┆ calls Portal/RuleManagement
  *     rule-engine-demo   (your project)       REST API        DMN editor page  ← Browser
- *     rule-engine        (connector)  ⇄ HTTP  DMN engine      Database         → Volume
+ *     rule-engine        (connector)  ⇄ HTTP  DMN engine      Versions in memory
+ *     Files of the application
  *
- * The diagram is live: it shows the state of the container, what the database holds, the files
- * of the project and the last call. A walkthrough lights blocks and lets a link flow
+ * The diagram is live: it shows the state of the container, the stored versions, what the runtime
+ * holds in memory, the files of the project and the last call. A walkthrough lights blocks and lets a link flow
  * (setFocus); a learner selects a block to read what is in it, in a drawer on the right.
  *
  * Blocks and link labels carry data-arch="<id>", which is what the walkthrough points at
  * ('arch:demo', 'arch:http'):
- *   blocks  ivy, portal, demo, connector, container, api, editor, engine, db, browser, volume
- *   links   http (connector ⇄ api), ui (browser → editor), store (db → volume),
+ *   blocks  ivy, portal, demo, connector, files, container, api, editor, engine, memory, browser
+ *   links   http (connector ⇄ api), ui (browser → editor),
  *           callable (portal → connector, along the side of the projects)
  */
 import { h, clear, brief } from '../util.js';
@@ -43,8 +44,7 @@ const compact = value => (value !== null && typeof value === 'object' && !Array.
 const LINKS = [
   { id: 'callable', from: 'portal', to: 'connector', side: true },
   { id: 'http', from: 'connector', to: 'api', both: true },
-  { id: 'ui', from: 'browser', to: 'editor' },
-  { id: 'store', from: 'db', to: 'volume' }
+  { id: 'ui', from: 'browser', to: 'editor' }
 ];
 
 const svg = (name, attrs) => {
@@ -140,6 +140,7 @@ export class ArchitectureView {
       return node;
     };
     const requires = () => h('div.arch-requires', { 'aria-hidden': 'true' }, h('span', null, t('arch.requires')));
+    const stores = () => h('div.arch-requires', { 'aria-hidden': 'true' }, h('span', null, t('arch.stores')));
     const calls = () => h('div.arch-calls', null, inline(label('callable', t('arch.link.callable'))));
     const frame = (id, title, sub, kind, children) => {
       const node = h('section.arch-frame.arch-' + id, { 'data-arch': id },
@@ -171,16 +172,15 @@ export class ArchitectureView {
         t('arch.ivy.sub'), t('arch.ivy.kind'),
         h('div.arch-stack', null,
           block('portal', 'pointer', '.arch-optional'), calls(),
-          block('demo', 'process'), requires(), block('connector', 'extension'))),
+          block('demo', 'process'), requires(), block('connector', 'extension'), stores(), block('files', 'database'))),
       h('div.arch-outside.arch-top', null, block('browser', 'pointer', '.arch-small')),
       frame('container',
         h('span.arch-frame-title', null, icon('database', 15), t('arch.container.title'), h('code', null, t('arch.container.name')), this.stateEl),
         t('arch.container.sub', { image: IMAGE }), t('arch.container.kind'),
         h('div.arch-cells', null,
           block('api', 'arrowRight'), block('editor', 'list'),
-          block('engine', 'settings'), block('db', 'database'))),
-      h('div.arch-outside.arch-bottom', null, block('volume', 'database', '.arch-small')),
-      label('http', t('arch.link.http')), label('ui', t('arch.link.ui')), label('store', t('arch.link.store')));
+          block('engine', 'settings'), block('memory', 'list'))),
+      label('http', t('arch.link.http')), label('ui', t('arch.link.ui')));
     // the label of 'callable' was created above, in its row of the stack
 
     // the details of the selected block: a drawer on the right, beside the diagram
@@ -333,12 +333,11 @@ export class ArchitectureView {
     // the details take room beside the diagram, or lie over it where there is too little room
     this.mainEl.classList.toggle('details-over', this.host.clientWidth < DETAILS_BESIDE);
     const width = this.scrollEl.clientWidth;
-    // wide: browser and volume stand beside the page and the database they belong to;
-    // otherwise above and below the container; narrow: one column
+    // wide: the browser stands beside the page it opens; otherwise above the container; narrow: one column
     const mode = width >= 1330 ? 'wide' : width >= 840 ? 'medium' : 'narrow';
     this.diagram.classList.toggle('wide', mode === 'wide');
     this.diagram.classList.toggle('narrow', mode === 'narrow');
-    [['browser', 'editor'], ['volume', 'db']].forEach(([outside, partner]) => {
+    [['browser', 'editor']].forEach(([outside, partner]) => {
       const holder = this.nodes[outside].parentNode;
       holder.style.marginTop = '';
       if (mode !== 'wide') return;
@@ -352,9 +351,8 @@ export class ArchitectureView {
     while (this.linksEl.firstChild) this.linksEl.removeChild(this.linksEl.firstChild);
     this.paths = {};
     LINKS.forEach(link => {
-      // Browser and volume above and below the container: their links end at its frame, so that
-      // they cross none of its texts. In one column the frames are connected, at their left half,
-      // where the browser is not in the way.
+      // The browser above the container: its link ends at the frame, so that it crosses none of its
+      // texts. In one column the frames are connected, at their left half, where the browser is not in the way.
       const edge = (frame, like, side) => {
         const y = side === 'top' ? frame.top : frame.bottom;
         return { left: like.left, right: like.right, width: like.width, top: y, bottom: y, height: 0 };
@@ -363,7 +361,6 @@ export class ArchitectureView {
       let a = rectOf(link.from);
       let b = rectOf(link.to);
       if (mode !== 'wide' && link.id === 'ui') b = edge(rectOf('container'), a, 'top');
-      if (mode !== 'wide' && link.id === 'store') a = edge(rectOf('container'), b, 'bottom');
       if (mode === 'narrow' && link.id === 'http') {
         a = half(rectOf('ivy'));
         b = half(rectOf('container'));
@@ -472,15 +469,18 @@ export class ArchitectureView {
     this.live.portal.textContent = fromPortal ? t('arch.live.portal', { model: fromPortal.name.slice(settings.prefix.length), version: fromPortal.version.version }) : '';
     this.live.connector.classList.toggle('bad', !settings.url || settings.url.replace(/\/+$/, '') !== runtime.url);
     const names = runtime.modelNames();
-    this.live.db.textContent = names.length
+    this.live.files.textContent = names.length
       ? names.map(name => {
         const active = runtime.active(name);
         const count = runtime.versions(name).length;
         return active
-          ? t('arch.live.db.model', { model: name, version: active.version, source: active.source.toLowerCase(), count })
-          : t('arch.live.db.inactive', { model: name, count });
+          ? t('arch.live.files.model', { model: name, version: active.version, source: active.source.toLowerCase(), count })
+          : t('arch.live.files.inactive', { model: name, count });
       }).join(' · ')
-      : t('arch.live.db.empty');
+      : t('arch.live.files.empty');
+    this.live.memory.textContent = runtime.loaded.size
+      ? [...runtime.loaded].map(key => t('arch.live.memory.version', { model: key.split('#')[0], version: key.split('#')[1] })).join(' · ')
+      : t('arch.live.memory.empty');
     const call = this.call;
     let last = '';
     let failed = false;

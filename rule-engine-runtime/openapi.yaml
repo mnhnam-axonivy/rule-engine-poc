@@ -2,16 +2,6 @@
 openapi: 3.1.0
 components:
   schemas:
-    ActivateRequest:
-      type: object
-      properties:
-        user:
-          type: string
-          description: Who activates the version.
-        effectiveDate:
-          description: Go live at this time instead of now.
-          type: string
-          $ref: "#/components/schemas/OffsetDateTime"
     DecisionInfo:
       type: object
       properties:
@@ -81,22 +71,25 @@ components:
           type: string
         collection:
           type: boolean
-    Model:
+    LoadRequest:
+      type: object
+      required:
+      - content
+      properties:
+        content:
+          type: string
+          description: The DMN file as XML.
+    LoadedVersion:
       type: object
       properties:
-        name:
+        model:
           type: string
-        activeVersion:
+        version:
           type: integer
           format: int32
-          description: The version that answers evaluations. Not set if no version
-            is active.
-        latestVersion:
-          type: integer
-          format: int32
-        versionCount:
-          type: integer
-          format: int32
+        contentHash:
+          type: string
+          description: "SHA-256 of the DMN file, line endings ignored."
         dmnName:
           type: string
         dmnNamespace:
@@ -105,12 +98,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DecisionInfo"
-          description: Decisions of the active version.
         inputs:
           type: array
           items:
             $ref: "#/components/schemas/InputInfo"
-          description: Inputs of the active version.
     ModelMessage:
       type: object
       properties:
@@ -122,39 +113,6 @@ components:
           type: string
         sourceId:
           type: string
-    OffsetDateTime:
-      type: string
-      format: date-time
-      examples:
-      - 2022-03-10T12:15:50-04:00
-    RegisterVersionRequest:
-      description: A DMN model to store as a new version.
-      type: object
-      required:
-      - content
-      properties:
-        content:
-          type: string
-          description: The DMN file as XML.
-        author:
-          type: string
-          description: Who provides this version.
-        description:
-          type: string
-          description: What changed.
-        source:
-          description: Origin of the version. Defaults to API.
-          type: string
-          $ref: "#/components/schemas/VersionSource"
-        activate:
-          type: boolean
-          description: "true = go live now, false = keep as draft. Not set = the first\
-            \ version of a model and project deployments go live, unless the active\
-            \ version was activated from the Portal or the API."
-        effectiveDate:
-          description: Go live at this time instead of now.
-          type: string
-          $ref: "#/components/schemas/OffsetDateTime"
     ValidateRequest:
       type: object
       required:
@@ -172,65 +130,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ModelMessage"
-    Version:
-      type: object
-      properties:
-        model:
-          type: string
-        version:
-          type: integer
-          format: int32
-        status:
-          $ref: "#/components/schemas/VersionStatus"
-        source:
-          $ref: "#/components/schemas/VersionSource"
-        author:
-          type: string
-        description:
-          type: string
-        createdAt:
-          $ref: "#/components/schemas/OffsetDateTime"
-        effectiveDate:
-          $ref: "#/components/schemas/OffsetDateTime"
-        activatedAt:
-          $ref: "#/components/schemas/OffsetDateTime"
-        activatedBy:
-          type: string
-        previousVersion:
-          type: integer
-          format: int32
-        dmnName:
-          type: string
-        dmnNamespace:
-          type: string
-        contentHash:
-          type: string
-        created:
-          type: boolean
-          description: "Only on registration: false if the same content was already\
-            \ stored."
-    VersionSource:
-      type: string
-      enum:
-      - PROJECT
-      - PORTAL
-      - API
-    VersionStatus:
-      type: string
-      enum:
-      - DRAFT
-      - APPROVED
-      - ACTIVE
-      - RETIRED
 tags:
 - name: Models
-  description: "Load DMN models, manage their versions and evaluate decisions."
+  description: "Load versions of DMN models into memory and evaluate their decisions.\
+    \ The versions are stored by the Ivy application: it loads a version whenever\
+    \ the runtime answers that it does not have it."
 - name: Validation
   description: Check a DMN file without storing it.
 paths:
   /api/models:
     get:
-      summary: Lists all models.
+      summary: Lists the versions in memory.
       tags:
       - Models
       responses:
@@ -241,28 +151,10 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Model"
+                  $ref: "#/components/schemas/LoadedVersion"
   /api/models/{model}:
-    get:
-      summary: "Describes a model: its versions and the decisions and inputs of the\
-        \ active version."
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Model"
     delete:
-      summary: Removes a model with all its versions.
+      summary: Removes all versions of a model from memory.
       tags:
       - Models
       parameters:
@@ -277,9 +169,9 @@ paths:
           content:
             application/json:
               schema: {}
-  /api/models/{model}/evaluate:
-    post:
-      summary: Evaluates the active version of a model.
+  /api/models/{model}/versions/{version}:
+    put:
+      summary: "Loads a version into memory, ready to evaluate."
       tags:
       - Models
       parameters:
@@ -288,94 +180,12 @@ paths:
         required: true
         schema:
           type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EvaluateRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EvaluateResponse"
-        "400":
-          description: Bad Request
-  /api/models/{model}/rollback:
-    post:
-      summary: Activates the version that was active before the current one.
-      tags:
-      - Models
-      parameters:
-      - name: model
+      - name: version
         in: path
         required: true
         schema:
-          type: string
-      - name: user
-        in: query
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Version"
-  /api/models/{model}/versions:
-    get:
-      summary: "Lists the versions of a model, newest first."
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Version"
-    post:
-      summary: Loads a DMN model as a new version.
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: activate
-        in: query
-        schema:
-          type: boolean
-      - name: author
-        in: query
-        schema:
-          type: string
-      - name: description
-        in: query
-        schema:
-          type: string
-      - description: "ISO-8601 date and time with offset, e.g. 2027-01-01T00:00:00+01:00"
-        name: effectiveDate
-        in: query
-        schema:
-          type: string
-      - name: source
-        in: query
-        schema:
-          $ref: "#/components/schemas/VersionSource"
+          type: integer
+          format: int32
       requestBody:
         content:
           application/xml:
@@ -389,65 +199,7 @@ paths:
               type: string
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterVersionRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: {}
-      description: Content that is already stored for the model does not create another
-        version. An invalid DMN file is rejected with INVALID_MODEL and the findings
-        of the DMN engine.
-  /api/models/{model}/versions/{version}:
-    get:
-      summary: Describes one version.
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int32
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Version"
-  /api/models/{model}/versions/{version}/activate:
-    post:
-      summary: "Makes a version the active one, now or at an effective date."
-      description: "The version that was active becomes retired. No restart, running\
-        \ evaluations are not affected."
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int32
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ActivateRequest"
+              $ref: "#/components/schemas/LoadRequest"
         required: true
       responses:
         "200":
@@ -455,62 +207,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Version"
-        "400":
-          description: Bad Request
-  /api/models/{model}/versions/{version}/approve:
-    post:
-      summary: Releases a draft for activation.
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int32
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Version"
-  /api/models/{model}/versions/{version}/content:
-    get:
-      summary: "Exports the DMN file of a version, e.g. to bring it back into the\
-        \ Ivy project."
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int32
-      responses:
-        "200":
-          description: OK
-          content:
-            application/xml:
-              schema:
-                type: string
+                $ref: "#/components/schemas/LoadedVersion"
+      description: Replaces what the runtime holds as this version. An invalid DMN
+        file is rejected with INVALID_MODEL and the findings of the DMN engine.
   /api/models/{model}/versions/{version}/evaluate:
     post:
-      summary: "Evaluates a specific version, e.g. to test a draft before it goes\
-        \ live."
+      summary: Evaluates a loaded version.
+      description: "MODEL_NOT_FOUND or VERSION_NOT_FOUND if the version is not in\
+        \ memory: load it, then try again."
       tags:
       - Models
       parameters:
@@ -540,30 +244,6 @@ paths:
                 $ref: "#/components/schemas/EvaluateResponse"
         "400":
           description: Bad Request
-  /api/models/{model}/versions/{version}/retire:
-    post:
-      summary: Withdraws a version that is not active.
-      tags:
-      - Models
-      parameters:
-      - name: model
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: version
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int32
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Version"
   /api/validate:
     post:
       summary: "Validates a DMN file against the DMN schema, the model rules and the\
@@ -595,8 +275,8 @@ paths:
 info:
   title: Axon Ivy Rules Engine - Runtime API
   version: 1.0.0
-  description: "Loads DMN models at runtime, manages their versions and evaluates\
-    \ decisions."
+  description: Loads versions of DMN models into memory and evaluates decisions. The
+    versions are stored by the Ivy application.
 servers:
 - url: http://localhost:8080
   description: Auto generated value

@@ -5,12 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.axonivy.utils.rule.engine.api.ActivateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
-import com.axonivy.utils.rule.engine.api.ModelInfo;
-import com.axonivy.utils.rule.engine.api.ModelVersion;
-import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
+import com.axonivy.utils.rule.engine.api.LoadRequest;
+import com.axonivy.utils.rule.engine.api.LoadedVersion;
 import com.axonivy.utils.rule.engine.api.ValidationResult;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
@@ -30,27 +28,20 @@ import jakarta.ws.rs.core.Response.Status;
 
 /**
  * Client of the decision runtime, through the Axon Ivy REST client <code>ruleEngine</code> of rest-clients.yaml.
- * Failures are thrown as {@link RuleEngineException}.
+ * The runtime holds versions in memory only: load a version, then evaluate it. Failures are thrown as
+ * {@link RuleEngineException}.
  */
 public class RuleEngineClient {
 
   private static final String REST_CLIENT = "ruleEngine";
   private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(10);
-  private static final Entity<String> NO_BODY = Entity.json("");
 
   private interface Paths {
     String MODELS = "api/models";
     String MODEL = MODELS + "/{" + Params.MODEL + "}";
-    String EVALUATE = MODEL + "/evaluate";
-    String ROLLBACK = MODEL + "/rollback";
-    String VERSIONS = MODEL + "/versions";
-    String VERSION = VERSIONS + "/{" + Params.VERSION + "}";
-    String EVALUATE_VERSION = VERSION + "/evaluate";
-    String CONTENT = VERSION + "/content";
-    String APPROVE = VERSION + "/approve";
-    String ACTIVATE = VERSION + "/activate";
-    String RETIRE = VERSION + "/retire";
+    String VERSION = MODEL + "/versions/{" + Params.VERSION + "}";
+    String EVALUATE = VERSION + "/evaluate";
     String VALIDATE = "api/validate";
     String READY = "q/health/ready";
     String EDITOR_SCRIPT = "editor/lib/dmn-editor.js";
@@ -59,7 +50,6 @@ public class RuleEngineClient {
   private interface Params {
     String MODEL = "model";
     String VERSION = "version";
-    String USER = "user";
     String CONTENT = "content";
   }
 
@@ -95,68 +85,35 @@ public class RuleEngineClient {
     return new Builder();
   }
 
-  public EvaluateResponse evaluate(String model, EvaluateRequest request) {
-    return call(() -> json(modelTarget(Paths.EVALUATE, model)).post(Entity.json(request), EvaluateResponse.class));
+  /**
+   * Compiles a version and holds it in the memory of the runtime, in place of what it held as this version.
+   * @throws RuleEngineApiException INVALID_MODEL with the findings of the DMN engine
+   */
+  public LoadedVersion load(String model, int version, String dmn) {
+    return call(() -> json(versionTarget(Paths.VERSION, model, version)).put(Entity.json(new LoadRequest(dmn)),
+        LoadedVersion.class));
   }
 
+  /**
+   * @throws RuleEngineApiException MODEL_NOT_FOUND or VERSION_NOT_FOUND if the runtime does not hold the version, see
+   *         {@link RuleEngineApiException#isNotLoaded()}: load it, then evaluate again
+   */
   public EvaluateResponse evaluate(String model, int version, EvaluateRequest request) {
-    return call(() -> json(versionTarget(Paths.EVALUATE_VERSION, model, version))
+    return call(() -> json(versionTarget(Paths.EVALUATE, model, version))
         .post(Entity.json(request), EvaluateResponse.class));
   }
 
-  public ModelVersion registerVersion(String model, RegisterVersionRequest request) {
-    return call(() -> json(modelTarget(Paths.VERSIONS, model)).post(Entity.json(request), ModelVersion.class));
+  public List<LoadedVersion> loaded() {
+    return call(() -> json(target(Paths.MODELS)).get(new GenericType<List<LoadedVersion>>() {}));
+  }
+
+  public void unload(String model) {
+    call(() -> json(modelTarget(Paths.MODEL, model)).delete(String.class));
   }
 
   public ValidationResult validate(String dmn) {
     var body = Entity.json(Map.of(Params.CONTENT, dmn == null ? "" : dmn));
     return call(() -> json(target(Paths.VALIDATE)).post(body, ValidationResult.class));
-  }
-
-  public List<ModelInfo> models() {
-    return call(() -> json(target(Paths.MODELS)).get(new GenericType<List<ModelInfo>>() {}));
-  }
-
-  public ModelInfo model(String model) {
-    return call(() -> json(modelTarget(Paths.MODEL, model)).get(ModelInfo.class));
-  }
-
-  /** @return newest first */
-  public List<ModelVersion> versions(String model) {
-    return call(() -> json(modelTarget(Paths.VERSIONS, model)).get(new GenericType<List<ModelVersion>>() {}));
-  }
-
-  public ModelVersion version(String model, int version) {
-    return call(() -> json(versionTarget(Paths.VERSION, model, version)).get(ModelVersion.class));
-  }
-
-  /** @return the DMN file of the version */
-  public String content(String model, int version) {
-    return call(() -> request(versionTarget(Paths.CONTENT, model, version), MediaType.APPLICATION_XML)
-        .get(String.class));
-  }
-
-  public ModelVersion approve(String model, int version) {
-    return call(() -> json(versionTarget(Paths.APPROVE, model, version)).post(NO_BODY, ModelVersion.class));
-  }
-
-  public ModelVersion activate(String model, int version, ActivateRequest request) {
-    var body = Entity.json(request == null ? ActivateRequest.now(null) : request);
-    return call(() -> json(versionTarget(Paths.ACTIVATE, model, version)).post(body, ModelVersion.class));
-  }
-
-  public ModelVersion retire(String model, int version) {
-    return call(() -> json(versionTarget(Paths.RETIRE, model, version)).post(NO_BODY, ModelVersion.class));
-  }
-
-  public ModelVersion rollback(String model, String user) {
-    var target = modelTarget(Paths.ROLLBACK, model);
-    var withUser = user == null ? target : target.queryParam(Params.USER, user);
-    return call(() -> json(withUser).post(NO_BODY, ModelVersion.class));
-  }
-
-  public void deleteModel(String model) {
-    call(() -> json(modelTarget(Paths.MODEL, model)).delete(String.class));
   }
 
   public boolean isReady() {

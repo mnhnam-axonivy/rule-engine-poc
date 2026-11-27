@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
 
-
 /**
  * A failure with a stable error code that API clients can react to.
  */
@@ -19,8 +18,6 @@ public class RuleEngineException extends RuntimeException {
     MODEL_NOT_FOUND(404),
     VERSION_NOT_FOUND(404),
     DECISION_NOT_FOUND(404),
-    NO_ACTIVE_VERSION(409),
-    INVALID_STATE(409),
     EVALUATION_FAILED(422),
     INTERNAL_ERROR(500);
 
@@ -62,16 +59,7 @@ public class RuleEngineException extends RuntimeException {
 
   public static RuleEngineException versionNotFound(String model, int version) {
     return new RuleEngineException(Code.VERSION_NOT_FOUND,
-        "Model '" + model + "' has no version " + version + ".");
-  }
-
-  public static RuleEngineException noActiveVersion(String model) {
-    return new RuleEngineException(Code.NO_ACTIVE_VERSION,
-        "Model '" + model + "' has no active version. Activate one of its versions first.");
-  }
-
-  public static RuleEngineException invalidState(String message) {
-    return new RuleEngineException(Code.INVALID_STATE, message);
+        "Version " + version + " of model '" + model + "' is not loaded.");
   }
 
   public static RuleEngineException invalidRequest(String message) {

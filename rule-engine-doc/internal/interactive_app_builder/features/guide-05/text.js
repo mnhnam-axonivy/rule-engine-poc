@@ -37,8 +37,8 @@ export const strings = {
 
     'tour.created.title': 'The file is generated',
     'tour.created.text': 'The element has no such file yet, so it writes `dmn/invoice-approver.dmn`. A new tab appears for it.',
-    'tour.registered.title': 'And registered',
-    'tour.registered.text': 'A generated file is a `.dmn` file like any other: the runtime stores it as version 1 of the model `invoice-approver`.',
+    'tour.registered.title': 'And stored',
+    'tour.registered.text': 'A generated file is a `.dmn` file like any other: it is stored as version 1 of the model `invoice-approver`.',
     'tour.placeholderResult.title': 'It already runs',
     'tour.placeholderResult.text': 'The generated table has one rule that matches everything and returns a neutral value, an empty text. The process works before a single rule is written.',
     'tour.inputsNamed.title': 'Inputs named like the fields',

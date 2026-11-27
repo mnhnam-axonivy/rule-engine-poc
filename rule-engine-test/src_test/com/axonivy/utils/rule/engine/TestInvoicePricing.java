@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
 import com.axonivy.utils.rule.engine.demo.Invoice;
 import com.axonivy.utils.rule.engine.demo.InvoiceSamples;
-import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
 import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
+import com.axonivy.utils.rule.engine.test.mock.TestStore;
 
 import ch.ivyteam.ivy.bpm.engine.client.BpmClient;
 import ch.ivyteam.ivy.bpm.engine.client.ExecutionResult;
@@ -33,7 +33,7 @@ class TestInvoicePricing {
   @BeforeEach
   public void setup(AppFixture fixture) {
     MockRuntime.reset();
-    ModelDeployer.reset();
+    TestStore.clear();
     fixture.var(Var.URL, MockRuntime.url());
     fixture.var(Var.API_KEY, "test-key");
     fixture.var(Var.AUTO_DEPLOY, "true");
@@ -42,7 +42,7 @@ class TestInvoicePricing {
 
   @Test
   void tierAndOrderAmountAreSentByName_andTheDiscountIsApplied(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(3,
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1,
         "{\"discount\":{\"discountPercent\":2,\"discountReason\":\"Silver customer\"}}"));
 
     var execution = execute(client, InvoiceSamples.standard());
@@ -64,7 +64,7 @@ class TestInvoicePricing {
     assertThat(invoice.getDiscountReason()).isEqualTo("Silver customer");
     assertThat(invoice.getDiscountAmount()).isEqualByComparingTo("184.00");
     assertThat(invoice.getTotal()).isEqualByComparingTo("9016.00");
-    assertThat(TestBusinessRuleTask.decidedBy(execution, "invoice-discount")).as("stored on the case").isEqualTo(3);
+    assertThat(TestBusinessRuleTask.decidedBy(execution, "invoice-discount")).as("stored on the case").isEqualTo(1);
   }
 
   @Test

@@ -26,7 +26,7 @@ export const strings = {
     'tour.chapter.lastWord': 'Who has the last word',
 
     'tour.noKeyAccount.title': 'A Silver customer',
-    'tour.noKeyAccount.text': 'The sample invoice gets 2 percent: rule 6, "Silver customer". Version 1 is the `.dmn` file of the project, registered with this first run.',
+    'tour.noKeyAccount.text': 'The sample invoice gets 2 percent: rule 6, "Silver customer". Version 1 is the `.dmn` file of the project, stored with this first run.',
     'tour.table.title': 'What the table reads',
     'tour.table.text': '`discount` reads the customer tier and the order amount. The first rule that matches decides: hit policy FIRST.',
     'tour.customer.title': 'The invoice knows more',
@@ -54,7 +54,7 @@ export const strings = {
     'tour.checked.title': 'Check',
     'tour.checked.text': 'The DMN engine checks the model before anything is stored. A model with errors would be refused with its findings.',
     'tour.saved.title': 'Saved and active',
-    'tour.saved.text': 'Version 2, from the source `portal`, by `admin`, with what changed. It is live on the runtime at once, and a deployment of the project never replaces it.',
+    'tour.saved.text': 'Version 2, from the source `portal`, by `admin`, with what changed. It is live at once, and a deployment of the project never replaces it.',
 
     'tour.moreInputs.title': 'Three inputs now',
     'tour.moreInputs.text': 'The process is the same. The Business Rule Task sends what the active version needs: the two inputs of the file, and the customer it finds in the process data by name.',

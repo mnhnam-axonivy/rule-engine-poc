@@ -46,18 +46,19 @@ Dates, times, lists and data classes travel as JSON and are converted to the typ
 
 ## The Java API
 
-The class `RuleEngine` of the connector calls the same runtime as the Business Rule Task, with the same variables, the same API key and the same `RuleEngine.ModelPrefix`. Use it in a script, a Java class, or a Rules UI of your own.
+The class `RuleEngine` of the connector works on the same versions and calls the same runtime as the Business Rule Task, with the same variables, the same API key and the same `RuleEngine.ModelPrefix`. Use it in a script, a Java class, or a Rules UI of your own.
 
 | Method | What it does |
 | --- | --- |
 | `evaluate(model, decision, input)` | Evaluates a decision with the active version. `decision` null: every decision of the model. |
+| `evaluate(model, version, decision, input)` | The same with a given version, active or not, e.g. a draft. |
 | `versions(model)` | All versions of a model, newest first. |
 | `register(model, dmn, author, description)` | Stores a `.dmn` content as a new draft, from the source portal. |
 | `approve(model, version)` | Releases a draft. |
 | `activate(model, version, user)` | Makes a version live at once. With an `OffsetDateTime` as fourth argument: at that time. |
 | `rollback(model, user)` | Makes the version before active again. |
 | `retire(model, version)` | Withdraws a version that is not active. |
-| `deploy(project)` | Registers the `.dmn` files of a project, as a deployment does. |
+| `deploy(project)` | Stores the `.dmn` files of a project as versions, as a deployment does. |
 | `export(model, version, project)` | Writes a version back into the `dmn` folder of a project. |
 
 Evaluate without a Business Rule Task:
@@ -82,21 +83,20 @@ RuleEngine.rollback("invoice-discount", "rule.approver");
 
 A version activated this way is one of the rule owner's: a project never replaces it, as [Edit rules in the Portal] explains under *Who has the last word*.
 
-The page of the demo uses the client of the connector to show the table that decided: it reads the version that the case names, `RuleEngine.client().content("invoice-discount", version)`, and shows the rules of its table (`DiscountTable`). After a change in the Portal the page shows the new rules at the next Apply.
+The page of the demo shows the table that decided: it reads the version that the case names, `VersionStore.current().content("invoice-discount", version)`, and shows the rules of its table (`DiscountTable`). After a change in the Portal the page shows the new rules at the next Apply.
 
 ---
 
 ## Test a draft before it goes live
 
-A draft can be evaluated on purpose, whatever version is active. The REST API of the runtime does it per version:
+A draft can be evaluated on purpose, whatever version is active:
 
-```bash
-curl -X POST -H "Content-Type: application/json" \
-     -d '{"decision":"discount","input":{"customerTier":"Silver","orderAmount":9200}}' \
-     http://localhost:8090/api/models/invoice-discount/versions/2/evaluate
+```java
+EvaluateResponse response = RuleEngine.evaluate("invoice-discount", 2, "discount",
+    Map.of("customerTier", "Silver", "orderAmount", 9200));
 ```
 
-The whole API, with every request and answer, is described at `http://localhost:8090/q/swagger-ui`.
+The connector loads version 2 into the runtime first, if the runtime does not hold it yet. The API of the runtime, with every request and answer, is described at `http://localhost:8090/q/swagger-ui`.
 
 ---
 

@@ -10,7 +10,7 @@ const DMN = 'dmn:' + MODEL;
 /** The discount of rule 6 of the table in the project file: "Silver customer". */
 export const SILVER_RULE = DMN + ':' + DECISION + '.r6.o1';
 
-/** The first run of the process: the file of the project is version 1 on the runtime. */
+/** The first run of the process: the file of the project is version 1. */
 export function seedProjectVersion(app) {
   const file = app.dmnFiles.find(candidate => candidate.id === MODEL);
   app.runtime.register(MODEL, file.current, { source: 'PROJECT', author: 'rule-engine-demo' });
@@ -39,7 +39,7 @@ export async function raiseSilver(d, note) {
 
 /**
  * Who has the last word: version 2 of the Portal is active, a developer changes the file of the project. The file
- * is registered as a draft, and the rule owner's version still decides. Its notes are LAST_WORD_STRINGS.
+ * is stored as a draft, and the rule owner's version still decides. Its notes are LAST_WORD_STRINGS.
  */
 export async function lastWord(d) {
   seedPortalVersion(d.app);
@@ -65,7 +65,7 @@ export const LAST_WORD_STRINGS = {
   'tour.fileChanged.title': 'The file changes',
   'tour.fileChanged.text': 'A developer raises the discount of Silver customers in the project file, from 2 to 3 percent.',
   'tour.asDraft.title': 'Stored as a draft',
-  'tour.asDraft.text': 'The changed file is registered, but as a draft. A version activated by a rule owner is never replaced by a project.',
+  'tour.asDraft.text': 'The changed file is stored, but as a draft. A version activated by a rule owner is never replaced by a project.',
   'tour.stillPortal.title': 'The rule owner keeps the last word',
   'tour.stillPortal.text': 'Version 2 of the Portal still decides: the key account discount stays, 10 percent.',
   'tour.draftBeside.title': 'Your file, as version 3',

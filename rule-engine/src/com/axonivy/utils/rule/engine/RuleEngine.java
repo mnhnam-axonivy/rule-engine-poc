@@ -8,7 +8,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
-import com.axonivy.utils.rule.engine.api.ActivateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
@@ -16,14 +15,17 @@ import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
+import com.axonivy.utils.rule.engine.deploy.RuntimeLoader;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.project.Project;
 
 /**
  * Java API of the Axon Ivy Rules Engine: evaluate decisions and manage the versions of DMN models.
- * <p>This is the API for a Rules UI. Everything goes to the decision runtime that is configured in the
- * variables <code>RuleEngine.*</code>. A change is live on the runtime as soon as the call returns.</p>
+ * <p>This is the API for a Rules UI. The versions are stored in the file area of the application, see
+ * {@link VersionStore}. Decisions are evaluated by the decision runtime that is configured in the variables
+ * <code>RuleEngine.*</code>. A change is live as soon as the call returns.</p>
  *
  * <pre><code>
  * // a business user changed a rule in the editor of the Portal
@@ -66,22 +68,32 @@ public final class RuleEngine {
    */
   public static EvaluateResponse evaluate(String model, String decision, Map<String, Object> input) {
     var config = RuleEngineConfig.fromVariables();
-    return client(config).evaluate(config.runtimeModel(model),
+    var store = VersionStore.current();
+    return RuntimeLoader.evaluate(client(config), store, config.runtimeModel(model), store.active(model),
+        EvaluateRequest.builder().decision(decision).input(input).build());
+  }
+
+  /**
+   * Evaluates a decision with a specific version, active or not, e.g. a draft for a test run before it goes live.
+   */
+  public static EvaluateResponse evaluate(String model, int version, String decision, Map<String, Object> input) {
+    var config = RuleEngineConfig.fromVariables();
+    var store = VersionStore.current();
+    return RuntimeLoader.evaluate(client(config), store, config.runtimeModel(model), store.version(model, version),
         EvaluateRequest.builder().decision(decision).input(input).build());
   }
 
   /** @return all versions of a model, newest first */
   public static List<ModelVersion> versions(String model) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).versions(config.runtimeModel(model));
+    return VersionStore.current().versions(model);
   }
 
   /**
    * Stores a changed DMN file as a new draft, e.g. from a Rules UI. It does not go live before it is activated.
+   * The decision runtime checks the file first.
    */
   public static ModelVersion register(String model, String dmn, String author, String description) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).registerVersion(config.runtimeModel(model), RegisterVersionRequest.builder()
+    return ModelDeployer.register(client(), VersionStore.current(), model, RegisterVersionRequest.builder()
         .content(dmn)
         .author(author)
         .description(description)
@@ -92,43 +104,37 @@ public final class RuleEngine {
 
   /** Releases a draft for activation. */
   public static ModelVersion approve(String model, int version) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).approve(config.runtimeModel(model), version);
+    return VersionStore.current().approve(model, version);
   }
 
-  /** Makes a version live on the runtime at once. The version that was active is retired. */
+  /** Makes a version live at once. The version that was active is retired. */
   public static ModelVersion activate(String model, int version, String user) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).activate(config.runtimeModel(model), version, ActivateRequest.now(user));
+    return VersionStore.current().activate(model, version, user, null);
   }
 
   /** Makes a version live at the effective date. Until then the current version stays active. */
   public static ModelVersion activate(String model, int version, String user, OffsetDateTime effectiveDate) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).activate(config.runtimeModel(model), version, ActivateRequest.at(user, effectiveDate));
+    return VersionStore.current().activate(model, version, user, effectiveDate);
   }
 
   /** Activates the version that was active before the current one. */
   public static ModelVersion rollback(String model, String user) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).rollback(config.runtimeModel(model), user);
+    return VersionStore.current().rollback(model, user);
   }
 
   /** Withdraws a version that is not active. */
   public static ModelVersion retire(String model, int version) {
-    var config = RuleEngineConfig.fromVariables();
-    return client(config).retire(config.runtimeModel(model), version);
+    return VersionStore.current().retire(model, version);
   }
 
   /**
-   * Registers the .dmn files of a project as versions on the runtime. This is what happens on a deployment.
+   * Stores the .dmn files of a project as versions. This is what happens on a deployment.
    * A version from the project goes live, unless the active version was activated from the Portal.
    *
    * @return the version of every .dmn file of the project
    */
   public static List<ModelVersion> deploy(Project project) {
-    var config = RuleEngineConfig.fromVariables();
-    return ModelDeployer.deployAll(project, client(config), config);
+    return ModelDeployer.deployAll(project, client(), VersionStore.current());
   }
 
   /**
@@ -138,8 +144,7 @@ public final class RuleEngine {
    * @return the written file
    */
   public static Path export(String model, int version, Project project) {
-    var config = RuleEngineConfig.fromVariables();
-    String dmn = client(config).content(config.runtimeModel(model), version);
+    String dmn = VersionStore.current().content(model, version);
     Path file = ProjectDmnFiles.find(project, model)
         .map(ProjectDmnFiles.DmnFile::path)
         .orElseGet(() -> project.directory().resolve(ProjectDmnFiles.DMN_FOLDER)

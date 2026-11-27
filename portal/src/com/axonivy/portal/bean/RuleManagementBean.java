@@ -213,6 +213,33 @@ public class RuleManagementBean implements Serializable {
     reloadAfterChange();
   }
 
+  public void activatePending(RuleModel model) {
+    if (!allowed() || model.pendingVersion() == null) {
+      return;
+    }
+    RuleEngineAnswer answer = RuleEngineBridge.activate(model.name(), model.pendingVersion(), author());
+    if (answer.isOk()) {
+      info(cms("Messages/Activated", model.name(), model.pendingVersion()));
+    } else {
+      error(answer.error());
+    }
+    load();
+  }
+
+  /** Retires the pending version, so it is not offered again. */
+  public void keepActive(RuleModel model) {
+    if (!allowed() || model.pendingVersion() == null) {
+      return;
+    }
+    RuleEngineAnswer answer = RuleEngineBridge.retire(model.name(), model.pendingVersion());
+    if (answer.isOk()) {
+      info(cms("Messages/PendingRetired", model.name(), model.pendingVersion(), model.activeVersion()));
+    } else {
+      error(answer.error());
+    }
+    load();
+  }
+
   private void reloadAfterChange() {
     String name = versionsOf.name();
     load();

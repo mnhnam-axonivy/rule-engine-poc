@@ -128,7 +128,7 @@ class TestProjectDmn {
         assertThat(paths.map(Path::toString).filter(path -> path.endsWith(".dmn")))
             .contains("/META-INF/ivy/dmn/discount.dmn");
       }
-      var file = new ProjectDmnFiles.DmnFile("discount", root.resolve("dmn/discount.dmn"), "packed", "packed:1");
+      var file = new ProjectDmnFiles.DmnFile("discount", root.resolve("dmn/discount.dmn"), "packed", "1", "app v1");
       assertThat(ProjectDmnFiles.load(file).info().inputNames()).containsExactly("purchaseAmount", "type", "country");
       assertThat(ProjectDmnFiles.root(Files.createTempDirectory("unpacked"))).as("a project folder is its own root").isNotNull();
     } finally {

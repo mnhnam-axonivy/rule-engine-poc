@@ -19,17 +19,17 @@ The Java package of the tutorial is `com.axonivy.utils.rule.engine.doc` (was `..
 ## The editor page check
 
 `editor-smoke` starts a throwaway container of `axonivy/rule-engine-runtime:dev` with an API key and uses the
-page like a person would: the API key prompt, open a model, change a rule in the KIE editor, save and
-activate, activate the old version, roll back, a model the runtime rejects, a new model, a `.dmn` file written
-back. Every request that leaves the runtime is blocked and counts as a failure. The container is removed
-afterwards.
+page like a person would: open a `.dmn` file, change a rule in the KIE editor, let the runtime check it (the API
+key prompt), a model the runtime rejects, the file written back, a new model, a browser without file access. Every
+request that leaves the runtime is blocked and counts as a failure, and the runtime holds no version afterwards: the
+page edits files only. The container is removed afterwards.
 
 ```
 docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime   # in the repository root, after a change of the runtime
 cd internal/editor-smoke
 npm install                          # once
-npm run smoke                        # 33 checks, screenshots in .preview/
-npm run smoke -- --url=http://localhost:8090/ --key=<key>   # against a runtime that runs already; adds versions to it
+npm run smoke                        # screenshots in .preview/
+npm run smoke -- --url=http://localhost:8090/ --key=<key>   # against a runtime that runs already
 ```
 
 Needs Docker, Node.js 22 or newer and Chrome or Edge (set `CHROME_PATH` if neither is found).

@@ -27,7 +27,7 @@ async function run(d) {
     }
   });
   await d.tab('arch');
-  d.arch({ lit: ['demo', 'connector', 'api', 'engine', 'db'], flow: ['http>', 'http<'] });
+  d.arch({ lit: ['demo', 'connector', 'api', 'engine', 'memory'], flow: ['http>', 'http<'] });
   await d.note('where', { target: 'arch:http' });
   d.arch(null);
 }
@@ -40,8 +40,8 @@ async function holds(d) {
   await d.note('lastCall', { target: 'runtime:call', extra: 600 });
   await d.panel(null);
   await d.tab('arch');
-  d.arch({ lit: ['db', 'volume'] });
-  await d.note('stored', { target: 'arch:db' });
+  d.arch({ lit: ['files', 'memory'] });
+  await d.note('stored', { target: 'arch:files' });
   d.arch(null);
   await d.tab('process');
 }

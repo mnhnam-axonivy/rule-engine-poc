@@ -33,7 +33,7 @@ Dialogs:
                 Page08Title: Handle errors
                 Page08Desc: What happens when the runtime is down, slow or does not know a model, and how the process reacts.
                 Page09Title: Run it in production
-                Page09Desc: An API key, a volume for the versions, who loads the models, several applications on one runtime, and a checklist.
+                Page09Desc: An API key, a backup of the versions, where the versions come from, several applications on one runtime, and a checklist.
                 Page10Title: Several decisions and the Java API
                 Page10Desc: Models whose decisions build on each other, results with several values, and the rules from Java.
                 Page11Title: Frequently asked questions

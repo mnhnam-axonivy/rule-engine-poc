@@ -13,18 +13,16 @@ import com.axonivy.utils.rule.engine.RuleEngine;
 import com.axonivy.utils.rule.engine.RuleEngineConfig;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
-import com.axonivy.utils.rule.engine.api.ModelInfo;
-import com.axonivy.utils.rule.engine.api.VersionSource;
+import com.axonivy.utils.rule.engine.api.LoadedVersion;
+import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
-import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
-import com.axonivy.utils.rule.engine.deploy.ActiveVersionInputs;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
-import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
+import com.axonivy.utils.rule.engine.deploy.RuntimeLoader;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
-import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles.LoadedDmn;
 import com.axonivy.utils.rule.engine.mapping.FieldLocator;
 import com.axonivy.utils.rule.engine.mapping.ValueConverter;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.bpm.error.BpmError;
@@ -33,7 +31,8 @@ import ch.ivyteam.ivy.process.program.exec.ProgramContext;
 
 /**
  * Runs a Business Rule Task: maps process data to the inputs of the decision, lets the runtime evaluate the
- * active version of the model and writes the results back to the process data.
+ * active version of the model and writes the results back to the process data. The versions are stored in the file
+ * area of the application; a changed .dmn file of the project is stored as a new version first.
  */
 public class RuleTaskExecutor {
 
@@ -79,43 +78,16 @@ public class RuleTaskExecutor {
   private void evaluate(Selection selection, Class<?> dataClass) {
     RuleEngineConfig config = RuleEngineConfig.fromVariables();
     RuleEngineClient client = RuleEngine.client(config);
+    VersionStore store = VersionStore.current();
+    if (config.autoDeploy()) {
+      ProjectDmnFiles.find(Project.current(), selection.model()).map(ProjectDmnFiles::load)
+          .ifPresent(dmn -> ModelDeployer.ensureRegistered(client, store, selection.model(), dmn));
+    }
+    ModelVersion active = store.active(selection.model());
     String runtimeModel = config.runtimeModel(selection.model());
-    Optional<LoadedDmn> dmn = ProjectDmnFiles.find(Project.current(), selection.model()).map(ProjectDmnFiles::load);
-    boolean deploy = config.autoDeploy() && dmn.isPresent();
-
-    List<String> needed = inputNames(selection, dmn, client, runtimeModel);
-    Optional<ActiveVersionInputs.Active> active = dmn.isPresent()
-        ? ActiveVersionInputs.of(client, runtimeModel, selection.decision())
-        : Optional.empty();
-    var input = input(withInputsOfAnsweringVersion(needed, deploy, active), selection, dataClass);
-
-    if (deploy) {
-      ModelDeployer.ensureRegistered(client, runtimeModel, dmn.get());
-    }
-    EvaluateResponse response;
-    try {
-      response = client.evaluate(runtimeModel, request(selection, input));
-    } catch (RuleEngineApiException ex) {
-      if (!deploy || !ex.isModelMissing()) {
-        throw ex;
-      }
-      // the runtime lost the model, e.g. it was started with an empty volume: load it again
-      ModelDeployer.forget(client, runtimeModel);
-      ModelDeployer.register(client, runtimeModel, dmn.get());
-      response = client.evaluate(runtimeModel, request(selection, input));
-    }
-    if (dmn.isPresent() && (active.isEmpty() || response.version() != active.get().version())) {
-      // Another version answered than the one the inputs were chosen for, e.g. a rule owner activated one a moment
-      // ago, or the runtime knew no version of the model yet. Ask again; if the version that answered needs more
-      // inputs, evaluate once more with them.
-      ActiveVersionInputs.forget(client, runtimeModel);
-      var now = ActiveVersionInputs.of(client, runtimeModel, selection.decision());
-      List<String> names = withInputsOfAnsweringVersion(needed, deploy, now);
-      if (!input.keySet().containsAll(names)) {
-        input = input(names, selection, dataClass);
-        response = client.evaluate(runtimeModel, request(selection, input));
-      }
-    }
+    LoadedVersion loaded = RuntimeLoader.ensureLoaded(client, store, runtimeModel, active);
+    var input = input(inputNames(selection, loaded), selection, dataClass);
+    EvaluateResponse response = RuntimeLoader.evaluate(client, store, runtimeModel, active, request(selection, input));
     mapResults(response, selection, dataClass);
   }
 
@@ -180,49 +152,20 @@ public class RuleTaskExecutor {
   }
 
   /**
-   * The version that answers may not be the file of the project: a version that a rule owner activated in the Portal
-   * or through the API stays active, the file is only stored as a draft beside it. Such a version may need inputs the
-   * file does not have, e.g. a column the rule owner added. A version from a project is replaced by the file.
-   *
-   * @return the inputs of the file, and those of the active version if that version answers instead of the file
+   * @return the inputs the decision needs in the active version. That version may not be the file of the project: a
+   *         version that a rule owner activated in the Portal stays active, and may need other inputs.
    */
-  private static List<String> withInputsOfAnsweringVersion(List<String> fileInputs, boolean deploy,
-      Optional<ActiveVersionInputs.Active> active) {
-    if (active.isEmpty() || (deploy && active.get().source() == VersionSource.PROJECT)) {
-      return fileInputs;
-    }
-    var names = new ArrayList<>(fileInputs);
-    active.get().inputs().stream().filter(name -> !names.contains(name)).forEach(names::add);
-    return names;
-  }
-
-  /**
-   * @return the inputs the decision needs. Taken from the .dmn file of the project,
-   *         or from the runtime if the project has no such file.
-   */
-  private static List<String> inputNames(Selection selection, Optional<LoadedDmn> dmn, RuleEngineClient client,
-      String runtimeModel) {
-    if (dmn.isPresent() && dmn.get().info() != null) {
-      DmnModelInfo info = dmn.get().info();
-      if (selection.decision() == null) {
-        return info.inputNames();
-      }
-      return info.decision(selection.decision())
-          .map(DmnModelInfo.Decision::requiredInputs)
-          .orElseThrow(() -> new IllegalArgumentException("The file " + dmn.get().file().path().getFileName()
-              + " has no decision '" + selection.decision() + "'. Its decisions are: "
-              + info.decisions().stream().map(DmnModelInfo.Decision::name).toList()));
-    }
-    ModelInfo info = client.model(runtimeModel);
+  private static List<String> inputNames(Selection selection, LoadedVersion loaded) {
     if (selection.decision() == null) {
-      return info.inputs().stream().map(ModelInfo.Input::name).toList();
+      return loaded.inputs().stream().map(LoadedVersion.Input::name).toList();
     }
-    return info.decisions().stream()
+    return loaded.decisions().stream()
         .filter(decision -> decision.name().equals(selection.decision()))
         .findFirst()
-        .map(ModelInfo.Decision::requiredInputs)
-        .orElseThrow(() -> new IllegalArgumentException("The model '" + runtimeModel + "' has no decision '"
-            + selection.decision() + "'."));
+        .map(LoadedVersion.Decision::requiredInputs)
+        .orElseThrow(() -> new IllegalArgumentException("Version " + loaded.version() + " of model '"
+            + selection.model() + "' has no decision '" + selection.decision() + "'. Its decisions are: "
+            + loaded.decisions().stream().map(LoadedVersion.Decision::name).toList()));
   }
 
   private void mapResults(EvaluateResponse response, Selection selection, Class<?> dataClass) {

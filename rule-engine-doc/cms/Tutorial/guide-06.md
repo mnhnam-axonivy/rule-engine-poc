@@ -1,10 +1,10 @@
 # Change rules without deployment
 
-A rule is data, not code. When a rule changes, the decision runtime gets a new **version** of the model and uses it from the next evaluation on. Nothing is built, nothing is deployed, nothing is restarted.
+A rule is data, not code. When a rule changes, the application stores a new **version** of the model and uses it from the next evaluation on. Nothing is built, nothing is deployed, nothing is restarted.
 
 This page is the developer's side: the `.dmn` file of the project changes. How the owner of a rule changes it in the Portal is the next page, [Edit rules in the Portal].
 
-> **Walkthrough:** the button next to the title plays this page in a simulated Designer: a rule is edited and is live with the next run, the runtime keeps every version, the case knows which one decided, and a version is rolled back.
+> **Walkthrough:** the button next to the title plays this page in a simulated Designer: a rule is edited and is live with the next run, the application keeps every version, the case knows which one decided, and a version is rolled back.
 
 ---
 
@@ -16,15 +16,15 @@ During development the `.dmn` file of your project is what counts. Try it:
 2. Open `dmn/invoice-discount.dmn` and change the result of rule 6, "Silver customer", from `2` to `3`. Save the file.
 3. Click **Apply rules** again. The invoice gets 3 percent, the total is 8,924.00 instead of 9,016.00. The changed file became version 2, and the table on the page shows it.
 
-Before every evaluation the Business Rule Task compares the file with what it registered last. A changed file is sent to the runtime, becomes a new version and goes live. An unchanged file is not sent again.
+Before every evaluation the Business Rule Task compares the file with what it stored last. The runtime checks a changed file, it is stored as a new version and goes live. An unchanged file is not stored again.
 
-Content that the runtime already has never becomes a second version. If you change the 3 back to 2, the runtime recognises version 1 and makes it active again.
+Content that is stored already never becomes a second version. If you change the 3 back to 2, version 1 is recognised and active again.
 
 ---
 
-## Versions on the runtime
+## Versions of the application
 
-The runtime keeps every version of a model. Exactly one is **active** and answers the evaluations.
+The application keeps every version of a model, as files in its file area: the folder `rule-engine/invoice-discount` holds `1.dmn`, `2.dmn` and `versions.json`, which says what each version is. At most one version is **active** and answers the evaluations.
 
 | Status | Meaning |
 | --- | --- |
@@ -37,14 +37,14 @@ Every version also knows where it came from:
 
 | Source | Meaning |
 | --- | --- |
-| project | Registered from the `.dmn` file of an Ivy project. |
-| portal | Changed by a rule owner, in the Portal or in the editor page of the runtime. |
-| api | Loaded by any other client of the REST API. |
+| project | Stored from the `.dmn` file of an Ivy project. |
+| portal | Changed by a rule owner in the Portal, or stored with `RuleEngine.register`. |
+| api | Stored by other code. |
 
-List the versions of a model:
+List the versions of a model in the Portal with **Show versions**, or in Java:
 
-```bash
-curl http://localhost:8090/api/models/invoice-discount/versions
+```java
+List<ModelVersion> versions = RuleEngine.versions("invoice-discount");   // newest first
 ```
 
 ---
@@ -63,22 +63,21 @@ ivy.case.customFields().stringField("ruleVersion_invoice-discount").getOrNull()
 
 ## Roll back
 
-A rule that turns out to be wrong is taken back in one call. The version that was active before becomes active again:
+A rule that turns out to be wrong is taken back in one call, in the Portal with **Roll back**, or in Java. The version that was active before becomes active again:
 
-```bash
-curl -X POST http://localhost:8090/api/models/invoice-discount/rollback
+```java
+RuleEngine.rollback("invoice-discount", "rule.approver");
 ```
 
 A second rollback goes one step further back. Any version can also be activated directly:
 
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"user":"rule.approver"}' \
-     http://localhost:8090/api/models/invoice-discount/versions/1/activate
+```java
+RuleEngine.activate("invoice-discount", 1, "rule.approver");
 ```
 
 The change is live at once. Evaluations that are running at that moment finish with the version they started with.
 
-> **A rollback changes the runtime, not your project.** The `.dmn` file in the project still contains the rules you rolled back from. The running engine does not send an unchanged file again, so the rollback holds. After a restart of the engine or a new deployment the project registers its file again, and because the active version came from a project too, the file wins and its rules are live again. So after a rollback, also correct the file in the project.
+> **A rollback changes the versions, not your project.** The `.dmn` file in the project still contains the rules you rolled back from. The running engine does not store an unchanged file again, so the rollback holds. After a restart of the engine or a new deployment the project stores its file again, and because the active version came from a project too, the file wins and its rules are live again. So after a rollback, also correct the file in the project.
 
 ---
 

@@ -17,10 +17,8 @@ import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.axonivy.utils.rule.engine.RuleEngine;
-import com.axonivy.utils.rule.engine.RuleEngineConfig;
-import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
@@ -84,7 +82,7 @@ public final class DiscountTable {
 
   private DiscountTable() {}
 
-  /** @param version a version of the model on the runtime, e.g. the one that decided; null for the project file */
+  /** @param version a stored version of the model, e.g. the one that decided; null for the project file */
   public static Table of(Integer version) {
     return read(dmn(version));
   }
@@ -155,13 +153,12 @@ public final class DiscountTable {
     return children;
   }
 
-  /** @return the content of a version on the runtime, or of the project file if there is no version to read */
+  /** @return the content of a stored version, or of the project file if there is no version to read */
   private static String dmn(Integer version) {
     if (version != null) {
       try {
-        var config = RuleEngineConfig.fromVariables();
-        return RuleEngine.client(config).content(config.runtimeModel(MODEL), version);
-      } catch (RuleEngineException | IllegalStateException ex) {
+        return VersionStore.current().content(MODEL, version);
+      } catch (RuntimeException ex) {
         Ivy.log().info("Rule engine demo: version " + version + " of " + MODEL + " cannot be read, showing the project file. "
             + ex.getMessage());
       }

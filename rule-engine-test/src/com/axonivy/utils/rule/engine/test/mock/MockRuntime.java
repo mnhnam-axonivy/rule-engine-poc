@@ -1,11 +1,14 @@
 package com.axonivy.utils.rule.engine.test.mock;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
+
+import com.axonivy.utils.rule.engine.api.LoadedVersion;
+import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
+import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 
 import ch.ivyteam.ivy.environment.Ivy;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -14,10 +17,10 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
@@ -27,8 +30,8 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * A stand-in for the decision runtime that tests can program. It speaks the API of the runtime
- * and records every request, so tests can check what the connector sends.
+ * Like the runtime, it holds the loaded versions in memory only and answers MODEL_NOT_FOUND or VERSION_NOT_FOUND for
+ * a version it was not given.
  */
 @Path(MockRuntime.PATH)
 @PermitAll // the connector calls without an Ivy session
@@ -43,14 +46,8 @@ public class MockRuntime {
   public record Call(String operation, String model, JsonNode body, String apiKey) {}
 
   private static final List<Call> CALLS = new CopyOnWriteArrayList<>();
-  private static final Map<String, String> MODELS = new ConcurrentHashMap<>();
-  private static final Map<String, String> VERSIONS = new ConcurrentHashMap<>();
-  private static final Map<String, String> CONTENTS = new ConcurrentHashMap<>();
-  private static final Map<String, String> SOURCES = new ConcurrentHashMap<>();
+  private static final Map<String, String> LOADED = new ConcurrentHashMap<>();
   private static volatile Function<Call, Response> evaluate;
-  private static volatile Function<Call, Response> register;
-  private static volatile Function<Call, Response> activate;
-  private static volatile Function<Call, Response> rollback;
   private static volatile Function<Call, Response> validate;
   private static volatile String editorScript;
 
@@ -61,51 +58,18 @@ public class MockRuntime {
 
   public static void reset() {
     CALLS.clear();
-    MODELS.clear();
-    VERSIONS.clear();
-    CONTENTS.clear();
-    SOURCES.clear();
+    LOADED.clear();
     editorScript = null;
-    evaluate = call -> error(404, "MODEL_NOT_FOUND", "Model '" + call.model() + "' is not loaded.");
-    register = call -> json(201, "{\"model\":\"" + call.model()
-        + "\",\"version\":1,\"status\":\"ACTIVE\",\"source\":\"PROJECT\",\"created\":true}");
-    activate = call -> json(200, "{\"model\":\"" + call.model() + "\",\"version\":" + call.body().get("version")
-        + ",\"status\":\"ACTIVE\",\"source\":\"PORTAL\",\"activatedBy\":" + call.body().get("user") + "}");
-    rollback = call -> error(409, "INVALID_STATE", "Model '" + call.model() + "' has no version to roll back to.");
+    evaluate = call -> results(call.body().get("version").asInt(), "{}");
     validate = call -> json(200, "{\"valid\":true,\"messages\":[]}");
   }
 
-  /** Describes a model the way the runtime does: its decisions and the inputs they need. */
-  public static void model(String name, String decision, String... inputs) {
-    var inputNames = new ArrayList<String>();
-    var inputList = new ArrayList<String>();
-    for (String input : inputs) {
-      inputNames.add("\"" + input + "\"");
-      inputList.add("{\"name\":\"" + input + "\",\"type\":\"Any\",\"collection\":false}");
-    }
-    MODELS.put(name, "{\"name\":\"" + name + "\",\"activeVersion\":1,\"latestVersion\":1,\"versionCount\":1,"
-        + "\"decisions\":[{\"name\":\"" + decision + "\",\"requiredInputs\":[" + String.join(",", inputNames)
-        + "]}],\"inputs\":[" + String.join(",", inputList) + "]}");
+  public static void restart() {
+    LOADED.clear();
   }
 
-  /** Which version of a model is active: 1 unless said otherwise. */
-  public static void activeVersion(String model, int version) {
-    MODELS.computeIfPresent(model, (name, json) -> json.replaceFirst("\"activeVersion\":\\d+","\"activeVersion\":" + version));
-  }
-
-  /** Where the active version of a model came from: PROJECT (the default), PORTAL or API. */
-  public static void activeSource(String model, String source) {
-    SOURCES.put(model, source);
-  }
-
-  /** The versions of a model, as the runtime lists them: a JSON array. */
-  public static void versions(String model, String versionsJson) {
-    VERSIONS.put(model, versionsJson);
-  }
-
-  /** The DMN file of a version. */
-  public static void content(String model, int version, String dmn) {
-    CONTENTS.put(model + ":" + version, dmn);
+  public static String loaded(String model, int version) {
+    return LOADED.get(key(model, version));
   }
 
   /** The script of the DMN editor that the runtime serves at /editor/lib/dmn-editor.js; null = none. */
@@ -117,25 +81,13 @@ public class MockRuntime {
     evaluate = handler;
   }
 
-  public static void onRegister(Function<Call, Response> handler) {
-    register = handler;
-  }
-
-  public static void onActivate(Function<Call, Response> handler) {
-    activate = handler;
-  }
-
-  public static void onRollback(Function<Call, Response> handler) {
-    rollback = handler;
-  }
-
   public static void onValidate(Function<Call, Response> handler) {
     validate = handler;
   }
 
   /** An error answer of the runtime with findings of the DMN engine. */
   public static Response error(int status, String code, String message, String... findings) {
-    var details = new ArrayList<String>();
+    var details = new java.util.ArrayList<String>();
     for (String finding : findings) {
       details.add("{\"severity\":\"ERROR\",\"message\":\"" + finding.replace("\"", "'") + "\"}");
     }
@@ -153,10 +105,6 @@ public class MockRuntime {
 
   public static Response json(int status, String json) {
     return Response.status(status).type(MediaType.APPLICATION_JSON).entity(json).build();
-  }
-
-  public static Response error(int status, String code, String message) {
-    return json(status, "{\"code\":\"" + code + "\",\"message\":\"" + message.replace("\"", "'") + "\"}");
   }
 
   /** An evaluation answer of the runtime with the given results as JSON object. */
@@ -184,85 +132,39 @@ public class MockRuntime {
   @GET
   @Path("api/models")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response models(@Context HttpHeaders headers) {
-    CALLS.add(new Call("models", null, null, headers.getHeaderString("X-API-Key")));
-    return json(200, "[" + String.join(",", MODELS.values()) + "]");
+  public Response loaded(@Context HttpHeaders headers) {
+    CALLS.add(new Call("loaded", null, null, headers.getHeaderString("X-API-Key")));
+    var loaded = LOADED.entrySet().stream()
+        .map(entry -> describe(entry.getKey().split("#")[0], Integer.parseInt(entry.getKey().split("#")[1]),
+            entry.getValue()))
+        .toList();
+    return json(200, MAPPER.writeValueAsString(loaded));
   }
 
-  @GET
-  @Path("api/models/{model}/versions")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response versions(@PathParam("model") String model, @Context HttpHeaders headers) {
-    CALLS.add(new Call("versions", model, null, headers.getHeaderString("X-API-Key")));
-    String versions = VERSIONS.get(model);
-    return versions == null
-        ? error(404, "MODEL_NOT_FOUND", "Model '" + model + "' is not loaded.")
-        : json(200, versions);
-  }
-
-  @GET
+  @PUT
   @Path("api/models/{model}/versions/{version}")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response version(@PathParam("model") String model, @PathParam("version") int version,
-      @Context HttpHeaders headers) {
-    CALLS.add(new Call("version", model, null, headers.getHeaderString("X-API-Key")));
-    if (!MODELS.containsKey(model)) {
-      return error(404, "MODEL_NOT_FOUND", "Model '" + model + "' is not loaded.");
-    }
-    return json(200, "{\"model\":\"" + model + "\",\"version\":" + version + ",\"status\":\"ACTIVE\",\"source\":\""
-        + SOURCES.getOrDefault(model, "PROJECT") + "\"}");
-  }
-
-  @GET
-  @Path("api/models/{model}/versions/{version}/content")
-  @Produces(MediaType.APPLICATION_XML)
-  public Response content(@PathParam("model") String model, @PathParam("version") int version,
-      @Context HttpHeaders headers) {
-    CALLS.add(new Call("content", model, null, headers.getHeaderString("X-API-Key")));
-    String dmn = CONTENTS.get(model + ":" + version);
-    return dmn == null
-        ? error(404, "VERSION_NOT_FOUND", "Version " + version + " of '" + model + "' does not exist.")
-        : Response.ok(dmn, MediaType.APPLICATION_XML).build();
-  }
-
-  @POST
-  @Path("api/models/{model}/versions/{version}/activate")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response activate(@PathParam("model") String model, @PathParam("version") int version, String body,
+  public Response load(@PathParam("model") String model, @PathParam("version") int version, String body,
       @Context HttpHeaders headers) {
-    var request = (ObjectNode) parse(body == null || body.isBlank() ? "{}" : body);
+    var request = (ObjectNode) parse(body);
     request.put("version", version);
-    var call = new Call("activate", model, request, headers.getHeaderString("X-API-Key"));
-    CALLS.add(call);
-    return activate.apply(call);
-  }
-
-  @POST
-  @Path("api/models/{model}/versions/{version}/approve")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response approve(@PathParam("model") String model, @PathParam("version") int version,
-      @Context HttpHeaders headers) {
-    CALLS.add(new Call("approve", model, MAPPER.createObjectNode().put("version", version),
-        headers.getHeaderString("X-API-Key")));
-    return json(200, "{\"model\":\"" + model + "\",\"version\":" + version + ",\"status\":\"APPROVED\"}");
-  }
-
-  @POST
-  @Path("api/models/{model}/versions/{version}/retire")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response retire(@PathParam("model") String model, @PathParam("version") int version,
-      @Context HttpHeaders headers) {
-    CALLS.add(new Call("retire", model, MAPPER.createObjectNode().put("version", version),
-        headers.getHeaderString("X-API-Key")));
-    return json(200, "{\"model\":\"" + model + "\",\"version\":" + version + ",\"status\":\"RETIRED\"}");
+    CALLS.add(new Call("load", model, request, headers.getHeaderString("X-API-Key")));
+    String content = request.get("content").asString();
+    try {
+      var loaded = describe(model, version, content);
+      LOADED.put(key(model, version), content);
+      return json(200, MAPPER.writeValueAsString(loaded));
+    } catch (IllegalArgumentException ex) {
+      return error(400, "INVALID_MODEL", "The DMN model is invalid: " + ex.getMessage());
+    }
   }
 
   @DELETE
   @Path("api/models/{model}")
-  public Response delete(@PathParam("model") String model, @Context HttpHeaders headers) {
-    CALLS.add(new Call("delete", model, null, headers.getHeaderString("X-API-Key")));
-    MODELS.remove(model);
+  public Response unload(@PathParam("model") String model, @Context HttpHeaders headers) {
+    CALLS.add(new Call("unload", model, null, headers.getHeaderString("X-API-Key")));
+    LOADED.keySet().removeIf(key -> key.startsWith(model + "#"));
     return Response.noContent().build();
   }
 
@@ -270,23 +172,19 @@ public class MockRuntime {
   @Path("api/models/{model}/versions/{version}/evaluate")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response evaluateVersion(@PathParam("model") String model, @PathParam("version") int version, String body,
+  public Response evaluate(@PathParam("model") String model, @PathParam("version") int version, String body,
       @Context HttpHeaders headers) {
     var request = (ObjectNode) parse(body);
     request.put("version", version);
-    var call = new Call("evaluateVersion", model, request, headers.getHeaderString("X-API-Key"));
+    var call = new Call("evaluate", model, request, headers.getHeaderString("X-API-Key"));
     CALLS.add(call);
+    if (!LOADED.containsKey(key(model, version))) {
+      boolean modelKnown = LOADED.keySet().stream().anyMatch(key -> key.startsWith(model + "#"));
+      return modelKnown
+          ? error(404, "VERSION_NOT_FOUND", "Version " + version + " of model '" + model + "' is not loaded.")
+          : error(404, "MODEL_NOT_FOUND", "Model '" + model + "' is not loaded.");
+    }
     return evaluate.apply(call);
-  }
-
-  @POST
-  @Path("api/models/{model}/rollback")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response rollback(@PathParam("model") String model, @QueryParam("user") String user,
-      @Context HttpHeaders headers) {
-    var call = new Call("rollback", model, MAPPER.createObjectNode().put("user", user), headers.getHeaderString("X-API-Key"));
-    CALLS.add(call);
-    return rollback.apply(call);
   }
 
   @POST
@@ -299,35 +197,20 @@ public class MockRuntime {
     return validate.apply(call);
   }
 
-  @GET
-  @Path("api/models/{model}")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response model(@PathParam("model") String model, @Context HttpHeaders headers) {
-    CALLS.add(new Call("model", model, null, headers.getHeaderString("X-API-Key")));
-    String description = MODELS.get(model);
-    return description == null
-        ? error(404, "MODEL_NOT_FOUND", "Model '" + model + "' is not loaded.")
-        : json(200, description);
+  private static LoadedVersion describe(String model, int version, String content) {
+    var info = DmnModelInfo.parse(content);
+    var decisions = info.decisions().stream()
+        .map(decision -> new LoadedVersion.Decision(decision.name(), decision.typeRef(), decision.requiredInputs()))
+        .toList();
+    var inputs = info.inputs().stream()
+        .map(input -> new LoadedVersion.Input(input.name(), input.typeRef(), false))
+        .toList();
+    return new LoadedVersion(model, version, ProjectDmnFiles.hash(content), info.name(), info.namespace(), decisions,
+        inputs);
   }
 
-  @POST
-  @Path("api/models/{model}/evaluate")
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response evaluate(@PathParam("model") String model, String body, @Context HttpHeaders headers) {
-    var call = new Call("evaluate", model, parse(body), headers.getHeaderString("X-API-Key"));
-    CALLS.add(call);
-    return evaluate.apply(call);
-  }
-
-  @POST
-  @Path("api/models/{model}/versions")
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response register(@PathParam("model") String model, String body, @Context HttpHeaders headers) {
-    var call = new Call("register", model, parse(body), headers.getHeaderString("X-API-Key"));
-    CALLS.add(call);
-    return register.apply(call);
+  private static String key(String model, int version) {
+    return model + "#" + version;
   }
 
   private static JsonNode parse(String json) {

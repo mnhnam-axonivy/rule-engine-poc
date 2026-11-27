@@ -8,9 +8,11 @@
  *   - inputs             → the inputs the decision needs are read from the process data fields
  *                          with their names. An input without a field fails the step before
  *                          anything is sent
- *   - registration       → the .dmn file of the project is registered on the runtime when its
- *                          content is new (RuleEngine.AutoDeploy); the runtime decides whether
- *                          the version goes live
+ *   - registration       → the .dmn file of the project is stored as a version of the application
+ *                          when its content is new (RuleEngine.AutoDeploy), after the runtime checked
+ *                          it; the store decides whether the version goes live
+ *   - the version        → the active version answers: its decision says which inputs are sent.
+ *                          No version: rule:engine:dmn with MODEL_NOT_FOUND or NO_ACTIVE_VERSION
  *   - the call           → runtime not reachable, a timeout and an error answer of the runtime
  *                          throw the BPMN errors rule:engine:unreachable, rule:engine:timeout
  *                          and rule:engine:dmn
@@ -466,34 +468,32 @@ export class ProcessRunner {
     const runtime = this.runtime();
     const runtimeModel = settings.prefix + model;
     const dmn = this.project.find(model); // the file of the project, as it is saved now
-    Object.assign(call, { model, runtimeModel, decision, url: settings.url + '/api/models/' + runtimeModel + '/evaluate' });
+    Object.assign(call, { model, runtimeModel, decision });
 
-    // 3 — inputs: the process data fields with their names
-    let names;
-    if (dmn) {
-      names = requiredInputs(dmn, decision);
-      if (names === null) {
-        await fail(RULE_ERRORS.MAPPING, 'The file ' + dmn.file.split('/').pop() + " has no decision '" + decision + "'. Its decisions are: [" + dmn.decisions.map(d => d.name).join(', ') + ']');
-      }
-      // A version that a rule owner activated in the Portal answers instead of the file (the file is only stored as a
-      // draft beside it), and it may need inputs that the file does not have. A version from a project is replaced.
-      const active = this.#unreachable(settings, runtime) ? null : runtime.active(runtimeModel);
-      if (active && (!settings.autoDeploy || active.source !== 'PROJECT')) {
-        names = names.slice();
-        (requiredInputs(active.dmn, decision) || []).forEach(name => { if (!names.includes(name)) names.push(name); });
-      }
-    } else {
-      // no such file in the project: ask the runtime what the model needs
-      const reachable = this.#unreachable(settings, runtime);
-      if (reachable) {
+    // 3 — the version that answers: a new or changed file of the project is stored first, the runtime checks it
+    // (ModelDeployer); then the active version decides which inputs are needed, also a version from the Portal
+    let registered = null;
+    if (settings.autoDeploy && dmn && this.#isNew(runtime, runtimeModel, dmn)) {
+      const down = this.#unreachable(settings, runtime);
+      if (down) {
         await tell('request', {});
         await tell('thinking', { failing: true });
-        await fail(reachable.errorCode, reachable.message, { category: 'REST_CLIENT' });
+        await fail(down.errorCode, down.message, { category: 'REST_CLIENT' });
       }
-      const active = runtime.active(runtimeModel);
-      if (!active) await fail(RULE_ERRORS.DMN, "Model '" + runtimeModel + "' is not loaded.", { runtimeCode: 'MODEL_NOT_FOUND', category: 'REST_CLIENT' });
-      names = requiredInputs(active.dmn, decision);
-      if (names === null) await fail(RULE_ERRORS.MAPPING, "The model '" + runtimeModel + "' has no decision '" + decision + "'.");
+      registered = this.#register(run, element, call, runtime, runtimeModel, dmn);
+    }
+    const active = runtime.active(runtimeModel);
+    if (!active) {
+      const missing = runtime.versions(runtimeModel).length
+        ? { code: 'NO_ACTIVE_VERSION', message: "Model '" + model + "' has no active version. Activate one of its versions first." }
+        : { code: 'MODEL_NOT_FOUND', message: "There is no model '" + model + "'." };
+      await fail(RULE_ERRORS.DMN, missing.message, { runtimeCode: missing.code });
+    }
+    call.url = settings.url + '/api/models/' + runtimeModel + '/versions/' + active.version + '/evaluate';
+    const names = requiredInputs(active.dmn, decision);
+    if (names === null) {
+      await fail(RULE_ERRORS.MAPPING, 'Version ' + active.version + " of model '" + model + "' has no decision '" + decision +
+        "'. Its decisions are: [" + active.dmn.decisions.map(d => d.name).join(', ') + ']');
     }
     const input = {};
     const unmapped = [];
@@ -510,14 +510,14 @@ export class ProcessRunner {
     }
     call.input = input;
     await tell('request', {});
+    if (registered) await tell('registered', registered);
 
-    // 4 — the round trip to the runtime
+    // 4 — the round trip to the runtime; it gets the version into its memory first, if it does not hold it
     const down = this.#unreachable(settings, runtime);
     if (down) {
       await tell('thinking', { failing: true });
       await fail(down.errorCode, down.message, { category: 'REST_CLIENT' });
     }
-    if (settings.autoDeploy && dmn) await this.#register(run, element, call, runtime, runtimeModel, dmn, tell);
     await tell('thinking', {});
     let response;
     try {
@@ -584,21 +584,24 @@ export class ProcessRunner {
     return null;
   }
 
-  /** ModelDeployer.ensureRegistered: the file is registered, unless exactly this content already was. */
-  async #register(run, element, call, runtime, runtimeModel, dmn, tell) {
-    const hash = JSON.stringify(dmn);
-    if (this.registered.get(runtimeModel) === hash && runtime.versions(runtimeModel).length) return;
+  /** ModelDeployer.ensureRegistered: the file is stored, unless exactly this content already was. */
+  #isNew(runtime, runtimeModel, dmn) {
+    return this.registered.get(runtimeModel) !== JSON.stringify(dmn) || !runtime.versions(runtimeModel).length;
+  }
+
+  /** @returns what the run tells about the stored file, or null if there is nothing to tell */
+  #register(run, element, call, runtime, runtimeModel, dmn) {
     const { entry, created } = runtime.register(runtimeModel, dmn, { source: 'PROJECT', author: this.model.project });
-    this.registered.set(runtimeModel, hash);
+    this.registered.set(runtimeModel, JSON.stringify(dmn));
     call.registered = { version: entry.version, status: entry.status, created };
     if (created) {
-      this.#log(run, 'info', element, 'Rule engine: registered ' + dmn.file.split('/').pop() + ' as version ' + entry.version + " of model '" + runtimeModel + "' (" + entry.status + ')');
+      this.#log(run, 'info', element, 'Rule engine: stored version ' + entry.version + " of model '" + call.model + "' (source PROJECT, " + entry.status + ')');
     }
     if (entry.status !== 'ACTIVE') {
-      this.#log(run, 'info', element, 'Rule engine: version ' + entry.version + " of model '" + runtimeModel + "' from project " + this.model.project +
-        ' is not active (' + entry.status + '). A newer version was activated on the runtime, it stays the source of truth.');
+      this.#log(run, 'info', element, 'Rule engine: version ' + entry.version + " of model '" + call.model + "' from project " + this.model.project +
+        ' is not active (' + entry.status + '). A newer version was activated, it stays the source of truth.');
     }
-    if (created || entry.status !== 'ACTIVE') await tell('registered', { version: entry.version, status: entry.status, created });
+    return created || entry.status !== 'ACTIVE' ? { version: entry.version, status: entry.status, created } : null;
   }
 
   /**

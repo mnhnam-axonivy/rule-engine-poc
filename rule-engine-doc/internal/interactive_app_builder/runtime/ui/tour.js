@@ -68,9 +68,9 @@
  *   'log:last'                     the newest line of the Runtime Log
  *   'data:member'                  a field in the Process data view
  *   'side'                         the readout next to variables.yaml
- *   'arch:connector'               a block of the tab "Architecture": ivy, demo, connector, core,
- *                                  container, api, editor, engine, db, shared, browser, volume;
- *                                  or the label of a link: http, code, ui, store. The camera
+ *   'arch:connector'               a block of the tab "Architecture": ivy, portal, demo, connector,
+ *                                  files, container, api, editor, engine, memory, browser;
+ *                                  or the label of a link: http, ui, callable. The camera
  *                                  of the diagram zooms to it and what is lit, on one side
  *                                  of the tab, and the note stands on the other side
  *   (none)                         the note docks in the bottom left corner of the canvas

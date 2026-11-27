@@ -9,38 +9,60 @@ import com.axonivy.utils.rule.engine.runtime.dmn.DmnEvaluator.Evaluation;
 import com.axonivy.utils.rule.engine.runtime.service.RuleEngineException.Code;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class DecisionService {
 
-  @Inject
-  ModelRegistry registry;
+  private static final String DECISION_NOT_FOUND =
+      "Model '%s' version %d has no decision '%s'. Available decisions: %s";
+  private static final String EVALUATION_FAILED = "Evaluation of model '%s' version %d failed: %s";
+  private static final String UNKNOWN_ERROR = "unknown error";
 
-  @Inject
-  DmnEvaluator evaluator;
+  private final ModelRegistry registry;
+  private final DmnEvaluator evaluator;
+
+  public DecisionService(ModelRegistry registry, DmnEvaluator evaluator) {
+    this.registry = registry;
+    this.evaluator = evaluator;
+  }
 
   public record EvaluationOutcome(CompiledModel model, String decision, Evaluation evaluation) {}
 
-  /** @param decision null evaluates all decisions of the model */
   public EvaluationOutcome evaluate(String model, int version, String decision, Map<String, Object> input) {
     var compiled = registry.get(model, version);
-    var name = decision == null || decision.isBlank() ? null : decision.trim();
-    if (name != null && !compiled.hasDecision(name)) {
-      var known = compiled.decisions().stream().map(LoadedVersion.Decision::name).toList();
-      throw new RuleEngineException(Code.DECISION_NOT_FOUND, "Model '" + compiled.model() + "' version "
-          + compiled.version() + " has no decision '" + name + "'. Available decisions: " + known);
-    }
+    var name = decisionName(decision);
+    requireDecision(compiled, name);
     var evaluation = evaluator.evaluate(compiled, name, input);
-    if (evaluation.hasErrors()) {
-      var first = evaluation.messages().stream()
-          .filter(message -> message.isError())
-          .map(message -> message.message())
-          .findFirst()
-          .orElse("unknown error");
-      throw new RuleEngineException(Code.EVALUATION_FAILED, "Evaluation of model '" + compiled.model()
-          + "' version " + compiled.version() + " failed: " + first, evaluation.messages());
-    }
+    requireNoErrors(compiled, evaluation);
     return new EvaluationOutcome(compiled, name, evaluation);
+  }
+
+  private static String decisionName(String decision) {
+    return decision == null || decision.isBlank() ? null : decision.trim();
+  }
+
+  private static void requireDecision(CompiledModel compiled, String name) {
+    if (name == null || compiled.hasDecision(name)) {
+      return;
+    }
+    var known = compiled.decisions().stream().map(LoadedVersion.Decision::name).toList();
+    throw new RuleEngineException(Code.DECISION_NOT_FOUND,
+        DECISION_NOT_FOUND.formatted(compiled.model(), compiled.version(), name, known));
+  }
+
+  private static void requireNoErrors(CompiledModel compiled, Evaluation evaluation) {
+    if (!evaluation.hasErrors()) {
+      return;
+    }
+    var message = EVALUATION_FAILED.formatted(compiled.model(), compiled.version(), firstError(evaluation));
+    throw new RuleEngineException(Code.EVALUATION_FAILED, message, evaluation.messages());
+  }
+
+  private static String firstError(Evaluation evaluation) {
+    return evaluation.messages().stream()
+        .filter(message -> message.isError())
+        .map(message -> message.message())
+        .findFirst()
+        .orElse(UNKNOWN_ERROR);
   }
 }

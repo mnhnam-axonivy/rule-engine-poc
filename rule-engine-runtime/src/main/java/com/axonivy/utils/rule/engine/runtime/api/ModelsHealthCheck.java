@@ -7,7 +7,6 @@ import org.eclipse.microprofile.health.Readiness;
 import com.axonivy.utils.rule.engine.runtime.service.ModelRegistry;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 /**
  * Ready from the start: the runtime holds no data, the Ivy application loads the versions it needs.
@@ -16,8 +15,11 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class ModelsHealthCheck implements HealthCheck {
 
-  @Inject
-  ModelRegistry registry;
+  private final ModelRegistry registry;
+
+  ModelsHealthCheck(ModelRegistry registry) {
+    this.registry = registry;
+  }
 
   @Override
   public HealthCheckResponse call() {

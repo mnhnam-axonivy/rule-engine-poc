@@ -8,6 +8,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -17,7 +18,6 @@ import com.axonivy.utils.rule.engine.runtime.dmn.CompiledModel;
 import com.axonivy.utils.rule.engine.runtime.dmn.DmnCompiler;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 /**
  * Memory only: the Ivy application loads a version again whenever the runtime does not have it, after a restart or
@@ -29,11 +29,13 @@ public class ModelRegistry {
   private static final Logger LOG = Logger.getLogger(ModelRegistry.class);
   private static final Pattern MODEL_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,199}");
 
-  @Inject
-  DmnCompiler compiler;
+  private static final String INVALID_NAME =
+      "Invalid model name '%s'. Use letters, digits, '.', '_' and '-' (max. 200 characters).";
+  private static final String INVALID_VERSION = "Invalid version %d. Versions start at 1.";
+  private static final String NO_CONTENT = "The request needs the DMN file.";
 
-  @ConfigProperty(name = "rule.engine.model-cache-size", defaultValue = "100")
-  int cacheSize;
+  private final DmnCompiler compiler;
+  private final int cacheSize;
 
   public record Loaded(CompiledModel model, String contentHash) {}
 
@@ -42,38 +44,21 @@ public class ModelRegistry {
   /** In the order of use: the first one is the least recently used. */
   private final Map<Key, Loaded> versions = new LinkedHashMap<>(16, 0.75f, true);
 
+  ModelRegistry(DmnCompiler compiler,
+      @ConfigProperty(name = "rule.engine.model-cache-size", defaultValue = "100") int cacheSize) {
+    this.compiler = compiler;
+    this.cacheSize = cacheSize;
+  }
+
   /**
    * Compiles the content and holds it as this version of the model. The same content is not compiled again.
    * @throws com.axonivy.utils.rule.engine.runtime.dmn.InvalidModelException if the content is not a valid DMN model
    */
   public Loaded load(String model, int version, String content) {
-    requireValidName(model);
-    if (version < 1) {
-      throw RuleEngineException.invalidRequest("Invalid version " + version + ". Versions start at 1.");
-    }
-    if (content == null || content.isBlank()) {
-      throw RuleEngineException.invalidRequest("The request needs the DMN file.");
-    }
+    requireValidRequest(model, version, content);
     var key = new Key(model, version);
-    String hash = sha256(content);
-    synchronized (versions) {
-      var current = versions.get(key);
-      if (current != null && current.contentHash().equals(hash)) {
-        return current;
-      }
-    }
-    var loaded = new Loaded(compiler.validateAndCompile(model, version, content), hash);
-    synchronized (versions) {
-      versions.put(key, loaded);
-      var eldest = versions.keySet().iterator();
-      while (versions.size() > Math.max(1, cacheSize) && eldest.hasNext()) {
-        var evicted = eldest.next();
-        eldest.remove();
-        LOG.infof("Version %d of model '%s' made room for another one", evicted.version(), evicted.model());
-      }
-    }
-    LOG.infof("Loaded version %d of model '%s'", version, model);
-    return loaded;
+    var hash = sha256(content);
+    return heldWith(key, hash).orElseGet(() -> compileAndHold(key, content, hash));
   }
 
   /**
@@ -83,11 +68,10 @@ public class ModelRegistry {
   public CompiledModel get(String model, int version) {
     synchronized (versions) {
       var loaded = versions.get(new Key(model, version));
-      if (loaded != null) {
-        return loaded.model();
+      if (loaded == null) {
+        throw notLoaded(model, version);
       }
-      boolean modelKnown = versions.keySet().stream().anyMatch(key -> key.model().equals(model));
-      throw modelKnown ? RuleEngineException.versionNotFound(model, version) : RuleEngineException.modelNotFound(model);
+      return loaded.model();
     }
   }
 
@@ -112,10 +96,47 @@ public class ModelRegistry {
     }
   }
 
-  private static void requireValidName(String model) {
+  private Optional<Loaded> heldWith(Key key, String hash) {
+    synchronized (versions) {
+      return Optional.ofNullable(versions.get(key)).filter(loaded -> loaded.contentHash().equals(hash));
+    }
+  }
+
+  private Loaded compileAndHold(Key key, String content, String hash) {
+    var loaded = new Loaded(compiler.validateAndCompile(key.model(), key.version(), content), hash);
+    synchronized (versions) {
+      versions.put(key, loaded);
+      evictLeastRecentlyUsed();
+    }
+    LOG.infof("Loaded version %d of model '%s'", key.version(), key.model());
+    return loaded;
+  }
+
+  /** Called under the lock of versions. */
+  private void evictLeastRecentlyUsed() {
+    var eldest = versions.keySet().iterator();
+    while (versions.size() > Math.max(1, cacheSize) && eldest.hasNext()) {
+      var evicted = eldest.next();
+      eldest.remove();
+      LOG.infof("Version %d of model '%s' made room for another one", evicted.version(), evicted.model());
+    }
+  }
+
+  /** Called under the lock of versions. */
+  private RuleEngineException notLoaded(String model, int version) {
+    boolean modelKnown = versions.keySet().stream().anyMatch(key -> key.model().equals(model));
+    return modelKnown ? RuleEngineException.versionNotFound(model, version) : RuleEngineException.modelNotFound(model);
+  }
+
+  private static void requireValidRequest(String model, int version, String content) {
     if (model == null || !MODEL_NAME.matcher(model).matches()) {
-      throw RuleEngineException.invalidRequest("Invalid model name '" + model
-          + "'. Use letters, digits, '.', '_' and '-' (max. 200 characters).");
+      throw RuleEngineException.invalidRequest(INVALID_NAME.formatted(model));
+    }
+    if (version < 1) {
+      throw RuleEngineException.invalidRequest(INVALID_VERSION.formatted(version));
+    }
+    if (content == null || content.isBlank()) {
+      throw RuleEngineException.invalidRequest(NO_CONTENT);
     }
   }
 

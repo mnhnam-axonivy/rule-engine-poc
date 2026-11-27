@@ -42,9 +42,6 @@ class ModelRegistryTest {
   }
 
   private static ModelRegistry registry(int cacheSize) {
-    var registry = new ModelRegistry();
-    registry.compiler = new DmnCompiler();
-    registry.cacheSize = cacheSize;
-    return registry;
+    return new ModelRegistry(new DmnCompiler(), cacheSize);
   }
 }

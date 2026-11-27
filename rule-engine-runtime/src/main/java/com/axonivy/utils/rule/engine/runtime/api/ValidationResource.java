@@ -8,7 +8,6 @@ import com.axonivy.utils.rule.engine.runtime.api.model.ValidateRequest;
 import com.axonivy.utils.rule.engine.runtime.api.model.ValidationResult;
 import com.axonivy.utils.rule.engine.runtime.dmn.DmnCompiler;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -20,8 +19,11 @@ import jakarta.ws.rs.core.MediaType;
 @Tag(name = "Validation", description = "Check a DMN file without storing it.")
 public class ValidationResource {
 
-  @Inject
-  DmnCompiler compiler;
+  private final DmnCompiler compiler;
+
+  ValidationResource(DmnCompiler compiler) {
+    this.compiler = compiler;
+  }
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)

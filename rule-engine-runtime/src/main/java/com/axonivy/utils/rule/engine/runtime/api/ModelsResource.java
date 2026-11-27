@@ -14,7 +14,6 @@ import com.axonivy.utils.rule.engine.runtime.service.DecisionService;
 import com.axonivy.utils.rule.engine.runtime.service.DecisionService.EvaluationOutcome;
 import com.axonivy.utils.rule.engine.runtime.service.ModelRegistry;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -33,11 +32,13 @@ import jakarta.ws.rs.core.Response;
     + "does not have it.")
 public class ModelsResource {
 
-  @Inject
-  ModelRegistry registry;
+  private final ModelRegistry registry;
+  private final DecisionService decisions;
 
-  @Inject
-  DecisionService decisions;
+  ModelsResource(ModelRegistry registry, DecisionService decisions) {
+    this.registry = registry;
+    this.decisions = decisions;
+  }
 
   @GET
   @Operation(summary = "Lists the versions in memory.")

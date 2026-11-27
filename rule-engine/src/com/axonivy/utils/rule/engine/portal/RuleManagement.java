@@ -38,8 +38,8 @@ import ch.ivyteam.ivy.environment.Ivy;
  * context, the way it finds Smart Workflow, and shows the tab only if it is there. So everything that crosses
  * is a JDK type: String, Integer, Boolean, List and Map.</p>
  *
- * <p>The versions are stored in the file area of this application ({@link VersionStore}). The decision runtime
- * checks a model before it is saved.</p>
+ * <p>The versions are stored in the file area of this application ({@link VersionStore}). The DMN engine checks a
+ * model before it is saved.</p>
  *
  * <p>Every call answers with a <code>result</code> and an <code>error</code>. On success the error is null.
  * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code such as
@@ -50,7 +50,7 @@ import ch.ivyteam.ivy.environment.Ivy;
  */
 public final class RuleManagement {
 
-  /** Path of {@link DmnEditorScript} under the REST API of the application. */
+  /** Path of the script of {@link com.axonivy.utils.rule.engine.editor.DmnEditor} under the REST API. */
   public static final String REST_PATH = "rule-engine/dmn-editor";
   public static final String EDITOR_SCRIPT = "dmn-editor.js";
 
@@ -61,21 +61,17 @@ public final class RuleManagement {
 
   private RuleManagement() {}
 
-  /**
-   * @return runtimeUrl, reachable, editorScript (the link of the DMN editor script, served by this engine)
-   *         and modelPrefix
-   */
+  /** @return runtimeUrl (of the DMN engine), reachable and editorScript (the link of the DMN editor script) */
   public static RuleManagementAnswer info() {
     var config = RuleEngineConfig.fromVariables();
     var info = new LinkedHashMap<String, Object>();
     info.put("runtimeUrl", config.url());
-    info.put("modelPrefix", config.modelPrefix());
     info.put("editorScript", editorScriptLink());
     boolean reachable = false;
     try {
       reachable = !config.url().isBlank() && RuleEngine.client(config).isReady();
     } catch (RuntimeException ex) {
-      Ivy.log().debug("Rule management: the runtime is not ready", ex);
+      Ivy.log().debug("Rule management: the DMN engine is not ready", ex);
     }
     info.put("reachable", reachable);
     return new RuleManagementAnswer(info, null);
@@ -185,7 +181,7 @@ public final class RuleManagement {
   }
 
   /**
-   * Stores a changed model as a new version from the Portal. The runtime checks it first and refuses a model with
+   * Stores a changed model as a new version from the Portal. The DMN engine checks it first and refuses a model with
    * errors (code INVALID_MODEL, the findings in the details). A version activated from the Portal is never
    * replaced by a project deployment.
    *

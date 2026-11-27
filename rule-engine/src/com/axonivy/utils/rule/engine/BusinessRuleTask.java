@@ -21,8 +21,8 @@ import ch.ivyteam.ivy.process.program.ui.ProgramUiBuilder;
 
 /**
  * Business Rule Task: evaluates a DMN decision with process data, without code.
- * <p>The decision is evaluated by the decision runtime of the Axon Ivy Rules Engine. Inputs and results are
- * mapped by name. Runtime not reachable, DMN errors and timeouts raise BPMN errors.</p>
+ * <p>The decision is evaluated by the DMN engine container of the Axon Ivy Rules Engine. Inputs and results are
+ * mapped by name. DMN engine not reachable, DMN errors and timeouts raise BPMN errors.</p>
  */
 public class BusinessRuleTask implements ProgramExecutor, ProgramEditorUi, ProgramIconDecorator, ProgramConfigMigrator {
 
@@ -54,7 +54,7 @@ public class BusinessRuleTask implements ProgramExecutor, ProgramEditorUi, Progr
 
   /**
    * On project start, e.g. after a deployment: the .dmn files of the project are stored as versions.
-   * If the runtime is not reachable now to check them, they are stored with the first evaluation.
+   * If the DMN engine is not reachable now to check them, they are stored with the first evaluation.
    */
   @Override
   public void start() {

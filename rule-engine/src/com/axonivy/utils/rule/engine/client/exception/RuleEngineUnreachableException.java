@@ -1,7 +1,7 @@
 package com.axonivy.utils.rule.engine.client.exception;
 
 /**
- * The decision runtime cannot be reached: wrong URL, container down or network problem.
+ * The DMN engine cannot be reached: wrong URL, container down or network problem.
  */
 public class RuleEngineUnreachableException extends RuleEngineException {
 

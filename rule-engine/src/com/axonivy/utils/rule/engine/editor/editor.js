@@ -1,16 +1,15 @@
 /*
- * DMN editor page of the decision runtime: /editor/
+ * DMN editor page of the Axon Ivy engine: {application}/api/rule-engine/editor
  *
- * Shows a .dmn file in the Apache KIE DMN editor (lib/dmn-editor.js), lets the DMN engine of this runtime check it
- * and saves it back to the file, so the Ivy project keeps the change. The runtime stores no versions: the Ivy
- * application does, see the tab Rule Management of the Portal. Talks only to the API of this runtime (../api/).
+ * Shows a .dmn file in the Apache KIE DMN editor (lib/dmn-editor.js), lets the DMN engine check it and saves it back
+ * to the file, so the Ivy project keeps the change. The versions of a model are kept by the application, see the tab
+ * Rule Management of the Portal.
  */
 (function () {
   'use strict';
 
-  const API = new URL('../api/', location.href);
+  const VALIDATE = new URL('validate', location.href);
   const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
-  const KEY_STORE = 'ruleEngine.apiKey';
   const DMN_TYPES = [{ description: 'DMN model', accept: { 'application/xml': ['.dmn'] } }];
   const $ = id => document.getElementById(id);
 
@@ -25,15 +24,6 @@
   let hinted = false; // the hint how to reach the decision table is shown once
 
   // ── small helpers ───────────────────────────────────────────────────────────
-
-  const store = {
-    get(key) {
-      try { return window.sessionStorage.getItem(key) || ''; } catch (e) { return ''; }
-    },
-    set(key, value) {
-      try { window.sessionStorage.setItem(key, value); } catch (e) { /* not kept, e.g. in a private window */ }
-    }
-  };
 
   function el(tag, props, ...children) {
     const node = document.createElement(tag);
@@ -61,63 +51,35 @@
     box.hidden = false;
   }
 
-  // ── the API of the runtime ──────────────────────────────────────────────────
-
-  let apiKey = store.get(KEY_STORE);
-  let keyPrompt = null;
+  // ── the check by the DMN engine ─────────────────────────────────────────────
 
   class ApiError extends Error {
     constructor(status, body) {
-      super((body && body.message) || 'The runtime answered with status ' + status + '.');
+      super((body && body.message) || 'The engine answered with status ' + status + '.');
       this.status = status;
       this.details = (body && body.details) || [];
     }
   }
 
   async function validate(xml) {
-    for (;;) {
-      const headers = { Accept: 'application/json', 'Content-Type': 'application/xml' };
-      if (apiKey) headers['X-API-Key'] = apiKey;
-      let response;
-      try {
-        response = await fetch(new URL('validate', API), { method: 'POST', headers, body: xml });
-      } catch (e) {
-        throw new ApiError(0, { message: 'The decision runtime does not answer at ' + API.origin + '.' });
-      }
-      if (response.status === 401) {
-        if (await askKey(Boolean(apiKey))) continue;
-        throw new ApiError(401, { message: 'The runtime needs its API key.' });
-      }
-      const text = await response.text();
-      if (!response.ok) {
-        let error = null;
-        try { error = JSON.parse(text); } catch (e) { /* not JSON */ }
-        throw new ApiError(response.status, error || { message: text || response.statusText });
-      }
-      return JSON.parse(text);
+    // Axon Ivy refuses a POST without this header (CSRF protection)
+    const headers = { Accept: 'application/json', 'Content-Type': 'application/xml', 'X-Requested-By': 'ivy' };
+    let response;
+    try {
+      response = await fetch(VALIDATE, { method: 'POST', headers, body: xml });
+    } catch (e) {
+      throw new ApiError(0, { message: 'The Axon Ivy engine does not answer at ' + VALIDATE.origin + '.' });
     }
-  }
-
-  /** Asks for the API key once, however many requests were refused at the same time. */
-  function askKey(wrong) {
-    if (keyPrompt) return keyPrompt;
-    const dialog = $('key-dialog');
-    const input = $('key-input');
-    input.value = '';
-    $('key-wrong').hidden = !wrong;
-    keyPrompt = new Promise(resolve => {
-      dialog.addEventListener('close', () => {
-        const ok = dialog.returnValue === 'ok' && input.value.trim() !== '';
-        if (ok) {
-          apiKey = input.value.trim();
-          store.set(KEY_STORE, apiKey);
-        }
-        keyPrompt = null;
-        resolve(ok);
-      }, { once: true });
-      dialog.showModal();
-    });
-    return keyPrompt;
+    if (response.status === 401 || response.status === 403) {
+      throw new ApiError(response.status, { message: 'Log in to the Axon Ivy engine to let the DMN engine check models.' });
+    }
+    const text = await response.text();
+    if (!response.ok) {
+      let error = null;
+      try { error = JSON.parse(text); } catch (e) { /* not JSON */ }
+      throw new ApiError(response.status, error || { message: text || response.statusText });
+    }
+    return JSON.parse(text);
   }
 
   // ── the editor ──────────────────────────────────────────────────────────────
@@ -192,9 +154,9 @@
     if (!state.editor) return;
     await busy(async () => {
       const result = await validate(await state.editor.getContent());
-      if (!result.valid) say('error', 'The runtime does not accept this model:', result.messages);
-      else if (result.messages.length) say('warn', 'The runtime accepts this model, with findings:', result.messages);
-      else say('ok', 'The runtime accepts this model. No findings.');
+      if (!result.valid) say('error', 'The DMN engine does not accept this model:', result.messages);
+      else if (result.messages.length) say('warn', 'The DMN engine accepts this model, with findings:', result.messages);
+      else say('ok', 'The DMN engine accepts this model. No findings.');
     });
   }
 

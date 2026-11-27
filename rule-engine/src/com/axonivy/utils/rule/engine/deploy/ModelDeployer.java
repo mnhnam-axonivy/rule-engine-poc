@@ -71,7 +71,7 @@ public final class ModelDeployer {
 
   /**
    * Registers all .dmn files of a project and of the projects it requires.
-   * @return the version of each file. A file that the runtime rejects is logged and skipped.
+   * @return the version of each file. A file that the DMN engine rejects is logged and skipped.
    */
   public static List<ModelVersion> deployAll(Project project, RuleEngineClient client, VersionStore store) {
     var versions = new ArrayList<ModelVersion>();

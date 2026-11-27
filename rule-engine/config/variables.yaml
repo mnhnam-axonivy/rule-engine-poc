@@ -1,21 +1,16 @@
 # yaml-language-server: $schema=https://json-schema.axonivy.com/14.0/config/variables.json
 Variables:
   RuleEngine:
-    # URL of the decision runtime, the container of the Axon Ivy Rules Engine.
+    # URL of the DMN engine container (Apache KIE JIT runner). It has no authentication: run it where only this
+    # engine reaches it.
     Url: http://localhost:8090
-    # Shared secret of the runtime (RULE_ENGINE_API_KEY of the container). Keep empty if the runtime runs without a key.
-    #[password]
-    ApiKey: ""
     # Seconds to wait for the result of a decision, before the BPMN error rule:engine:timeout is raised.
     # Holds for every Business Rule Task of the application.
     TimeoutSeconds: "10"
-    # Seconds to wait for the connection to the runtime.
+    # Seconds to wait for the connection to the DMN engine.
     ConnectTimeoutSeconds: "5"
     # "true" stores the .dmn files of a project as versions in the file area of the application: when the project
     # starts and when a file has changed. "false" leaves the versions to you (API or Rules UI).
     AutoDeploy: "true"
-    # Optional prefix for model names on the runtime, e.g. "sales-".
-    # Needed if several applications with equally named .dmn files share one runtime.
-    ModelPrefix: ""
-    # "true" logs every request to the runtime and its response.
+    # "true" logs every request to the DMN engine and its response.
     LogRequests: "false"

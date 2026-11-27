@@ -61,12 +61,10 @@
             <i class="ti ti-file-code" aria-hidden="true" />
             <h:outputText value="#{ivy.cms.co(cmsPath.concat('FileOfProject'), [model.file, model.project])}" />
           </h:panelGroup>
-          <h:panelGroup id="rule-pending" layout="block" styleClass="rule-pending" rendered="#{model.pendingVersion != null}">
-            <div class="rule-pending-text">
-              <i class="ti ti-alert-triangle" aria-hidden="true" />
-              <h:outputText value="#{ivy.cms.co(cmsPath.concat('Pending'), [model.pendingVersion, model.pendingFrom])}" />
-            </div>
-            <div class="rule-pending-actions flex flex-wrap gap-2">
+          <h:panelGroup id="rule-pending" layout="block" styleClass="mt-2" rendered="#{model.pendingVersion != null}">
+            <p:staticMessage severity="warn" styleClass="w-full m-0"
+              detail="#{ivy.cms.co(cmsPath.concat('Pending'), [model.pendingVersion, model.pendingFrom])}" />
+            <div class="flex flex-wrap gap-2 mt-2">
               <p:commandButton id="activate-pending" icon="ti ti-player-play"
                 value="#{ivy.cms.co(cmsPath.concat('ActivatePending'), [model.pendingVersion])}"
                 action="#{ruleManagementBean.activatePending(model)}" process="@this"

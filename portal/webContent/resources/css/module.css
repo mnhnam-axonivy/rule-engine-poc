@@ -5744,24 +5744,6 @@ body.edit-mode {
   color: var(--ivy-primary-color-grey-medium);
 }
 
-.rule-pending {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--ivy-tertinary-color-orange-light);
-  color: hsl(27, 80%, 32%);
-}
-
-.rule-pending-text {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-}
-
-.rule-pending-actions {
-  margin-top: 0.5rem;
-}
-
 .rule-editor-bar {
   padding-bottom: 0.75rem;
 }

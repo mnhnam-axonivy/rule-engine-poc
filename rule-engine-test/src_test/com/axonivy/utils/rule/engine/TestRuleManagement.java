@@ -25,9 +25,6 @@ import ch.ivyteam.ivy.process.call.SubProcessCallStartParamCaller;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter.SearchScope;
 import ch.ivyteam.ivy.security.exec.Sudo;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 /**
  * The bridge to the tab "Rule Management" of the Axon Ivy Portal: the callable sub process Portal/RuleManagement,
@@ -43,14 +40,9 @@ class TestRuleManagement {
       "ruleManagementInfo()",
       "ruleManagementModels()",
       "ruleManagementVersions(String)",
-      "ruleManagementContent(String,Integer)",
-      "ruleManagementValidate(String)",
-      "ruleManagementSave(String,String,String,String,Boolean)",
       "ruleManagementActivate(String,Integer,String)",
       "ruleManagementRollback(String,String)",
       "ruleManagementRetire(String,Integer)");
-
-  private static final String DMN = "<definitions xmlns=\"https://www.omg.org/spec/DMN/20230324/MODEL/\" name=\"discount\"/>";
 
   @BeforeEach
   void setup(AppFixture fixture) {
@@ -71,6 +63,7 @@ class TestRuleManagement {
     Map<String, Object> info = (Map<String, Object>) result(call("ruleManagementInfo()", Map.of()));
 
     assertThat(info).containsEntry("runtimeUrl", MockDmnEngine.url()).containsEntry("reachable", true);
+    assertThat((String) info.get("editorLink")).as("the start of the DMN editor dialog").endsWith("/editRule.ivp");
   }
 
   @Test
@@ -96,26 +89,6 @@ class TestRuleManagement {
   }
 
   @Test
-  void contentOfTheActiveVersion() {
-    TestStore.store("discount", DMN, VersionSource.API, null);
-
-    Map<String, Object> content = (Map<String, Object>) result(call("ruleManagementContent(String,Integer)",
-        params("model", "discount", "version", null)));
-
-    assertThat(content).containsEntry("model", "discount").containsEntry("version", 1).containsEntry("dmn", DMN);
-  }
-
-  @Test
-  void aModelThatIsNotStoredIsReadFromItsProject() {
-    Map<String, Object> content = (Map<String, Object>) result(call("ruleManagementContent(String,Integer)",
-        params("model", "invoice-discount", "version", null)));
-
-    assertThat(content).containsEntry("version", null);
-    assertThat((String) content.get("project")).startsWith("rule-engine-demo");
-    assertThat((String) content.get("dmn")).contains("<definitions").contains("Silver customer");
-  }
-
-  @Test
   void versionsNewestFirst() {
     TestStore.store("discount", "discount", "purchaseAmount");
     VersionStore.current().register("discount", RegisterVersionRequest.builder()
@@ -130,45 +103,6 @@ class TestRuleManagement {
         .containsEntry("description", "Gold 20").containsEntry("activatedBy", "admin").containsEntry("previousVersion", 1);
     assertThat(OffsetDateTime.parse((String) versions.get(0).get("effectiveDate"))).isNotNull();
     assertThat(versions.get(1)).containsEntry("status", "RETIRED");
-  }
-
-  @Test
-  void saveIsAVersionFromThePortal() {
-    Map<String, Object> version = (Map<String, Object>) result(call("ruleManagementSave(String,String,String,String,Boolean)",
-        params("model", "discount", "dmn", DMN, "author", "admin", "description", "Gold 20", "activate", true)));
-
-    assertThat(version).containsEntry("model", "discount").containsEntry("version", 1)
-        .containsEntry("status", "ACTIVE").containsEntry("source", "PORTAL").containsEntry("author", "admin")
-        .containsEntry("description", "Gold 20").containsEntry("created", true);
-    assertThat(MockDmnEngine.calls("validate").get(0).dmn())
-        .as("the runtime checks it first").isEqualTo(DMN);
-    assertThat(VersionStore.current().content("discount", 1)).isEqualTo(DMN);
-
-    Map<String, Object> again = (Map<String, Object>) result(call("ruleManagementSave(String,String,String,String,Boolean)",
-        params("model", "discount", "dmn", DMN, "author", "admin", "description", null, "activate", true)));
-    assertThat(again).containsEntry("version", 1).containsEntry("created", false);
-  }
-
-  @Test
-  void aDraftStaysADraft() {
-    Map<String, Object> version = (Map<String, Object>) result(call("ruleManagementSave(String,String,String,String,Boolean)",
-        params("model", "discount", "dmn", DMN, "author", "admin", "description", "", "activate", false)));
-
-    assertThat(version).containsEntry("status", "DRAFT").containsEntry("description", null);
-  }
-
-  @Test
-  void aModelWithErrorsIsRefusedWithTheFindings() {
-    MockDmnEngine.onValidate(call -> MockDmnEngine.findings("Rule 3: the input entry 'Goldd' is not an allowed value"));
-
-    Map<String, Object> answer = call("ruleManagementSave(String,String,String,String,Boolean)",
-        params("model", "discount", "dmn", DMN, "author", "admin", "description", null, "activate", true));
-
-    assertThat(answer.get("result")).isNull();
-    Map<String, Object> error = (Map<String, Object>) answer.get("error");
-    assertThat(error).containsEntry("code", "INVALID_MODEL");
-    assertThat((List<String>) error.get("details")).containsExactly("ERROR: Rule 3: the input entry 'Goldd' is not an allowed value");
-    assertThat(VersionStore.current().exists("discount")).as("nothing is stored").isFalse();
   }
 
   @Test
@@ -217,70 +151,13 @@ class TestRuleManagement {
   }
 
   @Test
-  void validate() {
-    MockDmnEngine.onValidate(call -> MockDmnEngine.json(200, """
-        [{"severity":"ERROR","message":"Missing output","sourceId":"_rule3"}]"""));
-
-    Map<String, Object> validation = (Map<String, Object>) result(call("ruleManagementValidate(String)", params("dmn", DMN)));
-
-    assertThat(validation).containsEntry("valid", false)
-        .containsEntry("messages", List.of("ERROR: Missing output (_rule3)"));
-  }
-
-  @Test
-  void anUnreachableDmnEngine_stopsChecksAndSaves_notTheList(AppFixture fixture) {
+  void anUnreachableDmnEngine_doesNotStopTheList(AppFixture fixture) {
     TestStore.store("discount", "discount", "purchaseAmount");
     fixture.var(Var.URL, "http://127.0.0.1:9");
 
     assertThat((List<Map<String, Object>>) result(call("ruleManagementModels()", Map.of())))
         .extracting(model -> model.get("name")).contains("discount");
-    Map<String, Object> answer = call("ruleManagementSave(String,String,String,String,Boolean)",
-        params("model", "discount", "dmn", DMN, "author", "admin", "description", null, "activate", true));
-    assertThat((Map<String, Object>) answer.get("error")).containsEntry("code", "UNREACHABLE");
     assertThat((Map<String, Object>) result(call("ruleManagementInfo()", Map.of()))).containsEntry("reachable", false);
-  }
-
-  @Test
-  void theDmnEditorIsBundled() {
-    try (Response first = editor("dmn-editor/dmn-editor.js", null)) {
-      assertThat(first.getStatus()).isEqualTo(200);
-      assertThat(first.getHeaderString("Content-Type")).startsWith("text/javascript");
-      assertThat(first.readEntity(String.class)).contains("DmnEditor");
-      String etag = first.getHeaderString("ETag");
-      assertThat(etag).isNotBlank();
-      try (Response again = editor("dmn-editor/dmn-editor.js", etag)) {
-        assertThat(again.getStatus()).as("the browser has it already").isEqualTo(304);
-      }
-    }
-    assertThat(MockDmnEngine.calls()).as("not fetched from the DMN engine").isEmpty();
-  }
-
-  @Test
-  void theEditorPage() {
-    try (Response page = editor("editor/index.html", null)) {
-      assertThat(page.getStatus()).isEqualTo(200);
-      assertThat(page.getHeaderString("Content-Type")).startsWith("text/html");
-      assertThat(page.readEntity(String.class)).contains("lib/dmn-editor.js").contains("editor.js");
-    }
-    try (Response script = editor("editor/lib/dmn-editor.js", null)) {
-      assertThat(script.getStatus()).isEqualTo(200);
-    }
-    try (Response other = editor("editor/pom.xml", null)) {
-      assertThat(other.getStatus()).as("only the files of the page").isEqualTo(404);
-    }
-    try (Response anonymous = Ivy.rest().client("dmnEditor").path("editor/validate").request()
-        .header("X-Requested-By", "ivy").post(Entity.entity(DMN, MediaType.APPLICATION_XML))) {
-      assertThat(anonymous.getStatus()).as("the check needs a logged in user").isEqualTo(401);
-    }
-    assertThat(MockDmnEngine.calls("validate")).isEmpty();
-  }
-
-  private static Response editor(String path, String ifNoneMatch) {
-    var request = Ivy.rest().client("dmnEditor").path(path).request();
-    if (ifNoneMatch != null) {
-      request = request.header("If-None-Match", ifNoneMatch);
-    }
-    return request.get();
   }
 
   /** Calls a start of the bridge as the Portal does: found by its signature in the security context. */

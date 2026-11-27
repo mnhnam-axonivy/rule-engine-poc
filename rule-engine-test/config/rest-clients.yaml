@@ -3,6 +3,3 @@ RestClients:
   # Stand-in for the DMN engine container, served by this project: see MockDmnEngine
   mockDmnEngine:
     Url: '{ivy.app.baseurl}/api/dmnMock'
-  # The DMN editor that the connector serves: see DmnEditor
-  dmnEditor:
-    Url: '{ivy.app.baseurl}/api/rule-engine'

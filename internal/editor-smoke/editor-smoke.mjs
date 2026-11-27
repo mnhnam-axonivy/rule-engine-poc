@@ -1,26 +1,25 @@
 /**
- * Browser check of the DMN editor page of the connector, {application}/api/rule-engine/editor, on a running Axon Ivy
- * Engine whose DMN engine container runs too:
+ * Browser check of the DMN editor dialog of the connector (RuleEditor) on a running Axon Ivy Engine whose DMN engine
+ * container runs too:
  *
- *   npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/api/rule-engine/editor/
+ *   npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/ [--model=discount]
  *
- * The page is used like a person would: open a .dmn file, change a rule, let the DMN engine check it, a model the DMN
- * engine rejects, write the file back, a new model, a browser without file access. The first change is made in the KIE
- * editor itself, like a person does it: select the decision, "Edit", type into a cell. Later changes use the editor's
- * API (setContent). Every request outside the engine is blocked and counted as a failure. The check of a model needs
- * a logged in user: the Designer has one. Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
+ * It opens the process start RuleEditor/editRule.ivp of the project rule-engine for a model (default: discount, the
+ * small model of rule-engine-test) and uses the dialog like a person would: change a rule in the KIE editor, let the
+ * DMN engine check it, save it as a draft (never live), a model the DMN engine rejects. Then it opens the dialog in an
+ * iframe, as the Portal does, and closes it: the parent page must hear of it. Every request outside the engine is
+ * blocked and counted as a failure. Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
  */
 import puppeteer from 'puppeteer-core';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shots = resolve(here, '.preview');
-const downloads = join(shots, 'downloads');
-// a small model of one table: the fixture of the connector tests, not the demo
-const discountFile = resolve(here, '../../rule-engine-test/dmn/discount.dmn');
 const arg = name => (process.argv.find(a => a.startsWith('--' + name + '=')) || '').slice(name.length + 3);
+/** process/RuleEditor.p.json of the project rule-engine */
+const START = 'pro/rule-engine/023F72FE11C582F1/editRule.ivp';
 
 const browserPath = process.env.CHROME_PATH || [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -38,7 +37,7 @@ if (!browserPath) {
 }
 
 rmSync(shots, { recursive: true, force: true });
-mkdirSync(downloads, { recursive: true });
+mkdirSync(shots, { recursive: true });
 const failures = [];
 let checks = 0;
 const check = (ok, what) => {
@@ -48,23 +47,19 @@ const check = (ok, what) => {
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ── the page ─────────────────────────────────────────────────────────────────
+// ── the engine ───────────────────────────────────────────────────────────────
 
 let base = arg('url');
 if (!base) {
-  console.error('Give the editor page of a running engine: --url=<application>/api/rule-engine/editor/');
+  console.error('Give the application of a running engine: --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/');
   process.exit(2);
 }
 if (!base.endsWith('/')) base += '/';
 const origin = new URL(base).origin;
-
-async function ready() {
-  const response = await fetch(new URL('index.html', base));
-  if (!response.ok) throw new Error('The editor page at ' + base + ' answers ' + response.status + '.');
-}
-
-const original = readFileSync(discountFile, 'utf8');
-const withDiscount = value => original.replace(/(<outputEntry id="_rule_1_output_discount">\s*<text>)15(<\/text>)/, '$1' + value + '$2');
+const model = arg('model') || 'discount';
+const editorLink = new URL(START + '?model=' + encodeURIComponent(model), base).href;
+/** a blank page of the same origin, served by this script: the parent of the iframe */
+const parentPage = origin + '/__editor-smoke__/parent.html';
 
 // ── the browser ──────────────────────────────────────────────────────────────
 
@@ -72,42 +67,21 @@ let browser;
 const problems = [];
 const external = [];
 
-async function openPage({ fakeFiles = false } = {}) {
+async function openPage() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   page.on('pageerror', e => problems.push('pageerror: ' + e.message));
   page.on('console', m => {
     if (m.type() === 'error') problems.push('console: ' + m.text() + ' ' + (m.location().url || ''));
   });
-  page.on('dialog', d => d.accept()); // "discard the unsaved changes?"
+  page.on('dialog', d => d.accept()); // "close the editor anyway?"
   await page.setRequestInterception(true);
   page.on('request', request => {
     const url = request.url();
-    if (url.startsWith(origin) || /^(data|blob|about):/.test(url)) request.continue();
+    if (url === parentPage) request.respond({ status: 200, contentType: 'text/html', body: '<!doctype html><html><head><link rel="icon" href="data:,"></head><body></body></html>' });
+    else if (url.startsWith(origin) || /^(data|blob|about):/.test(url)) request.continue();
     else { external.push(url); request.abort(); }
   });
-  const cdp = await page.createCDPSession();
-  await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
-  if (fakeFiles) {
-    // a .dmn file on disk, as the File System Access API of Chrome and Edge hands it to the page
-    await page.evaluateOnNewDocument(xml => {
-      window.__written = null;
-      const handle = {
-        name: 'discount.dmn',
-        getFile: async () => new File([xml], 'discount.dmn', { type: 'application/xml' }),
-        requestPermission: async () => 'granted',
-        createWritable: async () => {
-          let text = '';
-          return { write: async t => { text += t; }, close: async () => { window.__written = text; } };
-        }
-      };
-      window.showOpenFilePicker = async () => [handle];
-    }, original);
-  } else {
-    // a browser without the File System Access API (e.g. Firefox): file input and download
-    await page.evaluateOnNewDocument(() => { delete window.showOpenFilePicker; delete window.showSaveFilePicker; });
-  }
-  await page.goto(base + 'index.html', { waitUntil: 'load' });
   return page;
 }
 
@@ -115,20 +89,22 @@ async function shot(page, name) {
   await page.screenshot({ path: join(shots, name + '.png') });
 }
 
-/** The content of the open editor, or null while the editor is still starting. */
-const content = page => page.evaluate(() => {
-  const editor = window.ruleEditor && window.ruleEditor.editor;
+/** The frame that runs the dialog: the page itself, or the iframe the Portal would show it in. */
+const dialogOf = page => page.frames().find(f => f.url().includes('RuleEditor')) || page.mainFrame();
+
+/** The content of the KIE editor, or null while it is still starting. */
+const content = frame => frame.evaluate(() => {
+  const editor = window.RuleEditor && window.RuleEditor.editor();
   if (!editor) return null;
-  // while the editor starts, getContent() waits or fails: both mean "not yet"
   return Promise.race([editor.getContent().catch(() => null), new Promise(r => setTimeout(() => r(null), 3000))]);
 });
 
-async function waitForContent(page, needle, timeout = 90000) {
+async function waitForContent(frame, needle, timeout = 90000) {
   const end = Date.now() + timeout;
-  // the page says when the editor has started; asking it earlier only produces errors in its frame
-  await page.waitForFunction(() => window.ruleEditor && window.ruleEditor.ready, { timeout, polling: 200 });
+  // the dialog says when the editor has started; asking it earlier only produces errors in its frame
+  await frame.waitForFunction(() => window.RuleEditor && window.RuleEditor.isReady(), { timeout, polling: 200 });
   while (Date.now() < end) {
-    const text = await content(page);
+    const text = await content(frame);
     if (text && text.includes(needle)) return text;
     await sleep(500);
   }
@@ -159,92 +135,92 @@ async function typeIntoTable(page, cellIndex, value) {
 }
 
 /** Replaces the model in the editor, the way an edit in the table would change it. */
-const setModel = (page, xml, path = 'discount.dmn') => page.evaluate((p, x) => window.ruleEditor.editor.setContent(p, x), path, xml);
+const setModel = (frame, xml) => frame.evaluate((m, x) => window.RuleEditor.editor().setContent(m + '.dmn', x), model, xml);
 
-const message = page => page.$eval('#messages', box => (box.hidden ? '' : box.textContent.replace(/^Close/, '').replace(/\s+/g, ' ').trim()));
+/** The messages of the dialog, as "severity: text". */
+const notices = frame => frame.$$eval('[id$=":notices"] .ui-message', boxes => boxes.map(box => {
+  const severity = ['info', 'warn', 'error'].find(s => box.className.includes('ui-message-' + s)) || '?';
+  return severity + ': ' + box.textContent.replace(/\s+/g, ' ').trim();
+}));
 
-/** Clicks a button of the page and waits for the message it shows; kind is a class or several, like 'ok|warn'. */
-async function act(page, selector, kind) {
-  await page.$eval('#messages', box => { box.hidden = true; });
-  await page.click(selector);
-  await page.waitForFunction(k => { const box = document.querySelector('#messages'); return !box.hidden && k.split('|').some(c => box.classList.contains(c)); },
-    { timeout: 30000, polling: 100 }, kind);
-  return message(page);
+/** Clicks a button of the dialog and waits until it is done: the buttons are enabled again. */
+async function act(frame, id) {
+  const said = () => [...document.querySelectorAll('[id$=":notices"] .ui-message')].map(n => n.textContent).join('|');
+  const before = await frame.evaluate(said);
+  await frame.click('[id$=":' + id + '"]');
+  await frame.waitForFunction((b, read) => {
+    const button = document.querySelector('[id$=":check"]');
+    const now = new Function('return (' + read + ')()')();
+    return button && !button.disabled && now.length > 0 && now !== b;
+  }, { timeout: 30000, polling: 100 }, before, said.toString());
+  return notices(frame);
 }
+
+const state = frame => frame.$eval('[id$=":state"]', n => n.textContent.trim());
+const dirty = frame => frame.$eval('.rule-editor-dirty', n => !n.hidden);
 
 // ── checks ───────────────────────────────────────────────────────────────────
 
 try {
-  await ready();
   browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--hide-scrollbars', '--force-color-profile=srgb'] });
 
-  console.log('\nA .dmn file of a project, with file access (Chrome, Edge)');
-  let page = await openPage({ fakeFiles: true });
-  await page.click('#open-file');
-  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the KIE DMN editor');
+  console.log('\nThe dialog, started by its process: ' + editorLink);
+  let page = await openPage();
+  await page.goto(editorLink, { waitUntil: 'load' });
+  let frame = dialogOf(page);
+  const opened = await waitForContent(frame, '<definitions');
+  check(Boolean(opened), 'the model ' + model + ' opens in the KIE DMN editor');
+  const openedState = await state(frame);
+  check(/^Version \d+( · \w+)?$|^File of project/.test(openedState), 'the dialog says what is open: ' + openedState);
+  check(await page.title() === 'Rule ' + model, 'the title names the rule: ' + await page.title());
   await sleep(2500); // let the editor draw
-  const opened = await page.evaluate(() => ({
-    kind: document.querySelector('#doc-kind').textContent,
-    model: document.querySelector('#doc-model').value,
-    button: document.querySelector('#save-file').textContent
-  }));
-  check(opened.kind === 'File' && opened.model === 'discount' && opened.button === 'Save file',
-    'the model is named like the file, and Save file writes it itself: ' + JSON.stringify(opened));
   await shot(page, '01-opened');
 
-  console.log('\nChange a rule, check it, write it back');
-  await typeIntoTable(page, 4, 20); // rule 1, column discount
-  check(Boolean(await waitForContent(page, '>20</', 20000)), 'a rule changed in the decision table of the KIE editor: 15 → 20');
-  check(await page.$eval('#doc-dirty', n => !n.hidden), 'the page shows that there are unsaved changes');
-  // the DMN engine accepts the demo model with warnings, like the gap analysis it skips for text inputs
-  check((await act(page, '#check', 'ok|warn')).includes('accepts this model'), 'Check: the DMN engine accepts the model');
-  await shot(page, '03-checked');
-  await act(page, '#save-file', 'ok');
-  const written = await page.evaluate(() => window.__written);
-  check(Boolean(written) && /<(\w+:)?text>20<\/(\w+:)?text>/.test(written), 'Save file writes the changed model back to discount.dmn');
-  check(await page.$eval('#doc-dirty', n => n.hidden), 'after saving, nothing is unsaved');
+  console.log('\nChange a rule, check it, save it as a draft');
+  const cellText = /<outputEntry id="_rule_1_output_discount">\s*<text>(\d+)</.exec(opened || '');
+  const changed = cellText ? String(Number(cellText[1]) + 1) : '21';
+  await typeIntoTable(page, 4, changed); // rule 1, column discount
+  check(Boolean(await waitForContent(frame, '>' + changed + '</', 20000)), 'a rule changed in the decision table of the KIE editor: ' + (cellText ? cellText[1] : '?') + ' → ' + changed);
+  check(await dirty(frame), 'the dialog shows that there are unsaved changes');
+  let said = await act(frame, 'check');
+  check(said.some(n => n.startsWith('info:') && n.includes('is valid')), 'Check: the DMN engine accepts the model: ' + said.slice(0, 2).join(' | '));
+  await shot(page, '02-checked');
+  said = await act(frame, 'save-draft');
+  check(said.some(n => n.startsWith('info:') && n.includes('saved as draft')), 'Save as draft stores a new version: ' + said[0]);
+  check(/^Version \d+ · Draft$/.test(await state(frame)), 'the dialog shows the draft: ' + await state(frame));
+  check(!await dirty(frame), 'after saving, nothing is unsaved');
+  await shot(page, '03-saved');
 
   console.log('\nA model the DMN engine rejects');
-  await setModel(page, withDiscount('15 +'));
-  await waitForContent(page, '15 +', 20000);
-  const text = await act(page, '#check', 'error');
-  check(text.includes('does not accept'), 'Check shows the findings of the DMN engine: ' + text.slice(0, 120));
+  await setModel(frame, (await content(frame)).replace(/(<outputEntry id="_rule_1_output_discount">\s*<text>)\d+(<\/text>)/, '$115 +$2'));
+  await waitForContent(frame, '15 +', 20000);
+  said = await act(frame, 'check');
+  check(said[0] && said[0].startsWith('error:') && said[0].includes('has errors') && said.length > 1,
+    'Check shows the findings of the DMN engine: ' + said.slice(0, 2).join(' | ').slice(0, 160));
   await shot(page, '04-rejected');
-
-  console.log('\nA new model, saved as a file');
-  await page.evaluate(() => { delete window.showSaveFilePicker; });
-  await page.click('#new-model');
-  await page.waitForSelector('#name-dialog[open]');
-  await page.type('#name-input', 'member-bonus');
-  await page.click('#name-dialog button.primary');
-  await page.waitForFunction(() => document.querySelector('#doc-kind').textContent === 'New model', { timeout: 15000 });
-  await page.waitForFunction(() => window.ruleEditor.ready, { timeout: 60000, polling: 200 });
-  check(await page.$eval('#save-file', b => !b.disabled && b.textContent === 'Save as file…'), 'the buttons work once the editor has started');
-  await setModel(page, original.replace(/name="discount" namespace/, 'name="member-bonus" namespace'), 'member-bonus.dmn');
-  await waitForContent(page, 'member-bonus', 20000);
-  await act(page, '#save-file', 'info');
-  let file = null;
-  for (let i = 0; i < 20 && !file; i++) {
-    await sleep(250);
-    file = readdirSync(downloads).find(name => name === 'member-bonus.dmn');
-  }
-  check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('member-bonus'), 'Save as file… downloads member-bonus.dmn');
-  await shot(page, '05-new-model');
   await page.close();
 
-  console.log('\nA .dmn file of a project, without file access: open with a file input, save as download');
+  console.log('\nIn an iframe, as the Portal shows it');
   page = await openPage();
-  const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('#open-file')]);
-  await chooser.accept([discountFile]);
-  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the editor');
-  check(await page.$eval('#save-file', n => n.textContent) === 'Save as file…', 'the button says it downloads the file');
-  await act(page, '#save-file', 'info');
-  file = null;
-  for (let i = 0; i < 20 && !file; i++) {
-    await sleep(250);
-    file = readdirSync(downloads).find(name => name === 'discount.dmn');
-  }
-  check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('_rule_1_output_discount'), 'Save as file… downloads discount.dmn');
+  await page.goto(parentPage, { waitUntil: 'load' });
+  await page.evaluate(link => {
+    window.__messages = [];
+    window.addEventListener('message', event => window.__messages.push(event.data));
+    document.body.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.src = link;
+    iframe.style.cssText = 'width:1400px;height:860px;border:0';
+    document.body.appendChild(iframe);
+  }, editorLink);
+  await page.waitForFunction(() => document.querySelector('iframe').contentWindow.RuleEditor, { timeout: 30000 });
+  frame = dialogOf(page);
+  check(Boolean(await waitForContent(frame, '<definitions')), 'the dialog runs in the iframe');
+  await shot(page, '05-iframe');
+  await frame.click('[id$=":close"]');
+  await page.waitForFunction(() => window.__messages.some(m => m && m.type === 'axonivy-rule-editor' && m.event === 'closed'),
+    { timeout: 15000, polling: 100 }).catch(() => null);
+  const heard = await page.evaluate(() => window.__messages.filter(m => m && m.type === 'axonivy-rule-editor'));
+  check(heard.some(m => m.event === 'closed' && m.model === model), 'Close tells the parent page: ' + JSON.stringify(heard));
   await page.close();
 
   check(problems.length === 0, 'no errors in the browser' + (problems.length ? ': ' + problems.slice(0, 3).join(' | ') : ''));

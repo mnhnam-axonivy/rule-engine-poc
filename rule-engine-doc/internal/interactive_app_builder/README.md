@@ -77,7 +77,7 @@ Every lesson simulates the demo project, `features/shared/project.js`. It import
 passes (`params`, the sample invoice of `features/shared/invoice.js`, which is `InvoiceSamples.standard()`).
 `tryTable` names the table of "Try it", `portalTable` the table a new input of the Portal goes into. Lessons 07 and 11-3 have the tab Portal (`portalProject`, `portal: true`); the key account rule the rule owner
 makes (`shared/portal-rules.js`) and the chapter "Who has the last word" (`shared/portal-chapters.js`) are shared by
-both, and the same version is decided by the real runtime in `RuleEngineContainerTest`. Lesson 05 simulates the
+both, and the same version is decided by the real DMN engine in `RuleEngineContainerTest`. Lesson 05 simulates the
 callable extended by a second Business Rule Task with New DMN... (`shared/approver.js`, built from the real files).
 `features/shared/invoice.js` and `approver.js` are plain JavaScript, so the unit tests use them as the lessons do. Their
 runs play at the normal speed, without `fast`: the runs are what the answers show. A change to the demo
@@ -87,7 +87,7 @@ A chapter directs the simulator through the director `d` (see `runtime/ui/tour.j
 
 ```js
 async function unreachable(d) {
-  await d.panel('runtime');                                  // open the panel "Decision runtime"
+  await d.panel('runtime');                                  // open the panel "DMN engine"
   await d.note('running', { target: 'runtime:state' });      // text tour.running.* next to the state switch
   await d.runtime('stopped');                                // docker stop axonivy-rule-engine
   await d.panel(null);
@@ -125,15 +125,14 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 
 | Blocks | Ids |
 | --- | --- |
-| Axon Ivy Engine, its projects and the files of the application | `ivy`, `portal`, `demo`, `connector`, `files` |
-| Docker container and what is in its image | `container`, `api`, `editor`, `engine`, `memory` |
-| Beside the container | `browser` |
-| Links | `http` (connector and REST API, both ways: `http>`, `http<`), `ui` (browser to editor page), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
+| Axon Ivy Engine, its projects, the files of the application and the editor page | `ivy`, `portal`, `demo`, `connector`, `files`, `editor` |
+| Docker container and the DMN engine in its image | `container`, `engine` |
+| Above the engine | `browser` |
+| Links | `http` (connector and DMN engine, both ways: `http>`, `http<`), `ui` (browser to editor page), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
 
-The diagram is live. It reads the simulation: the state of the container, the stored versions, the versions the
-runtime holds in memory, the
+The diagram is live. It reads the simulation: the state of the container, the stored versions, the
 `.dmn` files of the project, `RuleEngine.Url`, and the last call of a Business Rule Task. That is why the tab
-has no bottom panel (log, decision runtime, process data): it is hidden while the tab is open, so a walkthrough
+has no bottom panel (log, DMN engine, process data): it is hidden while the tab is open, so a walkthrough
 cannot show `d.panel(...)` there. A walkthrough lights blocks with `d.arch`. While a note points at a block
 (`arch:<id>`), the camera of the diagram (`frame()` in `architecture.js`) scales and moves it so that the block
 and what is lit with it stand in the middle of one side of the tab, zoomed in up to 1.2 or out down to 0.5, and
@@ -168,11 +167,11 @@ The simulation has no engine and no container. It implements what a learner can 
 | --- | --- | --- |
 | Process run | `runner.js`, `process.js`, `ivyscript.js` | The demo process: the start of a callable sub process with its parameters, scripts, the Business Rule Task, the Error Boundary Event. A subset of IvyScript, with loops over a list and BigDecimal arithmetic for the Scripts of the demo; like IvyScript it gives a field it reads a default value. |
 | Business Rule Task | `runner.js`, `mapping.js` | `RuleTaskExecutor` of the connector: a new or changed file stored first, the inputs of the active version (also one from the Portal), mapping by name, field lists, result and version mapping, the BPMN errors `rule:engine:*`. |
-| Versions and decision runtime | `decision-runtime.js` | `VersionStore` of the connector: versions, status, source, the source of truth rule, rollback. The runtime: the versions it holds in memory, lost when it stops. It can be running, slow or stopped. |
+| Versions and DMN engine | `decision-runtime.js` | `VersionStore` of the connector: versions, status, source, the source of truth rule, rollback. `Evaluator` and the JIT runner: the file of the active version is evaluated with each call, nothing is kept. It can be running, slow or stopped. |
 | DMN | `dmn.js`, `feel.js`, `decision-runtime.js` | Decision tables with the conditions the tutorial uses: `-`, literals, comparisons, ranges of numbers and dates, lists, `not()`; hit policies FIRST, UNIQUE (two matches are an error), ANY, PRIORITY, COLLECT with or without an aggregation, RULE ORDER. Literal expressions in a subset of FEEL: arithmetic rounded as with decimals, `if`, `for`, contexts, paths over lists, filters and functions such as `sum`, `min`, `round half up`, `decimal`, `list contains`, `date`. Business knowledge models as functions, called once per element of a list. The inputs are checked against their types, allowed values and `null` included, as the DMN engine does with `rule.engine.type-check`. For the demo model the simulation answers exactly what the real runtime answers (`test/runner.test.mjs`, `RuleEngineContainerTest`); the features the demo does not use are tested on a model with functions and every hit policy, `test/fixtures/invoice-pricing.dmn`. |
 | New DMN... | `dmn-generator.js` | `DmnGenerator` of `rule-engine`: one input per field, one table, a placeholder rule. |
 
-Not simulated: the API key, effective dates, boxed expressions other than tables and literal expressions, and FEEL
+Not simulated: effective dates, boxed expressions other than tables and literal expressions, and FEEL
 function definitions. The simulator says so itself
 under "Simulation" in its top right corner.
 

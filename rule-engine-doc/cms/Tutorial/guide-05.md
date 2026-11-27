@@ -93,7 +93,7 @@ Field names that are words of the FEEL language, such as `in` or `function`, get
 
 Open `dmn/invoice-approver.dmn` in a DMN editor and add your rules **above** the placeholder rule. With the hit policy FIRST a rule below it would never be reached.
 
-Any DMN editor works. The runtime has one at `http://localhost:8090/editor/`: **Open .dmn file…**, select the decision, **Edit**, change the table, **Save file**. The Apache KIE DMN editor for VS Code is the same editor inside VS Code.
+Any DMN editor works. The connector has one, the page `api/rule-engine/editor` of your application, see [Set up and run your first decision]: **Open .dmn file…**, select the decision, **Edit**, change the table, **Save file**. The Apache KIE DMN editor for VS Code is the same editor inside VS Code.
 
 | | total | discountPercent | approver |
 | --- | --- | --- | --- |

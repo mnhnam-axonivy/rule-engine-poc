@@ -1102,7 +1102,7 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
   position: relative;
   display: grid;
   grid-template-columns: minmax(260px, 330px) minmax(150px, 200px) minmax(400px, 520px);
-  grid-template-areas: ". . top" "ivy gap container" ". . bottom";
+  grid-template-areas: "top . ." "ivy gap container";
   justify-content: center;
   row-gap: 30px;
   min-width: 0;
@@ -1112,10 +1112,10 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 @media (prefers-reduced-motion: reduce) { .arch-diagram { transition: none; } }
 .arch-diagram.wide {
   row-gap: 0;
-  grid-template-columns: minmax(260px, 330px) minmax(150px, 200px) minmax(400px, 520px) 252px;
-  grid-template-areas: "ivy gap container side";
+  grid-template-columns: 252px minmax(260px, 330px) minmax(150px, 200px) minmax(400px, 520px);
+  grid-template-areas: "side ivy gap container";
 }
-.arch-diagram.narrow { grid-template-columns: minmax(0, 520px); grid-template-areas: "ivy" "top" "container" "bottom"; row-gap: 30px; }
+.arch-diagram.narrow { grid-template-columns: minmax(0, 520px); grid-template-areas: "top" "ivy" "container"; row-gap: 30px; }
 .arch-links { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .arch-wire { fill: none; stroke: #77839a; stroke-width: 1.5; }
 .arch-head { fill: #77839a; stroke: none; }
@@ -1145,7 +1145,7 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .arch-state.stopped { background: #7a2a2a; color: #fff; }
 
 .arch-stack { display: grid; }
-.arch-cells { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.arch-cells { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .arch-requires { display: flex; justify-content: center; height: 24px; color: var(--faint); font-size: 10.5px; }
 .arch-requires span { position: relative; display: flex; align-items: center; padding-left: 12px; }
 .arch-requires span::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 5px; width: 1px; background: #77839a; }
@@ -1171,7 +1171,7 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .arch-name { color: #fff; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
 .arch-role { margin-left: auto; padding: 0 6px; border-radius: 3px; background: #3a3f48; color: #c3cad6; font-size: 10.5px; line-height: 16px; white-space: nowrap; }
 .arch-text { color: var(--muted); font-size: 12px; line-height: 1.38; }
-.arch-live { color: #9cc3ff; font: 11.5px/1.4 var(--mono); overflow-wrap: anywhere; }
+.arch-live { color: #9cc3ff; font: 11.5px/1.4 var(--mono); overflow-wrap: anywhere; white-space: pre-line; }
 .arch-live:empty { display: none; }
 .arch-live.bad { color: var(--err); }
 
@@ -1179,7 +1179,7 @@ div.dmn-expression .input { width: 100%; font: 12.5px/1.5 var(--mono); }
 .arch-outside .arch-block { grid-column: 2; }
 .arch-top { grid-area: top; }
 .arch-bottom { grid-area: bottom; }
-.arch-diagram.wide .arch-outside { grid-area: side; align-self: start; grid-template-columns: minmax(0, 1fr); padding: 0 0 0 62px; }
+.arch-diagram.wide .arch-outside { grid-area: side; align-self: start; grid-template-columns: minmax(0, 1fr); padding: 0 62px 0 0; }
 .arch-diagram.wide .arch-outside .arch-block { grid-column: 1; }
 .arch-diagram.narrow .arch-outside { padding: 0; }
 

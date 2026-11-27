@@ -9,20 +9,20 @@ const ABOUT_RULES = [
   'The tab Portal stands for the Axon Ivy Portal at Admin Settings › Rule Management. Its editor shows the decision tables and formulas of the DMN editor of Apache KIE; the real one also has the diagram and the data types.',
   'A version saved in the Portal has the source portal. It is never replaced by the project, and the Business Rule Task sends the inputs it needs, also ones the file of the project does not have.',
   'It listens on http://localhost:8090. Stopped or slow, the Business Rule Task throws the same BPMN errors as with the real container.',
-  'The API key, the Portal login and effective dates are not simulated.'
+  'The Portal login and effective dates are not simulated.'
 ].join('|');
 
 export const strings = {
   en: {
     'lang': 'en',
     'tour.intro.title': 'When rules change',
-    'tour.intro.text': 'Five questions about rules that change, each answered on the invoice discount of the demo project: whether the process has to change, an input added in the Portal, a file that does not decide, a roll back, and a runtime that is down.',
+    'tour.intro.text': 'Five questions about rules that change, each answered on the invoice discount of the demo project: whether the process has to change, an input added in the Portal, a file that does not decide, a roll back, and a DMN engine that is down.',
     'tour.intro.duration': 'about 4 min',
     'tour.chapter.noChange': 'Do I have to change the process when a rule changes?',
     'tour.chapter.portalInput': 'A rule owner added an input in the Portal. Does the process need a change?',
     'tour.chapter.oldResult': 'I changed the .dmn file, but the old result comes back. Why?',
     'tour.chapter.rollBack': 'How do I go back to the version before?',
-    'tour.chapter.down': 'What happens when the decision runtime is down?',
+    'tour.chapter.down': 'What happens when the DMN engine is down?',
 
     'tour.before.title': 'Before',
     'tour.before.text': 'The sample invoice gets 2 percent: rule 6, "Silver customer", decides.',
@@ -57,10 +57,10 @@ export const strings = {
     'tour.backAgain.title': 'With the next evaluation',
     'tour.backAgain.text': 'No key account discount any more, decided by version 1. Nothing was deployed.',
 
-    'tour.stopped.title': 'The runtime is down',
+    'tour.stopped.title': 'The DMN engine is down',
     'tour.stopped.text': 'The container is stopped, for example for an update.',
     'tour.unreachable.title': 'rule:engine:unreachable',
-    'tour.unreachable.text': 'The element cannot reach the runtime and throws `rule:engine:unreachable`.',
+    'tour.unreachable.text': 'The element cannot reach the DMN engine and throws `rule:engine:unreachable`.',
     'tour.boundary.title': 'Caught on the element',
     'tour.boundary.text': 'The Error Boundary Event with the error code `rule:engine` catches every error of the rule engine.',
     'tour.notPriced.title': 'Another path',

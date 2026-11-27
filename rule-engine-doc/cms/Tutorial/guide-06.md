@@ -16,7 +16,7 @@ During development the `.dmn` file of your project is what counts. Try it:
 2. Open `dmn/invoice-discount.dmn` and change the result of rule 6, "Silver customer", from `2` to `3`. Save the file.
 3. Click **Apply rules** again. The invoice gets 3 percent, the total is 8,924.00 instead of 9,016.00. The changed file became version 2, and the table on the page shows it.
 
-Before every evaluation the Business Rule Task compares the file with what it stored last. The runtime checks a changed file, it is stored as a new version and goes live. An unchanged file is not stored again.
+Before every evaluation the Business Rule Task compares the file with what it stored last. The DMN engine checks a changed file, it is stored as a new version and goes live. An unchanged file is not stored again.
 
 Content that is stored already never becomes a second version. If you change the 3 back to 2, version 1 is recognised and active again.
 
@@ -51,7 +51,7 @@ List<ModelVersion> versions = RuleEngine.versions("invoice-discount");   // newe
 
 ## Which version decided?
 
-Rules change over time, so "why did this invoice get 2 percent?" needs to know which rules were in force. You do not choose a version: a Business Rule Task always evaluates the active version of the model, and every answer of the runtime names that version.
+Rules change over time, so "why did this invoice get 2 percent?" needs to know which rules were in force. You do not choose a version: a Business Rule Task always evaluates the active version of the model, and the connector notes which version answered.
 
 The connector writes it to the case, as custom field `ruleVersion_<model>`, here `ruleVersion_invoice-discount`. There is nothing to configure, which is why the element has no field for it. You can search and report on it like on any other custom field, and read it in a script; the page of the demo shows it next to the result:
 

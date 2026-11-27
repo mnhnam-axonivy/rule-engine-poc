@@ -167,7 +167,7 @@ export class BottomPanel {
     if (call.registered && (call.registered.created || call.registered.status !== 'ACTIVE')) {
       const active = call.registered.status === 'ACTIVE';
       box.append(h('div.chat-note.' + (active ? 'info' : 'warning'), null, icon(active ? 'info' : 'warning', 14),
-        h('span', null, t(active ? 'runtime.registered' : 'runtime.registered.draft', { version: call.registered.version, model: call.runtimeModel }))));
+        h('span', null, t(active ? 'runtime.registered' : 'runtime.registered.draft', { version: call.registered.version, model: call.model }))));
     }
 
     if (call.status === 'failed') {

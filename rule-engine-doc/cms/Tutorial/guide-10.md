@@ -17,18 +17,18 @@ A model can hold several decisions, and a decision can read the results of other
 | `discount` | decision table, FIRST | `customerTier`, `orderAmount` | `discountPercent`, `discountReason` |
 | `approval` | decision table, FIRST | `orderAmount`, `discount.discountPercent` | `approver` |
 
-The dropdown **DMN decision** of the Business Rule Task then has one more entry: **invoice-discount › all decisions**. With it, the runtime evaluates every decision of the model, each after the ones it reads, and answers all results at once:
+The dropdown **DMN decision** of the Business Rule Task then has one more entry: **invoice-discount › all decisions**. With it, the DMN engine evaluates every decision of the model, each after the ones it reads, and answers all results at once:
 
 | Result | Value, for example | Written to |
 | --- | --- | --- |
 | `discount` | `discountPercent = 2`, `discountReason = "Silver customer"` | `in.invoice.discountPercent`, `in.invoice.discountReason` |
 | `approval` | `"Sales manager"` | `in.invoice.approval`, if the invoice has a field of that name |
 
-The element only needs the inputs of the model. It finds them by name in the process data, as on [Use an existing DMN decision]. The result of `discount` that `approval` reads never leaves the runtime as a separate call: the engine passes it on inside.
+The element only needs the inputs of the model. It finds them by name in the process data, as on [Use an existing DMN decision]. The result of `discount` that `approval` reads never leaves the DMN engine as a separate call: the engine passes it on inside.
 
 To evaluate one decision of such a model, select it on its own, for example **invoice-discount › approval**. The decisions it reads are evaluated with it.
 
-A decision does not have to be a table. A **literal expression** is a formula in FEEL, for example `orderAmount * discount.discountPercent / 100`, and a **business knowledge model** is a function that other decisions call, such as one table used for every line of an invoice. The runtime evaluates them all.
+A decision does not have to be a table. A **literal expression** is a formula in FEEL, for example `orderAmount * discount.discountPercent / 100`, and a **business knowledge model** is a function that other decisions call, such as one table used for every line of an invoice. The DMN engine evaluates them all.
 
 ---
 
@@ -46,7 +46,7 @@ Dates, times, lists and data classes travel as JSON and are converted to the typ
 
 ## The Java API
 
-The class `RuleEngine` of the connector works on the same versions and calls the same runtime as the Business Rule Task, with the same variables, the same API key and the same `RuleEngine.ModelPrefix`. Use it in a script, a Java class, or a Rules UI of your own.
+The class `RuleEngine` of the connector works on the same versions and calls the same DMN engine as the Business Rule Task, with the same variables. Use it in a script, a Java class, or a Rules UI of your own.
 
 | Method | What it does |
 | --- | --- |
@@ -96,7 +96,7 @@ EvaluateResponse response = RuleEngine.evaluate("invoice-discount", 2, "discount
     Map.of("customerTier", "Silver", "orderAmount", 9200));
 ```
 
-The connector loads version 2 into the runtime first, if the runtime does not hold it yet. The API of the runtime, with every request and answer, is described at `http://localhost:8090/q/swagger-ui`.
+The connector sends the file of version 2 with the inputs. The API of the DMN engine, with every request and answer, is described at `http://localhost:8090/q/swagger-ui`.
 
 ---
 

@@ -292,14 +292,14 @@ test('runtime: drafts from the API stay drafts, errors carry the codes of the AP
   const runtime = new DecisionRuntime();
   runtime.register('invoice-pricing', pricing());
   assert.equal(runtime.register('invoice-pricing', withHardware(pricing(), 8)).entry.status, 'DRAFT');
-  assert.throws(() => runtime.evaluate('invoice-pricing', 'bonus', SAMPLE), e => e.code === 'DECISION_NOT_FOUND' && /Available decisions: \[orderDiscounts,/.test(e.message));
+  assert.throws(() => runtime.evaluate('invoice-pricing', 'bonus', SAMPLE), e => e.code === 'DECISION_NOT_FOUND' && /Its decisions are: \[orderDiscounts,/.test(e.message));
   const without = { ...SAMPLE };
   delete without.promoCode;
   assert.throws(() => runtime.evaluate('invoice-pricing', null, without), e => e.code === 'EVALUATION_FAILED' && /'promoCode' not found/.test(e.message));
   assert.throws(() => runtime.evaluate('invoice-pricing', null, { ...SAMPLE, customerTier: 'Diamond' }),
     e => e.code === 'EVALUATION_FAILED' && /not allowed by the declared type \(tCustomerTier\)/.test(e.message));
   assert.throws(() => runtime.evaluate('invoice-pricing', null, { ...SAMPLE, customerTier: null }),
-    e => e.code === 'EVALUATION_FAILED' && /'null' of 'customerTier'/.test(e.message), 'null is not one of the allowed values');
+    e => e.code === 'EVALUATION_FAILED' && /dependency 'customerTier': the dependency value 'null'/.test(e.message), 'null is not one of the allowed values');
   assert.throws(() => runtime.evaluate('invoice-pricing', null, { ...SAMPLE, lines: [{ ...SAMPLE.lines[0], category: 'Food' }] }),
     e => e.code === 'EVALUATION_FAILED' && /\(tLines\)/.test(e.message), 'the allowed values of a component of a list');
   assert.equal(runtime.evaluate('invoice-pricing', null, { ...SAMPLE, promoCode: null }).results.totals.total, 18265.55, 'a plain text takes null');
@@ -451,9 +451,9 @@ test('ivyscript: the Scripts of the demo sum the lines and apply the discount, a
 
 test('settings: what the connector reads from variables.yaml, with its defaults', () => {
   const read = yaml => readSettings(parseYaml(yaml).value);
-  assert.deepEqual(read('Variables:\n  RuleEngine:\n    # the container\n    Url: http://localhost:8090\n    ApiKey: ""\n    TimeoutSeconds: "3"\n    AutoDeploy: "false"\n    ModelPrefix: sales-\n'),
-    { url: 'http://localhost:8090', apiKey: '', timeout: 3, autoDeploy: false, prefix: 'sales-' });
-  assert.deepEqual(read('Variables:\n  RuleEngine:\n    Url: http://rules:8080\n'), { url: 'http://rules:8080', apiKey: '', timeout: 10, autoDeploy: true, prefix: '' });
+  assert.deepEqual(read('Variables:\n  RuleEngine:\n    # the container\n    Url: http://localhost:8090\n    TimeoutSeconds: "3"\n    AutoDeploy: "false"\n'),
+    { url: 'http://localhost:8090', timeout: 3, autoDeploy: false });
+  assert.deepEqual(read('Variables:\n  RuleEngine:\n    Url: http://rules:8080\n'), { url: 'http://rules:8080', timeout: 10, autoDeploy: true });
   const real = read(readFileSync(fileURLToPath(new URL('../../../../rule-engine/config/variables.yaml', import.meta.url)), 'utf8'));
   assert.deepEqual([real.url, real.timeout, real.autoDeploy], ['http://localhost:8090', 10, true], 'the variables.yaml of the connector');
 });

@@ -20,7 +20,7 @@ const text = name => readFileSync(demo(name), 'utf8');
 const json = name => JSON.parse(text(name));
 const DATA = 'dataclass/com/axonivy/utils/rule/engine/demo/';
 const CLASSES = ['Invoice', 'InvoiceLine'];
-const VARIABLES = 'Variables:\n  RuleEngine:\n    Url: http://localhost:8090\n    ApiKey: ""\n    TimeoutSeconds: "10"\n    AutoDeploy: "true"\n';
+const VARIABLES = 'Variables:\n  RuleEngine:\n    Url: http://localhost:8090\n    TimeoutSeconds: "10"\n    AutoDeploy: "true"\n';
 
 const SUM = 'f2';
 const RULE_TASK = 'f4';
@@ -69,7 +69,7 @@ test('runner: the callable sums the lines, the table decides the discount, the p
   const call = callOf(result);
   assert.deepEqual(call.mappings.map(m => [m.name, m.expression]), [['customerTier', 'in.invoice.customerTier'], ['orderAmount', 'in.invoice.orderAmount']]);
   assert.deepEqual(call.input, { customerTier: 'Silver', orderAmount: 9200 }, 'the order amount the Script summed');
-  assert.equal(call.url, 'http://localhost:8090/api/models/invoice-discount/versions/1/evaluate');
+  assert.equal(call.url, 'http://localhost:8090/jitdmn/dmnresult');
   assert.equal(call.decision, DECISION);
   assert.equal(call.version, 1);
   assert.deepEqual([call.rule.index, call.rule.outputs], [5, ['2', '"Silver customer"']], 'the rule that decided');

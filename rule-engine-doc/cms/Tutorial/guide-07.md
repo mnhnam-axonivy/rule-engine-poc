@@ -12,7 +12,7 @@ This page follows one change from the business to the invoice. The rules of the 
 
 | | |
 | --- | --- |
-| The decision runtime | Running, as on [Set up and run your first decision]. |
+| The DMN engine | Running, as on [Set up and run your first decision]. |
 | The Axon Ivy Portal | In the same security context as your project, in a version with Rule Management. In the Designer: import the projects `portal-components` and `portal` next to the rule engine projects. |
 | A Portal administrator | A user with the role `AXONIVY_PORTAL_ADMIN`. In the Designer the Portal brings the user `admin`, password `admin`. |
 
@@ -43,7 +43,7 @@ The table lists the stored models with their active version, and the `.dmn` file
 | **Show versions** | Lists every version with status, source, author and what changed. Open, activate, roll back. |
 | **Refresh** | Reads the versions again. |
 
-The DMN editor is the one of the Designer and of VS Code. The engine fetches it from the runtime, so the browser of the rule owner never talks to the runtime, and the API key stays on the server.
+The DMN editor is the one of the Designer and of VS Code, bundled in the connector. The browser of the rule owner only talks to the Axon Ivy Engine, never to the DMN engine.
 
 ---
 
@@ -68,7 +68,7 @@ Then:
 
 1. **Check** lets the DMN engine check the model. Nothing is stored.
 2. Fill in **What changed?**, e.g. "Key account discount for Bluebird Architects".
-3. **Save and activate**. The runtime checks the model again and refuses it with the findings of the DMN engine if a rule is not valid.
+3. **Save and activate**. The DMN engine checks the model again and refuses it with the findings of the DMN engine if a rule is not valid.
 
 The result is version 2, from the source **portal**, with the Portal user as author. It is live at once. **Save as draft** stores it without making it live.
 
@@ -127,12 +127,12 @@ Set the variable `RuleEngine.AutoDeploy` to `false` if a project should never st
 
 ## Without the Portal
 
-The decision runtime has an editor page of its own, for development: open `http://localhost:8090/editor/`. It edits the `.dmn` file of a project with a table instead of XML.
+The connector has an editor page of its own, for development: the page `api/rule-engine/editor` of your application. It edits the `.dmn` file of a project with a table instead of XML.
 
 1. **Open .dmn file…** and choose `dmn/invoice-discount.dmn` of the project.
 2. Select the decision in the diagram, `discount`, and click **Edit** below it: the decision table opens.
 3. Click a cell, for example the result of rule 6, "Silver customer", type the new value and press Enter.
-4. **Check** lets the DMN engine look at the model. **Save file** writes it back (Chrome and Edge; other browsers download the changed file).
+4. **Check** lets the DMN engine look at the model; it needs a user logged in to the Axon Ivy Engine. **Save file** writes it back (Chrome and Edge; other browsers download the changed file).
 
 The change goes live through the project, like any saved file. The page stores no versions: without a Portal, activate and roll back versions with the Java API, see [Several decisions and the Java API].
 
@@ -142,8 +142,7 @@ The change goes live through the project, like any saved file. The page stores n
 
 ```text
  Browser ──► Portal (Admin Settings) ──► rule-engine: Portal/RuleManagement ──► versions: files of the application
-                                         (callable sub process)              └──► decision runtime: checks a model
-                                                                                  (with the API key)
+                                         (callable sub process)              └──► DMN engine: checks a model
 ```
 
 - The Portal finds the callable sub process `Portal/RuleManagement` of the connector by its signatures in the security context, the way it finds Smart Workflow. Without it, there is no tab and nothing else changes.
@@ -155,7 +154,7 @@ The change goes live through the project, like any saved file. The page stores n
 ## Good to know
 
 - An input that the Portal version adds must exist in the process data: a field of the same name, set before the Business Rule Task. Otherwise the element throws `rule:engine:mapping`, as described in [Handle errors].
-- The table shows the models of this application: every application stores its own versions. Applications that share one runtime are separated there by `RuleEngine.ModelPrefix`.
+- The table shows the models of this application: every application stores its own versions. Applications can share one DMN engine: it keeps nothing of them.
 
 ---
 

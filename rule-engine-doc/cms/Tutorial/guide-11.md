@@ -8,15 +8,15 @@ Short answers, grouped like the tutorial. Each answer links to the page that exp
 
 ### Do I need Java or Maven to try the rule engine?
 
-No. The decision runtime is built inside Docker, and the projects run in the Designer. You need Docker and a free port 8090, see [Set up and run your first decision].
+No. The DMN engine comes as a ready image of Apache KIE, and the projects run in the Designer. You need Docker and a free port 8090, see [Set up and run your first decision].
 
 ### The process ends at "not priced" and the log says `rule:engine:unreachable`. What is wrong?
 
-The Business Rule Task cannot reach the decision runtime: the container is not running, or `RuleEngine.Url` points to another host or port. Check with `docker ps -a --filter name=axonivy-rule-engine` and compare the port. The table *If it does not work* on [Set up and run your first decision] lists the usual causes.
+The Business Rule Task cannot reach the DMN engine: the container is not running, or `RuleEngine.Url` points to another host or port. Check with `docker ps -a --filter name=axonivy-rule-engine` and compare the port. The table *If it does not work* on [Set up and run your first decision] lists the usual causes.
 
 ### Where are the versions of my rules stored? Are they lost when the container stops?
 
-In the files of your Ivy application, in the file area of the Axon Ivy Engine: a folder `rule-engine` with a folder per model, holding the `.dmn` file of each version and `versions.json`. The container keeps nothing, so stopping or removing it loses nothing: the engine loads the versions into the runtime again. In production, back up the data directory of the engine, see [Run it in production].
+In the files of your Ivy application, in the file area of the Axon Ivy Engine: a folder `rule-engine` with a folder per model, holding the `.dmn` file of each version and `versions.json`. The container keeps nothing, so stopping or removing it loses nothing: every evaluation sends the file of the version. In production, back up the data directory of the engine, see [Run it in production].
 
 ---
 
@@ -68,7 +68,7 @@ To make your file live, activate its version on purpose: the Portal offers it in
 
 In the Portal: **Admin Settings › Rule Management**, **Show versions** of the model, then **Roll back**. The version before is active again, and the next evaluation uses it. Any other version of the list can be activated the same way. In Java: `RuleEngine.rollback("invoice-discount", "rule.approver")`.
 
-### What happens when the decision runtime is down?
+### What happens when the DMN engine is down?
 
 The element throws `rule:engine:unreachable`. Catch it with an Error Boundary Event on the element: the error code `rule:engine` catches every error of the rule engine. The demo then takes the path *not priced*, and its page shows the error. More on the page [Handle errors].
 
@@ -82,7 +82,7 @@ The element throws `rule:engine:unreachable`. Catch it with an Error Boundary Ev
 
 ### What is the difference between `rule:engine:dmn` and `rule:engine:mapping`?
 
-`rule:engine:dmn` comes from the runtime: it refused the call, for example an unknown model, an invalid file or a wrong API key. `rule:engine:mapping` comes from the element: it does not fit the decision, for example no decision selected or an input without a field. Retrying helps with neither; fix the model, the data or the process.
+`rule:engine:dmn` comes from the rules: the call was refused, for example an unknown model, an invalid file or a failed evaluation. `rule:engine:mapping` comes from the element: it does not fit the decision, for example no decision selected or an input without a field. Retrying helps with neither; fix the model, the data or the process.
 
 ### Why did my process stop at the Business Rule Task?
 

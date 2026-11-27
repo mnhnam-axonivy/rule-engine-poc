@@ -69,5 +69,5 @@ export const LAST_WORD_STRINGS = {
   'tour.stillPortal.title': 'The rule owner keeps the last word',
   'tour.stillPortal.text': 'Version 2 of the Portal still decides: the key account discount stays, 10 percent.',
   'tour.draftBeside.title': 'Your file, as version 3',
-  'tour.draftBeside.text': 'It waits beside the active version. To make it live, activate it on purpose, in the Portal or in the editor of the runtime.'
+  'tour.draftBeside.text': 'It waits beside the active version. To make it live, activate it on purpose, in the Portal or with the Java API.'
 };

@@ -21,12 +21,5 @@
         <include>README*.md</include>
       </includes>
     </fileSet>
-    <fileSet>
-      <directory>../rule-engine-runtime</directory>
-      <outputDirectory>/</outputDirectory>
-      <includes>
-        <include>openapi.yaml</include>
-      </includes>
-    </fileSet>
   </fileSets>
 </assembly>

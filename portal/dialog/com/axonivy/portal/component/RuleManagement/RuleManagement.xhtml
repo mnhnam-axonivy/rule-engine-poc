@@ -61,17 +61,34 @@
             <i class="ti ti-file-code" aria-hidden="true" />
             <h:outputText value="#{ivy.cms.co(cmsPath.concat('FileOfProject'), [model.file, model.project])}" />
           </h:panelGroup>
+          <h:panelGroup id="rule-pending" layout="block" styleClass="rule-pending" rendered="#{model.pendingVersion != null}">
+            <div class="rule-pending-text">
+              <i class="ti ti-alert-triangle" aria-hidden="true" />
+              <h:outputText value="#{ivy.cms.co(cmsPath.concat('Pending'), [model.pendingVersion, model.pendingFrom])}" />
+            </div>
+            <div class="rule-pending-actions flex flex-wrap gap-2">
+              <p:commandButton id="activate-pending" icon="ti ti-player-play"
+                value="#{ivy.cms.co(cmsPath.concat('ActivatePending'), [model.pendingVersion])}"
+                action="#{ruleManagementBean.activatePending(model)}" process="@this"
+                update="@form :#{cc.clientId}:rule-management-messages" />
+              <p:commandButton id="keep-active" styleClass="ui-button-outlined"
+                value="#{ivy.cms.co(cmsPath.concat('KeepActive'), [model.activeVersion])}"
+                title="#{ivy.cms.co(cmsPath.concat('KeepActiveHint'), [model.pendingVersion])}"
+                action="#{ruleManagementBean.keepActive(model)}" process="@this"
+                update="@form :#{cc.clientId}:rule-management-messages" />
+            </div>
+          </h:panelGroup>
         </p:column>
         <p:column headerText="#{ivy.cms.co(cmsPath.concat('Decisions'))}" styleClass="rule-decisions-column">
           <h:outputText value="#{ruleManagementBean.decisionNames(model)}" />
         </p:column>
         <p:column headerText="#{ivy.cms.co(cmsPath.concat('ActiveVersion'))}" styleClass="rule-active-column">
-          <h:outputText styleClass="rule-badge rule-badge-active" rendered="#{model.onRuntime and model.activeVersion != null}"
+          <h:outputText styleClass="rule-badge rule-badge-active" rendered="#{model.stored and model.activeVersion != null}"
             value="#{ivy.cms.co(cmsPath.concat('VersionLabel'), [model.activeVersion])}" />
-          <h:outputText styleClass="rule-muted" rendered="#{model.onRuntime and model.activeVersion == null}"
+          <h:outputText styleClass="rule-muted" rendered="#{model.stored and model.activeVersion == null}"
             value="#{ivy.cms.co(cmsPath.concat('NoActiveVersion'))}" />
-          <h:outputText styleClass="rule-badge rule-badge-new" rendered="#{!model.onRuntime}"
-            value="#{ivy.cms.co(cmsPath.concat('NotOnRuntime'))}" />
+          <h:outputText styleClass="rule-badge rule-badge-new" rendered="#{!model.stored}"
+            value="#{ivy.cms.co(cmsPath.concat('NotStored'))}" />
         </p:column>
         <p:column headerText="#{ivy.cms.co(cmsPath.concat('Versions'))}" styleClass="rule-count-column text-center">
           <h:outputText value="#{model.versionCount}" />
@@ -84,7 +101,7 @@
             update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
             oncomplete="if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
           <p:commandButton id="show-versions" icon="ti ti-history" title="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}"
-            ariaLabel="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}" disabled="#{!model.onRuntime or !ruleManagementBean.reachable}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}" disabled="#{!model.stored}"
             styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
             action="#{ruleManagementBean.showVersions(model)}" process="@this"
             update=":#{cc.clientId}:rule-versions-dialog :#{cc.clientId}:rule-management-messages"
@@ -168,7 +185,7 @@
           <h:outputText value="#{ruleManagementBean.time(version.createdAt)}" />
         </p:column>
         <p:column headerText="#{ivy.cms.co(cmsPath.concat('Activated'))}">
-          <h:outputText value="#{ruleManagementBean.time(version.activatedAt)}" />
+          <h:outputText value="#{ruleManagementBean.time(version.effectiveDate)}" />
           <h:panelGroup styleClass="rule-muted block" rendered="#{not empty version.activatedBy}">
             <h:outputText value="#{version.activatedBy}" />
           </h:panelGroup>

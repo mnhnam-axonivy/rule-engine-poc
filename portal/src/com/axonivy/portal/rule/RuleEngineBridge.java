@@ -32,6 +32,7 @@ public final class RuleEngineBridge {
   static final String SAVE = "ruleManagementSave(String,String,String,String,Boolean)";
   static final String ACTIVATE = "ruleManagementActivate(String,Integer,String)";
   static final String ROLLBACK = "ruleManagementRollback(String,String)";
+  static final String RETIRE = "ruleManagementRetire(String,Integer)";
 
   private RuleEngineBridge() {}
 
@@ -86,6 +87,10 @@ public final class RuleEngineBridge {
   /** Activates the version that was active before the current one */
   public static RuleEngineAnswer rollback(String model, String author) {
     return call(ROLLBACK, params("model", model, "author", author));
+  }
+
+  public static RuleEngineAnswer retire(String model, int version) {
+    return call(RETIRE, params("model", model, "version", version));
   }
 
   private static RuleEngineAnswer call(String signature, Map<String, Object> params) {

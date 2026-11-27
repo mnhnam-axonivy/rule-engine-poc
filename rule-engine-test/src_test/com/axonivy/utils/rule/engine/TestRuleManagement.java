@@ -13,8 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
-import com.axonivy.utils.rule.engine.portal.DmnEditorScript;
-import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
+import com.axonivy.utils.rule.engine.test.mock.MockDmnEngine;
 import com.axonivy.utils.rule.engine.test.mock.TestStore;
 import com.axonivy.utils.rule.engine.version.VersionStore;
 
@@ -26,13 +25,15 @@ import ch.ivyteam.ivy.process.call.SubProcessCallStartParamCaller;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter.SearchScope;
 import ch.ivyteam.ivy.security.exec.Sudo;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 /**
  * The bridge to the tab "Rule Management" of the Axon Ivy Portal: the callable sub process Portal/RuleManagement,
  * called the way the Portal calls it. The Portal knows nothing of the rule engine but these signatures, so they
  * and the JDK types they answer with are a contract. The versions are stored in the file area of the test
- * application, the decision runtime is replaced by {@link MockRuntime}.
+ * application, the DMN engine is replaced by {@link MockDmnEngine}.
  */
 @IvyProcessTest(enableWebServer = true)
 @SuppressWarnings("unchecked")
@@ -53,12 +54,9 @@ class TestRuleManagement {
 
   @BeforeEach
   void setup(AppFixture fixture) {
-    MockRuntime.reset();
+    MockDmnEngine.reset();
     TestStore.clear();
-    DmnEditorScript.forget();
-    fixture.var(Var.URL, MockRuntime.url());
-    fixture.var(Var.API_KEY, "test-key");
-    fixture.var(Var.MODEL_PREFIX, "");
+    fixture.var(Var.URL, MockDmnEngine.url());
   }
 
   @Test
@@ -72,7 +70,7 @@ class TestRuleManagement {
   void info() {
     Map<String, Object> info = (Map<String, Object>) result(call("ruleManagementInfo()", Map.of()));
 
-    assertThat(info).containsEntry("runtimeUrl", MockRuntime.url()).containsEntry("reachable", true);
+    assertThat(info).containsEntry("runtimeUrl", MockDmnEngine.url()).containsEntry("reachable", true);
   }
 
   @Test
@@ -94,7 +92,7 @@ class TestRuleManagement {
     assertThat(demo).containsEntry("stored", false).containsEntry("file", "invoice-discount.dmn")
         .containsEntry("decisions", List.of("discount"));
     assertThat((String) demo.get("project")).as("a required project").startsWith("rule-engine-demo");
-    assertThat(MockRuntime.calls()).as("listing needs no runtime").isEmpty();
+    assertThat(MockDmnEngine.calls()).as("listing needs no DMN engine").isEmpty();
   }
 
   @Test
@@ -142,7 +140,7 @@ class TestRuleManagement {
     assertThat(version).containsEntry("model", "discount").containsEntry("version", 1)
         .containsEntry("status", "ACTIVE").containsEntry("source", "PORTAL").containsEntry("author", "admin")
         .containsEntry("description", "Gold 20").containsEntry("created", true);
-    assertThat(MockRuntime.calls("validate").get(0).body().get("content").asString())
+    assertThat(MockDmnEngine.calls("validate").get(0).dmn())
         .as("the runtime checks it first").isEqualTo(DMN);
     assertThat(VersionStore.current().content("discount", 1)).isEqualTo(DMN);
 
@@ -161,8 +159,7 @@ class TestRuleManagement {
 
   @Test
   void aModelWithErrorsIsRefusedWithTheFindings() {
-    MockRuntime.onValidate(call -> MockRuntime.json(200, """
-        {"valid":false,"messages":[{"severity":"ERROR","message":"Rule 3: the input entry 'Goldd' is not an allowed value"}]}"""));
+    MockDmnEngine.onValidate(call -> MockDmnEngine.findings("Rule 3: the input entry 'Goldd' is not an allowed value"));
 
     Map<String, Object> answer = call("ruleManagementSave(String,String,String,String,Boolean)",
         params("model", "discount", "dmn", DMN, "author", "admin", "description", null, "activate", true));
@@ -221,8 +218,8 @@ class TestRuleManagement {
 
   @Test
   void validate() {
-    MockRuntime.onValidate(call -> MockRuntime.json(200, """
-        {"valid":false,"messages":[{"severity":"ERROR","message":"Missing output","sourceId":"_rule3"}]}"""));
+    MockDmnEngine.onValidate(call -> MockDmnEngine.json(200, """
+        [{"severity":"ERROR","message":"Missing output","sourceId":"_rule3"}]"""));
 
     Map<String, Object> validation = (Map<String, Object>) result(call("ruleManagementValidate(String)", params("dmn", DMN)));
 
@@ -231,7 +228,7 @@ class TestRuleManagement {
   }
 
   @Test
-  void anUnreachableRuntime_stopsChecksAndSaves_notTheList(AppFixture fixture) {
+  void anUnreachableDmnEngine_stopsChecksAndSaves_notTheList(AppFixture fixture) {
     TestStore.store("discount", "discount", "purchaseAmount");
     fixture.var(Var.URL, "http://127.0.0.1:9");
 
@@ -244,32 +241,42 @@ class TestRuleManagement {
   }
 
   @Test
-  void theEditorScriptComesFromTheRuntimeThroughThisEngine() {
-    MockRuntime.editorScript("window.DmnEditor = { open: function () {} };");
-
-    try (Response first = editorScript(null)) {
+  void theDmnEditorIsBundled() {
+    try (Response first = editor("dmn-editor/dmn-editor.js", null)) {
       assertThat(first.getStatus()).isEqualTo(200);
-      assertThat(first.readEntity(String.class)).isEqualTo("window.DmnEditor = { open: function () {} };");
       assertThat(first.getHeaderString("Content-Type")).startsWith("text/javascript");
+      assertThat(first.readEntity(String.class)).contains("DmnEditor");
       String etag = first.getHeaderString("ETag");
       assertThat(etag).isNotBlank();
-      try (Response again = editorScript(etag)) {
+      try (Response again = editor("dmn-editor/dmn-editor.js", etag)) {
         assertThat(again.getStatus()).as("the browser has it already").isEqualTo(304);
       }
     }
-    assertThat(MockRuntime.calls("editorScript")).as("fetched from the runtime once").hasSize(1);
+    assertThat(MockDmnEngine.calls()).as("not fetched from the DMN engine").isEmpty();
   }
 
   @Test
-  void aRuntimeWithoutEditorIsExplained() {
-    try (Response response = editorScript(null)) {
-      assertThat(response.getStatus()).isEqualTo(404);
-      assertThat(response.readEntity(String.class)).contains("has no DMN editor");
+  void theEditorPage() {
+    try (Response page = editor("editor/index.html", null)) {
+      assertThat(page.getStatus()).isEqualTo(200);
+      assertThat(page.getHeaderString("Content-Type")).startsWith("text/html");
+      assertThat(page.readEntity(String.class)).contains("lib/dmn-editor.js").contains("editor.js");
     }
+    try (Response script = editor("editor/lib/dmn-editor.js", null)) {
+      assertThat(script.getStatus()).isEqualTo(200);
+    }
+    try (Response other = editor("editor/pom.xml", null)) {
+      assertThat(other.getStatus()).as("only the files of the page").isEqualTo(404);
+    }
+    try (Response anonymous = Ivy.rest().client("dmnEditor").path("editor/validate").request()
+        .header("X-Requested-By", "ivy").post(Entity.entity(DMN, MediaType.APPLICATION_XML))) {
+      assertThat(anonymous.getStatus()).as("the check needs a logged in user").isEqualTo(401);
+    }
+    assertThat(MockDmnEngine.calls("validate")).isEmpty();
   }
 
-  private static Response editorScript(String ifNoneMatch) {
-    var request = Ivy.rest().client("dmnEditorScript").path("dmn-editor.js").request();
+  private static Response editor(String path, String ifNoneMatch) {
+    var request = Ivy.rest().client("dmnEditor").path(path).request();
     if (ifNoneMatch != null) {
       request = request.header("If-None-Match", ifNoneMatch);
     }

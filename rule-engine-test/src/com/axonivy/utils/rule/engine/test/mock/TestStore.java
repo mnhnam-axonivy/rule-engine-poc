@@ -7,7 +7,6 @@ import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
-import com.axonivy.utils.rule.engine.deploy.RuntimeLoader;
 import com.axonivy.utils.rule.engine.version.VersionStore;
 
 public final class TestStore {
@@ -18,7 +17,6 @@ public final class TestStore {
     var store = VersionStore.current();
     store.models().forEach(store::delete);
     ModelDeployer.reset();
-    RuntimeLoader.reset();
   }
 
   public static ModelVersion store(String model, String decision, String... inputs) {

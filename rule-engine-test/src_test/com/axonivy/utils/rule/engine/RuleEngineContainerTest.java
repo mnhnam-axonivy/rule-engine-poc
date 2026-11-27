@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,6 +19,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
+import com.axonivy.utils.rule.engine.api.Message;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
@@ -29,7 +31,6 @@ import com.axonivy.utils.rule.engine.demo.InvoiceSamples;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.portal.RuleManagement;
-import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
 import com.axonivy.utils.rule.engine.test.TestData;
 import com.axonivy.utils.rule.engine.test.mock.TestStore;
 import com.axonivy.utils.rule.engine.version.VersionStore;
@@ -40,43 +41,38 @@ import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import ch.ivyteam.ivy.environment.AppFixture;
 
 /**
- * End to end against the real decision runtime in a container: Ivy process, Business Rule Task, the versions in the
- * file area of the application, REST and the DMN engine of the runtime. The discount of the demo invoice is decided by
- * dmn/invoice-discount.dmn of rule-engine-demo.
- * <p>Build the image first: <code>docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime</code>, then
- * <code>mvn verify -Pcontainer.test</code>.</p>
+ * End to end against the real DMN engine in a container, the Apache KIE JIT runner: Ivy process, Business Rule Task,
+ * the versions in the file area of the application and REST. The discount of the demo invoice is decided by
+ * dmn/invoice-discount.dmn of rule-engine-demo. Run with <code>mvn verify -Pcontainer.test</code>.
  */
 @IvyProcessTest
 class RuleEngineContainerTest {
 
-  private static final String API_KEY = "container-secret";
   private static final String DEMO = DiscountTable.MODEL;
-  /** The discount of the rule "Silver customer" in dmn/invoice-discount.dmn. */
-  private static final String SILVER = "<outputEntry id=\"_discount_rule_6_out_1\"><text>2</text></outputEntry>";
+  /** The discount of the rule "Silver customer" in dmn/invoice-discount.dmn, however the editor formatted it. */
+  private static final Pattern SILVER =
+      Pattern.compile("(?<=<outputEntry id=\"_discount_rule_6_out_1\">\\s{0,40}<text>)2(?=</text>)");
 
   @SuppressWarnings("resource")
-  static GenericContainer<?> runtime = new GenericContainer<>(
-      System.getProperty("rule.engine.image", "axonivy/rule-engine-runtime:dev"))
-      .withEnv("RULE_ENGINE_API_KEY", API_KEY)
+  static GenericContainer<?> engine = new GenericContainer<>(
+      System.getProperty("rule.engine.image", "apache/incubator-kie-kogito-jit-runner:10.2.0"))
       .withExposedPorts(8080)
       .waitingFor(Wait.forHttp("/q/health/ready").forStatusCode(200).withStartupTimeout(Duration.ofMinutes(3)));
 
   @BeforeAll
-  public static void startRuntime() {
-    runtime.start();
+  public static void startEngine() {
+    engine.start();
   }
 
   @AfterAll
-  public static void stopRuntime() {
-    runtime.stop();
+  public static void stopEngine() {
+    engine.stop();
   }
 
   @BeforeEach
   public void setup(AppFixture fixture) {
-    fixture.var(Var.URL, "http://" + runtime.getHost() + ":" + runtime.getMappedPort(8080));
-    fixture.var(Var.API_KEY, API_KEY);
+    fixture.var(Var.URL, "http://" + engine.getHost() + ":" + engine.getMappedPort(8080));
     fixture.var(Var.AUTO_DEPLOY, "true");
-    fixture.var(Var.MODEL_PREFIX, "");
     TestStore.clear();
     ProjectDmnFiles.refresh();
   }
@@ -126,7 +122,7 @@ class RuleEngineContainerTest {
     String withSegment = Files.readString(Project.current().directory()
         .resolve("src_test/com/axonivy/utils/rule/engine/scenario/discount-portal.dmn.xml"));
     var saved = RuleManagement.save("discount", withSegment, "admin", "Customers of the segment GOLD", true);
-    assertThat(saved.error()).as("the runtime refused the model").isNull();
+    assertThat(saved.error()).as("the DMN engine refused the model").isNull();
     var version = (Map<String, Object>) saved.result();
     assertThat(version).containsEntry("status", "ACTIVE").containsEntry("source", "PORTAL").containsEntry("author", "admin");
 
@@ -151,7 +147,7 @@ class RuleEngineContainerTest {
     String keyAccount = Files.readString(Project.current().directory()
         .resolve("src_test/com/axonivy/utils/rule/engine/scenario/invoice-discount-key-account.dmn.xml"));
     var saved = RuleManagement.save(DEMO, keyAccount, "admin", "Key account discount for Bluebird Architects", true);
-    assertThat(saved.error()).as("the runtime refused the model").isNull();
+    assertThat(saved.error()).as("the DMN engine refused the model").isNull();
     var version = (Map<String, Object>) saved.result();
     try {
       var execution = TestInvoicePricing.execute(client, InvoiceSamples.standard());
@@ -181,7 +177,7 @@ class RuleEngineContainerTest {
 
     // a rule owner raises the discount of Silver customers
     String current = VersionStore.current().content(DEMO, projectVersion);
-    String changed = current.replace(SILVER, SILVER.replace("<text>2</text>", "<text>3</text>"));
+    String changed = SILVER.matcher(current).replaceFirst("3");
     assertThat(changed).isNotEqualTo(current);
     ModelVersion draft = RuleEngine.register(DEMO, changed, "rule.editor", "Silver customers get 3%");
     assertThat(draft.status()).isEqualTo(VersionStatus.DRAFT);
@@ -240,18 +236,7 @@ class RuleEngineContainerTest {
   }
 
   @Test
-  void versionsTheRuntimeDropped_areLoadedAgain(BpmClient client) {
-    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getTotal()).isEqualByComparingTo("9016.00");
-    assertThat(RuleEngine.client().loaded()).extracting(loaded -> loaded.model()).contains(DEMO);
-
-    RuleEngine.client().unload(DEMO);
-
-    assertThat(TestInvoicePricing.price(client, InvoiceSamples.standard()).getTotal()).isEqualByComparingTo("9016.00");
-    assertThat(RuleEngine.versions(DEMO)).as("nothing new is stored").hasSize(1);
-  }
-
-  @Test
-  void generatedDmn_isValidAndRunsInTheRuntime(BpmClient client) throws IOException {
+  void generatedDmn_isValidAndRunsInTheDmnEngine(BpmClient client) throws IOException {
     Path generated = Project.current().directory().resolve("dmn").resolve("test-generated.dmn");
     Files.deleteIfExists(generated);
     try {
@@ -263,7 +248,8 @@ class RuleEngineContainerTest {
       assertThat(result.getErrorMessage()).isNull();
       assertThat(generated).as("generated from the selected fields of the process data").exists();
       assertThat(RuleEngine.client().validate(Files.readString(generated)).messages())
-          .as("findings of the DMN validator of the runtime").isEmpty();
+          .as("errors found by the DMN validator; it may still advise on the decision table")
+          .extracting(Message::severity).doesNotContain(Message.ERROR);
       assertThat(result.getDiscount().intValue()).as("the placeholder rule of the generated table").isZero();
 
       // the rule author fills in a rule, the changed file is live with the next evaluation
@@ -295,22 +281,12 @@ class RuleEngineContainerTest {
     assertThatThrownBy(() -> RuleEngine.register("broken", "<definitions>this is not DMN</definitions>", "me", ""))
         .isInstanceOfSatisfying(RuleEngineApiException.class, ex -> {
           assertThat(ex.code()).isEqualTo(RuleEngineApiException.INVALID_MODEL);
-          assertThat(ex.getMessage()).contains("not a DMN model");
+          assertThat(ex.getMessage()).contains("Cannot find the declaration of element 'definitions'");
         });
   }
 
   @Test
-  void wrongApiKey_isAnsweredByTheDemo(BpmClient client, AppFixture fixture) {
-    fixture.var(Var.API_KEY, "wrong");
-
-    var result = TestInvoicePricing.execute(client, InvoiceSamples.standard()).subResult();
-
-    assertThat(result.param("errorCode", String.class)).isEqualTo(RuleErrors.DMN);
-    assertThat(result.param("errorMessage", String.class)).contains("API key");
-  }
-
-  @Test
-  void runtimeIsReady() {
+  void dmnEngineIsReady() {
     assertThat(RuleEngine.client().isReady()).isTrue();
   }
 

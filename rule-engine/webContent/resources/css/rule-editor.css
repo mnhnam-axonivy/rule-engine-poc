@@ -1,0 +1,15 @@
+/* the KIE editor brings its own (light) look; it takes the room below the bar of the dialog */
+.rule-editor-container {
+  height: calc(100vh - 9rem);
+  min-height: 30rem;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.rule-editor-container iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

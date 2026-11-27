@@ -1,0 +1,70 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:f="jakarta.faces.core"
+      xmlns:h="jakarta.faces.html"
+      xmlns:ui="jakarta.faces.facelets"
+      xmlns:p="primefaces"
+      xmlns:pt="jakarta.faces.passthrough">
+<!--
+  The DMN editor of Apache KIE for one rule: check it, save it as a new version, live or as draft.
+  Any process can call it (start(String,Integer)); others open the process start RuleEditor/editRule.ivp, the Portal
+  in an iframe. rule-editor.js runs the editor in the browser and tells a parent page when a version is saved and
+  when the editor closes.
+-->
+<h:body>
+  <ui:composition template="/layouts/frame-10-full-width.xhtml">
+    <ui:param name="cmsPath" value="/Dialogs/com/axonivy/utils/rule/engine/editor/RuleEditor/" />
+    <ui:define name="title">#{ivy.cms.co(cmsPath.concat('Title'), [data.editor.model])}</ui:define>
+    <ui:define name="content">
+      <h:outputStylesheet library="css" name="rule-editor.css" />
+      <h:outputScript library="js" name="dmn-editor-standalone-10.2.0/dmn-editor.js" />
+      <h:outputScript library="js" name="rule-editor.js" />
+
+      <h:form id="form" styleClass="rule-editor" pt:data-model="#{data.editor.model}"
+        pt:data-text-leave="#{ivy.cms.co(cmsPath.concat('LeaveWithUnsavedChanges'))}"
+        pt:data-text-not-loaded="#{ivy.cms.co(cmsPath.concat('Messages/EditorNotLoaded'))}"
+        pt:data-text-cannot-open="#{ivy.cms.co(cmsPath.concat('Messages/EditorCannotOpen'))}">
+        <div class="flex flex-wrap align-items-center gap-3 pb-3">
+          <span class="text-xl font-semibold">#{data.editor.model}</span>
+          <h:outputText id="state" styleClass="text-color-secondary" value="#{data.editor.state}" />
+          <span class="rule-editor-dirty font-semibold text-orange-600" hidden="hidden">#{ivy.cms.co(cmsPath.concat('UnsavedChanges'))}</span>
+          <span class="rule-editor-loading text-color-secondary">#{ivy.cms.co(cmsPath.concat('EditorLoading'))}</span>
+          <span class="flex-grow-1" />
+          <p:inputText id="description" value="#{data.editor.description}" styleClass="w-20rem max-w-full"
+            placeholder="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}"
+            pt:aria-label="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}" />
+          <p:commandButton id="check" type="button" icon="ti ti-checks" styleClass="ui-button-outlined rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('Check'))}" title="#{ivy.cms.co(cmsPath.concat('CheckHint'))}"
+            onclick="RuleEditor.check()" />
+          <p:commandButton id="save-draft" type="button" icon="ti ti-file-pencil" styleClass="ui-button-outlined rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('SaveAsDraft'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAsDraftHint'))}"
+            onclick="RuleEditor.save(false)" />
+          <p:commandButton id="save-activate" type="button" icon="ti ti-device-floppy" styleClass="rule-editor-action"
+            value="#{ivy.cms.co(cmsPath.concat('SaveAndActivate'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAndActivateHint'))}"
+            onclick="RuleEditor.save(true)" />
+          <p:commandButton id="close" type="button" icon="ti ti-x" styleClass="ui-button-flat"
+            value="#{ivy.cms.co(cmsPath.concat('Close'))}" onclick="RuleEditor.close()" />
+        </div>
+
+        <!-- data-saved: whether the last check or save stored a version, read by rule-editor.js after the update -->
+        <h:panelGroup id="notices" layout="block" pt:data-saved="#{data.editor.saved}">
+          <ui:repeat value="#{data.editor.notices}" var="notice">
+            <p:staticMessage severity="#{notice.severity}" summary="#{notice.text}" styleClass="w-full mt-0 mb-2" />
+          </ui:repeat>
+        </h:panelGroup>
+
+        <!-- the model as DMN XML: filled when the dialog starts, and by rule-editor.js before a check or a save -->
+        <h:inputTextarea id="dmn" value="#{data.editor.dmn}" styleClass="rule-editor-dmn" style="display:none" />
+        <p:remoteCommand name="ruleEditorCheck" actionListener="#{data.editor.check}" process="@this dmn"
+          update="notices" oncomplete="RuleEditor.done()" />
+        <p:remoteCommand name="ruleEditorSave" actionListener="#{data.editor.save(param['activate'] eq 'true')}"
+          process="@this dmn description" update="notices state description"
+          oncomplete="RuleEditor.done()" />
+        <p:remoteCommand name="ruleEditorClose" actionListener="#{logic.close}" process="@this" />
+      </h:form>
+
+      <!-- the KIE editor puts its frame here; no ajax update touches it -->
+      <h:panelGroup layout="block" styleClass="rule-editor-container" rendered="#{data.editor.opened}" />
+    </ui:define>
+  </ui:composition>
+</h:body>
+</html>

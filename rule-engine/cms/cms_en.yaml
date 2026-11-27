@@ -1,0 +1,37 @@
+Dialogs:
+  com:
+    axonivy:
+      utils:
+        rule:
+          engine:
+            editor:
+              RuleEditor:
+                Title: "Rule {0}"
+                Check: "Check"
+                CheckHint: "Let the DMN engine check the model, without saving it"
+                SaveAsDraft: "Save as draft"
+                SaveAsDraftHint: "Store a new version without making it live"
+                SaveAndActivate: "Save and activate"
+                SaveAndActivateHint: "Store a new version and make it live at once"
+                Close: "Close"
+                DescriptionPlaceholder: "What changed? (optional)"
+                UnsavedChanges: "Unsaved changes"
+                EditorLoading: "The DMN editor is starting…"
+                LeaveWithUnsavedChanges: "Your changes are not saved. Close the editor anyway?"
+                VersionLabel: "Version {0}"
+                ProjectFile: "File of project {0}, not stored yet"
+                Status:
+                  DRAFT: "Draft"
+                  APPROVED: "Approved"
+                  ACTIVE: "Active"
+                  RETIRED: "Retired"
+                Messages:
+                  NoModel: "Which rule? Start the editor with the name of a model."
+                  EditorNotLoaded: "The DMN editor could not be loaded."
+                  EditorCannotOpen: "The DMN editor cannot open this model."
+                  Valid: "The model {0} is valid."
+                  Invalid: "The model {0} has errors:"
+                  MoreFindings: "… and {0} more findings."
+                  SavedActive: "Version {1} of {0} is saved and active."
+                  SavedDraft: "Version {1} of {0} is saved as draft."
+                  Unchanged: "The model equals version {1} of {0}, no new version was created."

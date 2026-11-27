@@ -39,7 +39,8 @@ import ch.ivyteam.ivy.environment.Ivy;
  * is a JDK type: String, Integer, Boolean, List and Map.</p>
  *
  * <p>The versions are stored in the file area of this application ({@link VersionStore}). The DMN engine checks a
- * model before it is saved.</p>
+ * model before it is saved. The rules are changed in the dialog RuleEditor of this project, which uses
+ * {@link #content}, {@link #validate} and {@link #save}; the Portal opens it through {@link #info()}'s editorLink.</p>
  *
  * <p>Every call answers with a <code>result</code> and an <code>error</code>. On success the error is null.
  * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code such as
@@ -50,9 +51,8 @@ import ch.ivyteam.ivy.environment.Ivy;
  */
 public final class RuleManagement {
 
-  /** Path of the script of {@link com.axonivy.utils.rule.engine.editor.DmnEditor} under the REST API. */
-  public static final String REST_PATH = "rule-engine/dmn-editor";
-  public static final String EDITOR_SCRIPT = "dmn-editor.js";
+  /** The process start of the DMN editor dialog: process/RuleEditor.p.json */
+  public static final String EDITOR_START = "editRule(String,Number)";
 
   public static final String UNREACHABLE = "UNREACHABLE";
   public static final String TIMEOUT = "TIMEOUT";
@@ -61,12 +61,15 @@ public final class RuleManagement {
 
   private RuleManagement() {}
 
-  /** @return runtimeUrl (of the DMN engine), reachable and editorScript (the link of the DMN editor script) */
+  /**
+   * @return runtimeUrl (of the DMN engine), reachable and editorLink: the link of the DMN editor dialog, to which the
+   *         parameters model and version (optional) are added
+   */
   public static RuleManagementAnswer info() {
     var config = RuleEngineConfig.fromVariables();
     var info = new LinkedHashMap<String, Object>();
     info.put("runtimeUrl", config.url());
-    info.put("editorScript", editorScriptLink());
+    info.put("editorLink", editorLink());
     boolean reachable = false;
     try {
       reachable = !config.url().isBlank() && RuleEngine.client(config).isReady();
@@ -181,9 +184,9 @@ public final class RuleManagement {
   }
 
   /**
-   * Stores a changed model as a new version from the Portal. The DMN engine checks it first and refuses a model with
-   * errors (code INVALID_MODEL, the findings in the details). A version activated from the Portal is never
-   * replaced by a project deployment.
+   * Stores a changed model as a new version of a rule owner (source PORTAL). The DMN engine checks it first and
+   * refuses a model with errors (code INVALID_MODEL, the findings in the details). Such a version, once active, is
+   * never replaced by a project deployment.
    *
    * @param activate true: go live now; false: keep it as a draft
    * @return the version, see {@link #version(ModelVersion)}. Its <code>created</code> is false if exactly this
@@ -249,19 +252,15 @@ public final class RuleManagement {
     return map;
   }
 
-  /**
-   * @return the link of the DMN editor script on this engine, relative to the server, or null outside of a
-   *         request
-   */
-  static String editorScriptLink() {
+  /** @return the link of the process start of the DMN editor dialog, relative to the server; null if not found */
+  static String editorLink() {
     try {
-      String base = Ivy.html().appBaseLink().getRelative();
-      while (base.endsWith("/")) {
-        base = base.substring(0, base.length() - 1);
-      }
-      return base + "/api/" + REST_PATH + "/" + EDITOR_SCRIPT;
+      return Ivy.wf().findProcessStartsBySignature(EDITOR_START).stream()
+          .findFirst()
+          .map(start -> start.getLink().getRelative())
+          .orElse(null);
     } catch (RuntimeException ex) {
-      Ivy.log().debug("Rule management: no link to the DMN editor script outside of a request", ex);
+      Ivy.log().debug("Rule management: no link to the DMN editor", ex);
       return null;
     }
   }

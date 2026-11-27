@@ -1,20 +1,16 @@
 /**
- * Browser check of the DMN editor page of the decision runtime (/editor/).
+ * Browser check of the DMN editor page of the connector, {application}/api/rule-engine/editor, on a running Axon Ivy
+ * Engine whose DMN engine container runs too:
  *
- *   npm run smoke            starts a throwaway runtime container from axonivy/rule-engine-runtime:dev
- *                            (build it first: docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime), protected by an API key, runs the
- *                            checks in headless Chrome/Edge and removes the container again
- *   npm run smoke -- --url=http://localhost:8090/ [--key=<api key>]
- *                            the same against a runtime that runs already
+ *   npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/api/rule-engine/editor/
  *
- * The page is used like a person would: open a .dmn file, change a rule, let the runtime check it (API key prompt),
- * a model the runtime rejects, write the file back, a new model, a browser without file access. The first change is
- * made in the KIE editor itself, like a person does it: select the decision, "Edit", type into a cell. Later changes
- * use the editor's API (setContent). Every request outside the runtime is blocked and counted as a failure.
- * Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
+ * The page is used like a person would: open a .dmn file, change a rule, let the DMN engine check it, a model the DMN
+ * engine rejects, write the file back, a new model, a browser without file access. The first change is made in the KIE
+ * editor itself, like a person does it: select the decision, "Edit", type into a cell. Later changes use the editor's
+ * API (setContent). Every request outside the engine is blocked and counted as a failure. The check of a model needs
+ * a logged in user: the Designer has one. Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
  */
 import puppeteer from 'puppeteer-core';
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +20,6 @@ const shots = resolve(here, '.preview');
 const downloads = join(shots, 'downloads');
 // a small model of one table: the fixture of the connector tests, not the demo
 const discountFile = resolve(here, '../../rule-engine-test/dmn/discount.dmn');
-const IMAGE = process.env.RULE_ENGINE_IMAGE || 'axonivy/rule-engine-runtime:dev';
 const arg = name => (process.argv.find(a => a.startsWith('--' + name + '=')) || '').slice(name.length + 3);
 
 const browserPath = process.env.CHROME_PATH || [
@@ -53,36 +48,19 @@ const check = (ok, what) => {
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ── the runtime ──────────────────────────────────────────────────────────────
+// ── the page ─────────────────────────────────────────────────────────────────
 
 let base = arg('url');
-let key = arg('key');
-let container = null;
 if (!base) {
-  key = 'smoke-test-key';
-  container = execFileSync('docker', ['run', '-d', '--rm', '-e', 'RULE_ENGINE_API_KEY=' + key, '-p', '127.0.0.1::8080', IMAGE]).toString().trim();
-  const port = execFileSync('docker', ['port', container, '8080/tcp']).toString().trim().split(/\r?\n/)[0].split(':').pop();
-  base = 'http://127.0.0.1:' + port + '/';
-  console.log('Throwaway runtime ' + container.slice(0, 12) + ' on ' + base);
+  console.error('Give the editor page of a running engine: --url=<application>/api/rule-engine/editor/');
+  process.exit(2);
 }
 if (!base.endsWith('/')) base += '/';
 const origin = new URL(base).origin;
 
-async function api(path) {
-  const response = await fetch(new URL('api/' + path, base), { headers: key ? { 'X-API-Key': key } : {} });
-  const text = await response.text();
-  if (!response.ok) throw new Error('GET ' + path + ': ' + response.status + ' ' + text);
-  return text ? JSON.parse(text) : null;
-}
-
 async function ready() {
-  for (let i = 0; i < 90; i++) {
-    try {
-      if ((await fetch(new URL('q/health/ready', base))).ok) return;
-    } catch (e) { /* still starting */ }
-    await sleep(1000);
-  }
-  throw new Error('The runtime at ' + base + ' did not get ready.');
+  const response = await fetch(new URL('index.html', base));
+  if (!response.ok) throw new Error('The editor page at ' + base + ' answers ' + response.status + '.');
 }
 
 const original = readFileSync(discountFile, 'utf8');
@@ -99,8 +77,7 @@ async function openPage({ fakeFiles = false } = {}) {
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   page.on('pageerror', e => problems.push('pageerror: ' + e.message));
   page.on('console', m => {
-    // the 401 before the API key is entered is part of the flow
-    if (m.type() === 'error' && !(key && /status of 401/.test(m.text()))) problems.push('console: ' + m.text() + ' ' + (m.location().url || ''));
+    if (m.type() === 'error') problems.push('console: ' + m.text() + ' ' + (m.location().url || ''));
   });
   page.on('dialog', d => d.accept()); // "discard the unsaved changes?"
   await page.setRequestInterception(true);
@@ -130,7 +107,7 @@ async function openPage({ fakeFiles = false } = {}) {
     // a browser without the File System Access API (e.g. Firefox): file input and download
     await page.evaluateOnNewDocument(() => { delete window.showOpenFilePicker; delete window.showSaveFilePicker; });
   }
-  await page.goto(base + 'editor/', { waitUntil: 'load' });
+  await page.goto(base + 'index.html', { waitUntil: 'load' });
   return page;
 }
 
@@ -186,22 +163,12 @@ const setModel = (page, xml, path = 'discount.dmn') => page.evaluate((p, x) => w
 
 const message = page => page.$eval('#messages', box => (box.hidden ? '' : box.textContent.replace(/^Close/, '').replace(/\s+/g, ' ').trim()));
 
-/** Clicks a button of the page and waits for the message it shows; enters the API key if the page asks for it. */
+/** Clicks a button of the page and waits for the message it shows; kind is a class or several, like 'ok|warn'. */
 async function act(page, selector, kind) {
   await page.$eval('#messages', box => { box.hidden = true; });
   await page.click(selector);
-  await page.waitForFunction(k => {
-    const box = document.querySelector('#messages');
-    return document.querySelector('#key-dialog').open || (!box.hidden && box.classList.contains(k));
-  }, { timeout: 30000, polling: 100 }, kind);
-  if (await page.$eval('#key-dialog', d => d.open)) {
-    check(true, 'the protected runtime asks for its API key');
-    await shot(page, '02-api-key');
-    await page.type('#key-input', key);
-    await page.click('#key-dialog button.primary');
-    await page.waitForFunction(k => { const box = document.querySelector('#messages'); return !box.hidden && box.classList.contains(k); },
-      { timeout: 30000, polling: 100 }, kind);
-  }
+  await page.waitForFunction(k => { const box = document.querySelector('#messages'); return !box.hidden && k.split('|').some(c => box.classList.contains(c)); },
+    { timeout: 30000, polling: 100 }, kind);
   return message(page);
 }
 
@@ -229,14 +196,15 @@ try {
   await typeIntoTable(page, 4, 20); // rule 1, column discount
   check(Boolean(await waitForContent(page, '>20</', 20000)), 'a rule changed in the decision table of the KIE editor: 15 → 20');
   check(await page.$eval('#doc-dirty', n => !n.hidden), 'the page shows that there are unsaved changes');
-  check((await act(page, '#check', 'ok')).includes('accepts this model'), 'Check: the runtime accepts the model');
+  // the DMN engine accepts the demo model with warnings, like the gap analysis it skips for text inputs
+  check((await act(page, '#check', 'ok|warn')).includes('accepts this model'), 'Check: the DMN engine accepts the model');
   await shot(page, '03-checked');
   await act(page, '#save-file', 'ok');
   const written = await page.evaluate(() => window.__written);
   check(Boolean(written) && /<(\w+:)?text>20<\/(\w+:)?text>/.test(written), 'Save file writes the changed model back to discount.dmn');
   check(await page.$eval('#doc-dirty', n => n.hidden), 'after saving, nothing is unsaved');
 
-  console.log('\nA model the runtime rejects');
+  console.log('\nA model the DMN engine rejects');
   await setModel(page, withDiscount('15 +'));
   await waitForContent(page, '15 +', 20000);
   const text = await act(page, '#check', 'error');
@@ -279,15 +247,13 @@ try {
   check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('_rule_1_output_discount'), 'Save as file… downloads discount.dmn');
   await page.close();
 
-  check((await api('models')).length === 0, 'the page stores nothing on the runtime');
   check(problems.length === 0, 'no errors in the browser' + (problems.length ? ': ' + problems.slice(0, 3).join(' | ') : ''));
-  check(external.length === 0, 'nothing is loaded from outside the runtime' + (external.length ? ': ' + external.slice(0, 3).join(', ') : ''));
+  check(external.length === 0, 'nothing is loaded from outside the engine' + (external.length ? ': ' + external.slice(0, 3).join(', ') : ''));
 } catch (e) {
   failures.push(String(e && e.stack || e));
   console.error(e);
 } finally {
   if (browser) await browser.close();
-  if (container) execFileSync('docker', ['stop', container]);
 }
 
 console.log('\n' + (checks - failures.length) + ' of ' + checks + ' checks passed. Screenshots: ' + shots);

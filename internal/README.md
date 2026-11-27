@@ -7,7 +7,7 @@ repository refers to either folder. The repository builds, tests and ships witho
 
 | Where | What it is | Was before |
 | --- | --- | --- |
-| `internal/editor-smoke` | Browser check of the DMN editor page `/editor/` of the decision runtime. | `internal/interactive_app_builder/tools` |
+| `internal/editor-smoke` | Browser check of the DMN editor page `api/rule-engine/editor` of the connector. | `internal/interactive_app_builder/tools` |
 | `rule-engine-doc` | Ivy project with the tutorial: process start **Rule Engine Tutorial**, its dialog, the eleven pages of its path in the CMS, the built walkthroughs. Requires `rule-engine-demo`. | Part of `rule-engine-demo` |
 | `rule-engine-doc/src_test` | `TestTutorial` and `TutorialWebIT`, with the Maven profile `web.test`. | `rule-engine-test` |
 | `rule-engine-doc/internal/interactive_app_builder` | Builds the walkthroughs (Node.js). | `internal/interactive_app_builder` |
@@ -18,21 +18,20 @@ The Java package of the tutorial is `com.axonivy.utils.rule.engine.doc` (was `..
 
 ## The editor page check
 
-`editor-smoke` starts a throwaway container of `axonivy/rule-engine-runtime:dev` with an API key and uses the
-page like a person would: open a `.dmn` file, change a rule in the KIE editor, let the runtime check it (the API
-key prompt), a model the runtime rejects, the file written back, a new model, a browser without file access. Every
-request that leaves the runtime is blocked and counts as a failure, and the runtime holds no version afterwards: the
-page edits files only. The container is removed afterwards.
+`editor-smoke` uses the editor page of the connector on a running Axon Ivy Engine, with its DMN engine container
+running too, like a person would: open a `.dmn` file, change a rule in the KIE editor, let the DMN engine check it,
+a model the DMN engine rejects, the file written back, a new model, a browser without file access. Every request
+that leaves the engine is blocked and counts as a failure. The check of a model needs a logged in user, which the
+Designer has.
 
 ```
-docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime   # in the repository root, after a change of the runtime
 cd internal/editor-smoke
 npm install                          # once
-npm run smoke                        # screenshots in .preview/
-npm run smoke -- --url=http://localhost:8090/ --key=<key>   # against a runtime that runs already
+npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/api/rule-engine/editor/
 ```
 
-Needs Docker, Node.js 22 or newer and Chrome or Edge (set `CHROME_PATH` if neither is found).
+Screenshots land in `.preview/`. Needs Node.js 22 or newer and Chrome or Edge (set `CHROME_PATH` if neither is
+found).
 
 ## Build the walkthroughs
 

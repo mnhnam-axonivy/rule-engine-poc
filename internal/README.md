@@ -7,7 +7,7 @@ repository refers to either folder. The repository builds, tests and ships witho
 
 | Where | What it is | Was before |
 | --- | --- | --- |
-| `internal/editor-smoke` | Browser check of the DMN editor page `api/rule-engine/editor` of the connector. | `internal/interactive_app_builder/tools` |
+| `internal/editor-smoke` | Browser check of the DMN editor dialog `RuleEditor` of the connector. | `internal/interactive_app_builder/tools` |
 | `rule-engine-doc` | Ivy project with the tutorial: process start **Rule Engine Tutorial**, its dialog, the eleven pages of its path in the CMS, the built walkthroughs. Requires `rule-engine-demo`. | Part of `rule-engine-demo` |
 | `rule-engine-doc/src_test` | `TestTutorial` and `TutorialWebIT`, with the Maven profile `web.test`. | `rule-engine-test` |
 | `rule-engine-doc/internal/interactive_app_builder` | Builds the walkthroughs (Node.js). | `internal/interactive_app_builder` |
@@ -16,18 +16,19 @@ repository refers to either folder. The repository builds, tests and ships witho
 The Java package of the tutorial is `com.axonivy.utils.rule.engine.doc` (was `...engine.demo`), its link
 `/pro/rule-engine-doc/19A8D1C0FFEE0003/tutorial.ivp`.
 
-## The editor page check
+## The editor dialog check
 
-`editor-smoke` uses the editor page of the connector on a running Axon Ivy Engine, with its DMN engine container
-running too, like a person would: open a `.dmn` file, change a rule in the KIE editor, let the DMN engine check it,
-a model the DMN engine rejects, the file written back, a new model, a browser without file access. Every request
-that leaves the engine is blocked and counts as a failure. The check of a model needs a logged in user, which the
-Designer has.
+`editor-smoke` uses the editor dialog of the connector on a running Axon Ivy Engine, with its DMN engine container
+running too, like a person would. It opens the process start `RuleEditor/editRule.ivp` for a model (default:
+`discount` of `rule-engine-test`), changes a rule in the KIE editor, lets the DMN engine check it, saves it as a draft
+(never live) and checks a model the DMN engine rejects. Then it opens the dialog in an iframe, as the Portal does,
+and closes it: the parent page must hear of it. Every request that leaves the engine is blocked and counts as a
+failure.
 
 ```
 cd internal/editor-smoke
 npm install                          # once
-npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/api/rule-engine/editor/
+npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/ [--model=discount]
 ```
 
 Screenshots land in `.preview/`. Needs Node.js 22 or newer and Chrome or Edge (set `CHROME_PATH` if neither is

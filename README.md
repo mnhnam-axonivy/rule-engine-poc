@@ -23,7 +23,7 @@ User documentation: [rule-engine-product/README.md](rule-engine-product/README.m
 
 | Module | Content |
 | --- | --- |
-| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, the versions of the models in the file area of the application (`VersionStore`), client of the DMN engine container, mapping, DMN generator, Java API `RuleEngine`, and the Apache KIE DMN editor (bundled by its Maven build from npm) for the Portal and the page `{application}/api/rule-engine/editor`. |
+| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, the versions of the models in the file area of the application (`VersionStore`), client of the DMN engine container, mapping, DMN generator, Java API `RuleEngine`, and the DMN editor dialog `RuleEditor` with the Apache KIE DMN editor, for the Portal and any process. |
 | [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount; a page to change the invoice and see the rule that decided. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector: with a mocked DMN engine and against the real container. |
 | [rule-engine-product](rule-engine-product) | Market product: README, product.json. |
@@ -55,8 +55,8 @@ The container needs no volume: the versions are files of the Ivy application, se
 
 Import `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
 an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click
-**Apply rules**. Change the rules in the Portal, or change the `.dmn` file of the project, also in the browser with
-the page `{application}/api/rule-engine/editor` of the engine, and apply them again.
+**Apply rules**. Change the rules in the Portal or in the editor dialog of the connector, or change the `.dmn` file of
+the project, and apply them again.
 
 The DMN engine on its own: check a file, and evaluate it with inputs (with [jq](https://jqlang.org)):
 
@@ -76,8 +76,11 @@ others; the connector only looks at the decision it asked for.
 ## Build and test
 
 Java 25 and Maven. The Ivy modules are built with the project-build-plugin, which runs the tests in an Ivy engine.
-The build of `rule-engine` downloads the DMN editor `@kie-tools/dmn-editor-standalone` from npm once, checks its
-SHA-512 and keeps it in `~/.m2/repository/.cache/kie-tools`.
+The DMN editor of Apache KIE, `dist/index.js` of `@kie-tools/dmn-editor-standalone` as released, is committed in
+`rule-engine/webContent/resources/js/dmn-editor-standalone-<version>/dmn-editor.js`, so no build downloads it and the
+Designer serves it too. To upgrade, put the file of the new release (`npm pack
+@kie-tools/dmn-editor-standalone@<version>`) into a folder with the new version and change the folder in
+`RuleEditor.xhtml`.
 
 | Command | What runs |
 | --- | --- |
@@ -164,27 +167,24 @@ If it is there, the Admin Settings show the tab **Rule Management**; otherwise n
 | Side | Where | What |
 | --- | --- | --- |
 | Rule engine | `rule-engine/process/Portal/RuleManagement.p.json`, `com.axonivy.utils.rule.engine.portal.RuleManagement` | The bridge. One start per call, every start answers `result` and `error`, made of JDK types only (String, Integer, Boolean, List, Map), so the Portal needs no class of the rule engine. |
-| Rule engine | `com.axonivy.utils.rule.engine.editor.DmnEditor` | REST resource `{app}/api/rule-engine/dmn-editor/dmn-editor.js`: the KIE DMN editor bundled in the connector, with an ETag. Also the page `{app}/api/rule-engine/editor`. |
+| Rule engine | dialog `com.axonivy.utils.rule.engine.editor.RuleEditor`, `RuleEditorController`, process `RuleEditor/editRule.ivp` | The DMN editor for one rule: check it, save it as a draft or live. Any process calls the dialog, `start(String model, Integer version)`; the Portal opens the process start in an iframe and hears from the dialog (`postMessage`) when it closes. Its case and task carry the custom field `HIDE`, so the Portal lists neither. |
 | Portal | `com.axonivy.portal.rule.RuleEngineBridge` | Detection (`isAvailable()`) and the calls, through `IvyAdapterService`. |
-| Portal | `com.axonivy.portal.bean.RuleManagementBean`, component `com.axonivy.portal.component.RuleManagement`, `rule-management.js` | The tab: the rules, their versions, the editor. Texts under `/ch.ivy.addon.portalkit.ui.jsf/components/RuleManagement` in all five languages. |
+| Portal | `com.axonivy.portal.bean.RuleManagementBean`, component `com.axonivy.portal.component.RuleManagement`, `rule-management.js` | The tab: the rules, their versions, and the editor dialog of the rule engine in an iframe. Texts under `/ch.ivy.addon.portalkit.ui.jsf/components/RuleManagement` in all five languages. |
 
 The contract, tested by `TestRuleManagement` in `rule-engine-test`:
 
 | Signature | Result |
 | --- | --- |
 | `ruleManagementModels()` | The stored models and the `.dmn` files of the projects that are not stored yet: name, stored, activeVersion, latestVersion, versionCount, decisions, project, file; pendingVersion and pendingFrom if the application brought a version that is not live (a draft from a project, newer than the active version). The Portal detects the rule engine by this start. |
-| `ruleManagementInfo()` | runtimeUrl (the URL of the DMN engine), reachable, editorScript (link of the editor script on this engine) |
+| `ruleManagementInfo()` | runtimeUrl (the URL of the DMN engine), reachable, editorLink (the process start of the editor dialog, to which `model` and `version` are added) |
 | `ruleManagementVersions(String)` | The versions of a model, newest first: version, status, source, author, description, createdAt, effectiveDate (live from), activatedBy, previousVersion |
-| `ruleManagementContent(String,Integer)` | model, version, dmn; version null opens the active one, a project file is read from its project |
-| `ruleManagementValidate(String)` | valid, messages (the findings of the DMN engine) |
-| `ruleManagementSave(String,String,String,String,Boolean)` | model, dmn, author, description, activate: a new version with the source *portal*, as draft or live |
 | `ruleManagementActivate(String,Integer,String)` | model, version, author |
 | `ruleManagementRollback(String,String)` | model, author |
 | `ruleManagementRetire(String,Integer)` | model, version: withdraws a version that is not active, e.g. a version of the application the rule owner does not want |
 
 `error` is null on success, else a map with `code` (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code such as
-INVALID_MODEL or INVALID_STATE, or FAILED), `message` and `details`. Listing and opening versions needs no DMN engine;
-checking and saving does.
+INVALID_MODEL or INVALID_STATE, or FAILED), `message` and `details`. Listing versions needs no DMN engine; checking
+and saving in the editor dialog does.
 
 Build the Portal with `mvn install -f portal-components` and `mvn verify -f portal`.
 
@@ -217,6 +217,7 @@ Build the Portal with `mvn install -f portal-components` and `mvn verify -f port
   reads the inputs its decision needs, directly or through the decisions it requires, from the DMN file of that
   version. A version activated in the Portal or through the API may need more than the `.dmn` file of the project,
   e.g. a column a rule owner added; the task finds them in the process data by name.
-- **The editor is served by the engine**: the browser never talks to the DMN engine, which has no authentication.
-  The Portal tab is built from Portal components; only the KIE editor itself is embedded. The page
-  `{application}/api/rule-engine/editor` lets a logged in user check a model with the DMN engine.
+- **The editor is a dialog of the connector**: the browser never talks to the DMN engine, which has no
+  authentication; the dialog checks and saves on the engine. Any process can use it, and the Portal shows it in an
+  iframe instead of embedding the KIE editor itself. For now anybody may open its process start; a permission comes
+  later.

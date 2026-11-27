@@ -125,10 +125,10 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 
 | Blocks | Ids |
 | --- | --- |
-| Axon Ivy Engine, its projects, the files of the application and the editor page | `ivy`, `portal`, `demo`, `connector`, `files`, `editor` |
+| Axon Ivy Engine, its projects, the files of the application and the editor dialog | `ivy`, `portal`, `demo`, `connector`, `files`, `editor` |
 | Docker container and the DMN engine in its image | `container`, `engine` |
 | Above the engine | `browser` |
-| Links | `http` (connector and DMN engine, both ways: `http>`, `http<`), `ui` (browser to editor page), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
+| Links | `http` (connector and DMN engine, both ways: `http>`, `http<`), `ui` (browser to editor dialog), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
 
 The diagram is live. It reads the simulation: the state of the container, the stored versions, the
 `.dmn` files of the project, `RuleEngine.Url`, and the last call of a Business Rule Task. That is why the tab

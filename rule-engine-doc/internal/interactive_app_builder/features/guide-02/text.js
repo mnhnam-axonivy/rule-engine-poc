@@ -37,8 +37,8 @@ export const strings = {
     'tour.image.text': 'The container runs the image `apache/incubator-kie-kogito-jit-runner` of Apache KIE, as it is published. There is no Axon Ivy in it, and none of your rules. There is nothing to build: `docker run` starts it.',
     'tour.engine.title': 'DMN engine',
     'tour.engine.text': 'Apache KIE, the engine of Drools and Kogito. It answers HTTP itself, at `/jitdmn`: check a `.dmn` file, or evaluate its decisions with inputs. Every call brings the file: it compiles it, evaluates its decision tables, formulas and functions, and forgets it again. Port 8090 of your computer leads to it.',
-    'tour.editor.title': 'DMN editor page',
-    'tour.editor.text': 'The connector also serves a page: `api/rule-engine/editor` of the application. The `.dmn` file of a project can be changed and checked there in a browser, without a Designer. Rule owners use the Portal instead.',
+    'tour.editor.title': 'DMN editor dialog',
+    'tour.editor.text': 'The connector also has a dialog with the DMN editor of Apache KIE. Any process opens it for a rule, and the Portal shows it in an iframe. The DMN engine checks a change, and it is saved as a new version.',
 
     'tour.flowProcess.title': 'The process asks',
     'tour.flowProcess.text': 'The page of the demo called the process with an invoice. A Script summed its lines, and the process reaches its Business Rule Task. This is in `in.invoice`:',

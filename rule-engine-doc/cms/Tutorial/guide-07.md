@@ -39,11 +39,11 @@ The table lists the stored models with their active version, and the `.dmn` file
 
 | Action | What it does |
 | --- | --- |
-| **Edit** | Opens the active version in the DMN editor of Apache KIE, inside the Portal. A file that is not stored yet is opened from its project. |
+| **Edit** | Opens the active version in the editor dialog of the connector, inside the tab. A file that is not stored yet is opened from its project. **Close** brings the list back. |
 | **Show versions** | Lists every version with status, source, author and what changed. Open, activate, roll back. |
 | **Refresh** | Reads the versions again. |
 
-The DMN editor is the one of the Designer and of VS Code, bundled in the connector. The browser of the rule owner only talks to the Axon Ivy Engine, never to the DMN engine.
+The editor is a dialog of the connector, `RuleEditor`, with the DMN editor of Apache KIE, the one of VS Code. The Portal shows it in an iframe. The browser of the rule owner only talks to the Axon Ivy Engine, never to the DMN engine.
 
 ---
 
@@ -127,14 +127,19 @@ Set the variable `RuleEngine.AutoDeploy` to `false` if a project should never st
 
 ## Without the Portal
 
-The connector has an editor page of its own, for development: the page `api/rule-engine/editor` of your application. It edits the `.dmn` file of a project with a table instead of XML.
+The editor dialog is part of the connector, so any process can open it, with or without the Portal:
 
-1. **Open .dmn file…** and choose `dmn/invoice-discount.dmn` of the project.
+| From | How |
+| --- | --- |
+| A process of a project that requires `rule-engine` | A Dialog Call of `com.axonivy.utils.rule.engine.editor.RuleEditor`, `start(String model, Integer version)`. Version null opens the active one. |
+| A link | The process start `RuleEditor/editRule.ivp` of `rule-engine`, with the parameters `model` and `version` (optional). |
+
+1. Open `RuleEditor/editRule.ivp?model=invoice-discount`. In the Designer: `http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/pro/rule-engine/023F72FE11C582F1/editRule.ivp?model=invoice-discount`.
 2. Select the decision in the diagram, `discount`, and click **Edit** below it: the decision table opens.
 3. Click a cell, for example the result of rule 6, "Silver customer", type the new value and press Enter.
-4. **Check** lets the DMN engine look at the model; it needs a user logged in to the Axon Ivy Engine. **Save file** writes it back (Chrome and Edge; other browsers download the changed file).
+4. **Check** lets the DMN engine look at the model. **Save as draft** or **Save and activate** stores a new version, as in the Portal.
 
-The change goes live through the project, like any saved file. The page stores no versions: without a Portal, activate and roll back versions with the Java API, see [Several decisions and the Java API].
+For now anybody may open the process start; a permission comes later. Without a Portal, roll back versions with the Java API, see [Several decisions and the Java API].
 
 ---
 
@@ -142,11 +147,14 @@ The change goes live through the project, like any saved file. The page stores n
 
 ```text
  Browser ──► Portal (Admin Settings) ──► rule-engine: Portal/RuleManagement ──► versions: files of the application
-                                         (callable sub process)              └──► DMN engine: checks a model
+    │                                    (callable sub process)
+    └──► iframe: rule-engine: RuleEditor/editRule.ivp ──► dialog RuleEditor ──► versions
+                                                                       └──► DMN engine: checks a model
 ```
 
 - The Portal finds the callable sub process `Portal/RuleManagement` of the connector by its signatures in the security context, the way it finds Smart Workflow. Without it, there is no tab and nothing else changes.
 - Every call answers with JDK types only: the Portal needs no class of the rule engine.
+- **Edit** opens the process start of the editor dialog, which the connector names in `ruleManagementInfo()`. When the dialog closes it tells the Portal (`postMessage`), and the list comes back.
 - Only Portal administrators see the tab. The Portal checks the role again for every action.
 
 ---

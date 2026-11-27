@@ -35,8 +35,8 @@ Try this on the page:
    activate, then **Apply rules** again: the page shows the new version and its table, without a deployment. Roll back
    and it is as before.
 
-Edit the `.dmn` files in the browser with the DMN editor of the engine, `{application}/api/rule-engine/editor`
-(see [Edit rules in the browser](#edit-rules-in-the-browser)), or in VS Code with the
+Change a rule in the browser with the DMN editor dialog of the connector (see
+[Edit rules in the browser](#edit-rules-in-the-browser)). Edit the `.dmn` files of a project in VS Code with the
 [Apache KIE DMN editor for VS Code](https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle).
 
 ## Setup
@@ -134,16 +134,20 @@ structures, lists become collections. A file that exists is never overwritten.
 
 ## Edit rules in the browser
 
-The Axon Ivy Engine serves a DMN editor at `{application}/api/rule-engine/editor`. It is the DMN editor of
-Apache KIE, the one of the KIE extension for VS Code, bundled in the connector, and needs nothing but a browser.
+The connector has a dialog for one rule, `com.axonivy.utils.rule.engine.editor.RuleEditor`, with the DMN editor of
+Apache KIE, the one of the KIE extension for VS Code. It opens the active version of a model, or a version you name,
+or the `.dmn` file of its project if the model is not stored yet. Select the decision in the diagram and click
+**Edit** to change its table. **Check** lets the DMN engine look at it; **Save as draft** and **Save and activate**
+store a new version, which the DMN engine checks first.
 
-Open the `.dmn` file of a project with **Open .dmn file…**, select the decision in the diagram and click **Edit**
-to change its table. **Check** lets the DMN engine look at it; it needs a user logged in to the Axon Ivy Engine.
-**Save file** writes it back (Chrome and Edge write the file, other browsers download it). The Business Rule Task
-stores the changed file as a version with its next evaluation.
+| Open it from | How |
+| --- | --- |
+| A process of a project that requires `rule-engine` | A Dialog Call of `RuleEditor`, `start(String model, Integer version)`; version null opens the active one |
+| A link, or a project without the dependency | The process start `RuleEditor/editRule.ivp` of `rule-engine`, with the parameters `model` and `version` (optional) |
+| The Axon Ivy Portal | **Edit** in Rule Management, see below: it shows the dialog in an iframe |
 
-The page edits files only. The versions are kept by the Ivy application: change, activate or roll them back in the
-Portal, see below.
+For now anybody may open the process start; a permission comes later. The cases it creates carry the custom field
+`HIDE`, so the Portal lists neither them nor their tasks.
 
 ## Rule Management in the Axon Ivy Portal
 
@@ -153,15 +157,15 @@ not there and the Portal works as before.
 
 - The table lists the stored models with their active version, and the `.dmn` files of the projects that are not
   stored yet.
-- **Edit** opens the active version in the DMN editor of Apache KIE, inside the Portal. **Check** lets the DMN
+- **Edit** opens the active version in the editor dialog of the connector, inside the tab. **Check** lets the DMN
   engine check the model, **Save as draft** and **Save and activate** store a new version with the source
-  *portal* and the Portal user as author. A project deployment never replaces it.
+  *portal* and the user as author. A project deployment never replaces it. **Close** brings the list back.
 - **Show versions** lists all versions: open any of them in the editor, activate it, or roll back.
 
 A rule owner may add inputs to a model in the Portal. The Business Rule Task sends what the active version needs:
 an input is read from the process data field of the same name. The process does not change.
 
-The browser talks only to the Axon Ivy Engine: the editor is bundled in the connector, and the engine makes every
+The browser talks only to the Axon Ivy Engine: the editor is a dialog of the connector, and the engine makes every
 call to the DMN engine. So the DMN engine does not have to be reachable from the browsers of the users.
 
 ## Rule versions

@@ -38,7 +38,7 @@ export const strings = {
     'tour.versionOne.title': 'One model, one version',
     'tour.versionOne.text': 'The application holds the model `invoice-discount` now: version 1, active, from the source project. Its files are `rule-engine/invoice-discount/1.dmn` and `versions.json`.',
     'tour.lastCall.title': 'The last call',
-    'tour.lastCall.text': 'Each evaluation with its inputs, its results, the rules that decided and the version. The editor page of the connector, `api/rule-engine/editor`, shows a `.dmn` file in the browser.',
+    'tour.lastCall.text': 'Each evaluation with its inputs, its results, the rules that decided and the version. The editor dialog of the connector, `RuleEditor/editRule.ivp`, shows a model in the browser.',
     'tour.stored.title': 'In the files of the application',
     'tour.stored.text': 'The version lies in the files of the application, on the Axon Ivy Engine. The container keeps nothing: every evaluation brings the file.',
 

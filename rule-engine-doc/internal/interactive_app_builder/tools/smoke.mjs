@@ -445,7 +445,7 @@ console.log('Tutorial: the path and the pages');
     'it shows the Portal, and how it calls the connector');
   check(at('ivy').lit.join() === 'ivy' && at('demo').lit.join() === 'demo' && at('image').lit.join() === 'container', 'it lights the block it talks about: the engine, a project, the container');
   check(at('connector').lit.join() === 'connector,files' && at('editor').lit.includes('browser'),
-    'and what belongs together: the connector and the files it keeps, editor page and browser');
+    'and what belongs together: the connector and the files it keeps, editor dialog and browser');
   check(at('http').flowing === 2 && at('flowRegister').flowing === 1 && at('flowResult').flowing === 1, 'the link between engine and container flows in the direction of the call');
   const framing = stops => {
     const covering = stops.filter(stop => stop.covered.length);
@@ -474,7 +474,7 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   let view = await arch();
-  check(view.blocks === 'browser,callable,connector,container,demo,editor,engine,files,http,ivy,portal,ui', 'the diagram has the engine with the Portal, two projects, the files of the application and the editor page, the container with the DMN engine, and the browser');
+  check(view.blocks === 'browser,callable,connector,container,demo,editor,engine,files,http,ivy,portal,ui', 'the diagram has the engine with the Portal, two projects, the files of the application and the editor dialog, the container with the DMN engine, and the browser');
   check(view.links === 'callable,http,ui', 'and the three links between them');
   check(view.files === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo),
     'it starts without a version: ' + view.files);
@@ -711,7 +711,7 @@ const lookAround = seen => async (page, key) => {
   check(/^1:ACTIVE.* 2:RETIRED/.test(seen.rolledBack.statuses['invoice-discount']), 'rolled back, version 1 is active again: ' + seen.rolledBack.statuses['invoice-discount']);
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');
 
-  console.log('Guide 06: a rule owner on the editor page of the runtime, used like a learner');
+  console.log('Guide 06: a rule owner in the editor, used like a learner');
   await inApp(page, '.run-btn.primary');
   await waitForStatus(page, ['completed', 'failed']);
   await inApp(page, '.panel-tab[data-tab="runtime"]');

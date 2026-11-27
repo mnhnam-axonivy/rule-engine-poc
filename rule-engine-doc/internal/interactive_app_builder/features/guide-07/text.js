@@ -39,7 +39,7 @@ export const strings = {
     'tour.row.title': 'The rules',
     'tour.row.text': 'The stored models with their active version, and the `.dmn` files of the projects that are not stored yet. `invoice-discount` is at version 1, from the project.',
     'tour.editor.title': 'The DMN editor',
-    'tour.editor.text': 'Edit opens the active version in the DMN editor of Apache KIE, inside the Portal. It is the editor of the Designer and of VS Code, here in the browser of the rule owner.',
+    'tour.editor.text': 'Edit opens the active version in the editor dialog of the connector, inside the tab. It is the DMN editor of Apache KIE, the one of VS Code, here in the browser of the rule owner.',
 
     'tour.goal.title': 'What the business wants',
     'tour.goal.text': 'Bluebird Architects signed a framework contract: 10 percent off every invoice, whatever the tier.',

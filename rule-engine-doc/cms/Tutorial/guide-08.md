@@ -43,21 +43,21 @@ in.errorMessage = error.getMessage();
 | Attribute of the error | Content |
 | --- | --- |
 | `ruleEngineModel` | The name of the model. |
-| `ruleEngineCode` | For `rule:engine:dmn`: the code of the runtime, such as `MODEL_NOT_FOUND`, `DECISION_NOT_FOUND`, `EVALUATION_FAILED`, `INVALID_MODEL` or `UNAUTHORIZED`. |
+| `ruleEngineCode` | For `rule:engine:dmn`: the code, such as `MODEL_NOT_FOUND`, `NO_ACTIVE_VERSION`, `EVALUATION_FAILED`, `INVALID_MODEL` or `UNAUTHORIZED`. |
 | `ruleEngineDetails` | For `rule:engine:dmn`: the findings of the DMN engine as text. |
 
 Without an Error Boundary Event that fits, the error is unhandled: the process stops at the Business Rule Task. An Error Start Event with the same code catches it for the whole project instead.
 
 ---
 
-## A model the runtime does not have
+## A model without a version
 
-Normally a project brings its models along: the element registers the `.dmn` file before it evaluates it. With `RuleEngine.AutoDeploy` set to `false` it does not, and the runtime has to get the model another way, through its API or a Rules UI.
+Normally a project brings its models along: the element stores the `.dmn` file as a version before it evaluates it. With `RuleEngine.AutoDeploy` set to `false` it does not, and the version has to come another way, through the Portal or the Java API.
 
-If the model is not there, the runtime answers `MODEL_NOT_FOUND` and the element throws `rule:engine:dmn`. The error message names the model:
+If there is no version, the element throws `rule:engine:dmn` with the code `MODEL_NOT_FOUND`; if no version is active, with `NO_ACTIVE_VERSION`. The error message names the model:
 
 ```text
-Model 'invoice-discount' is not loaded.
+There is no model 'invoice-discount'.
 ```
 
 The same error code covers everything the runtime refuses. A model that gets a value it does not accept, for example a text where it expects a number, or a value that is not one of the allowed values of its type, answers `EVALUATION_FAILED` with the reason.

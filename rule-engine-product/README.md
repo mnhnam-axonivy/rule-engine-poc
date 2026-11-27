@@ -8,11 +8,12 @@ The Axon Ivy Rules Engine is based on Kogito and Drools from the open source pro
 
 - **Business Rule Task**: a process element that evaluates a decision with your process data.
   Inputs and results are mapped by name, there is nothing to map by hand.
-- **Rules change without deployment**: a new version of a model is live on the runtime within seconds.
-  Versions can be activated at an effective date and rolled back.
+- **Rules change without deployment**: a new version of a model is live with the next evaluation.
+  Versions can be activated at an effective date and rolled back. They are files of your Ivy application.
 - **Start from your process data**: generate a ready-to-edit `.dmn` file from selected fields
   and only fill in the rules.
-- **One generic container image**: models are loaded at runtime, you never build an image.
+- **One generic container image**: models are loaded at runtime, you never build an image, and the container
+  keeps no data.
 
 ## Demo
 
@@ -30,7 +31,7 @@ Try this on the page:
 
 1. Tier **Gold** instead of Silver: 5 % instead of 2 %.
 2. **5** laptops instead of 4: the order is 10,400, and the rule for orders of 10,000 or more decides.
-3. In the Portal (Rule Management) or the DMN editor, change the discount of "Silver customer" from 2 to 3 %, save and
+3. In the Portal (Rule Management), change the discount of "Silver customer" from 2 to 3 %, save and
    activate, then **Apply rules** again: the page shows the new version and its table, without a deployment. Roll back
    and it is as before.
 
@@ -42,22 +43,21 @@ Edit the `.dmn` files in the browser with the DMN editor of the decision runtime
 
 ### 1. Start the decision runtime
 
-The runtime is a container that holds the rule engine and its database. All versions of all models are
-stored in the volume and are loaded again after a restart.
+The runtime is a container that holds the rule engine. It keeps no data: the versions of the models are files of
+your Ivy application, which loads them into the runtime when it needs them, also after a restart.
 
 ```bash
-docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data \
+docker run -d --name axonivy-rule-engine -p 8090:8080 \
        --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> axonivy/rule-engine-runtime:dev
 ```
 
 | Part | What it does |
 | --- | --- |
 | `-p 8090:8080` | The runtime on port 8090 of the host. |
-| `-v rule-engine-data:/data` | Keeps every version of every model in the volume `rule-engine-data`. Back it up like a database. |
 | `-e RULE_ENGINE_API_KEY=<secret>` | Protects the API. Leave it out for local development only: without a key the API is open. |
 
 `docker stop axonivy-rule-engine` stops it, `docker start axonivy-rule-engine` starts it again. For a new image,
-remove the container with `docker rm -f axonivy-rule-engine` and run it again: the versions stay in the volume.
+remove the container with `docker rm -f axonivy-rule-engine` and run it again: nothing is lost.
 
 Check it: `http://localhost:8090/q/health/ready`. The API is described at `http://localhost:8090/q/swagger-ui`,
 the DMN editor is at `http://localhost:8090/editor/`.
@@ -75,7 +75,7 @@ TLS: terminate it at a reverse proxy in front of the runtime, or give the runtim
 serves HTTPS on port 8443 and no plain HTTP:
 
 ```bash
-docker run -d --name axonivy-rule-engine -p 8443:8443 -v rule-engine-data:/data -v "$PWD/certs:/certs:ro" \
+docker run -d --name axonivy-rule-engine -p 8443:8443 -v "$PWD/certs:/certs:ro" \
        --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> \
        -e QUARKUS_HTTP_SSL_CERTIFICATE_FILES=/certs/tls.crt \
        -e QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES=/certs/tls.key \
@@ -123,7 +123,7 @@ catches all of them.
 | --- | --- |
 | `rule:engine:unreachable` | The runtime cannot be reached. |
 | `rule:engine:timeout` | The runtime did not answer within `RuleEngine.TimeoutSeconds`. |
-| `rule:engine:dmn` | The runtime rejected the call: unknown model or decision, invalid DMN file, failed evaluation, wrong API key. The error attribute `ruleEngineCode` holds the code of the runtime. |
+| `rule:engine:dmn` | Unknown model, no active version, unknown decision, invalid DMN file, failed evaluation, wrong API key. The error attribute `ruleEngineCode` holds the code, e.g. `NO_ACTIVE_VERSION`. |
 | `rule:engine:mapping` | No decision selected, an input has no field, or a result does not fit its field. |
 
 ### 4. Create a DMN from your process data
@@ -148,14 +148,13 @@ The decision runtime serves a DMN editor at `/editor/`, e.g. `http://localhost:8
 editor of Apache KIE, the one of the KIE extension for VS Code, and needs nothing but a browser. The inscription
 mask of the Business Rule Task shows its address, taken from `RuleEngine.Url`.
 
-| What you edit | How | Where the change goes |
-| --- | --- | --- |
-| A model on the runtime | Select it on the left. Select the decision in the diagram and click **Edit** to change its table. **Save and activate**, or **Save as draft**. | A new version from the source *portal*, with your name and a description. A project deployment never replaces it. |
-| The `.dmn` file of a project | **Open .dmn file…**, change it, **Save file**. | The file itself (Chrome and Edge write it back, other browsers download it). The Business Rule Task registers the changed file with its next evaluation. |
+Open the `.dmn` file of a project with **Open .dmn file…**, select the decision in the diagram and click **Edit**
+to change its table. **Check** lets the DMN engine of the runtime look at it, **Save file** writes it back (Chrome and
+Edge write the file, other browsers download it). The Business Rule Task stores the changed file as a version with
+its next evaluation. If the runtime has an API key, the page asks for it once per browser tab.
 
-The list of versions activates any version and rolls back. Before a version is stored the runtime checks the
-model; a model with errors is refused with the findings of the DMN engine. If the runtime has an API key,
-the page asks for it once per browser tab.
+The page edits files only. The versions are kept by the Ivy application: change, activate or roll them back in the
+Portal, see below.
 
 ## Rule Management in the Axon Ivy Portal
 
@@ -163,8 +162,8 @@ If the Axon Ivy Portal runs in the same security context as the rule engine, its
 **Rule Management** for Portal administrators (role `AXONIVY_PORTAL_ADMIN`). Without the rule engine the tab is
 not there and the Portal works as before.
 
-- The table lists the models of the decision runtime with their active version, and the `.dmn` files of the
-  projects that the runtime does not know yet.
+- The table lists the stored models with their active version, and the `.dmn` files of the projects that are not
+  stored yet.
 - **Edit** opens the active version in the DMN editor of Apache KIE, inside the Portal. **Check** lets the DMN
   engine check the model, **Save as draft** and **Save and activate** store a new version with the source
   *portal* and the Portal user as author. A project deployment never replaces it.
@@ -178,7 +177,11 @@ makes every call with the API key. So the runtime does not have to be reachable 
 
 ## Rule versions
 
-Every change of a model is a new version on the runtime. Exactly one version of a model is active.
+Every change of a model is a new version. At most one version of a model is active.
+
+The versions are files of the application, in its file area under the data directory of the engine: a folder
+`rule-engine/<model>` with the `.dmn` file of every version and `versions.json`, which describes them. Back them up
+with the data of the engine. In a cluster, the data directory has to be on shared storage.
 
 | Status | Meaning |
 | --- | --- |
@@ -187,17 +190,17 @@ Every change of a model is a new version on the runtime. Exactly one version of 
 | active | Answers the evaluations of the model. |
 | retired | Was replaced or withdrawn. Stays available for a rollback. |
 
-**Source of truth.** The Ivy project provides the initial version, the runtime holds the live versions.
+**Source of truth.** The Ivy project provides the initial version, the application holds the live versions.
 
-- When a project starts and whenever a `.dmn` file has changed, the file is registered as a version with
-  the source *project*. Content that is already stored does not create another version.
+- When a project starts and whenever a `.dmn` file has changed, the runtime checks the file and it is stored as a
+  version with the source *project*. Content that is already stored does not create another version.
 - A version from the project becomes active if no version is active yet, or if the active version also
   came from a project. So during development a saved file is live with the next evaluation.
 - A version that was activated from the Portal or through the API is never replaced by a deployment.
   The version of the project is stored as draft and can be activated on purpose.
 - To bring the live rules back into the project, export the version (`RuleEngine.export`).
 
-Set `RuleEngine.AutoDeploy` to `false` if models should only be loaded through the API.
+Set `RuleEngine.AutoDeploy` to `false` if versions should only come from the Portal or the Java API.
 
 **Java API for a Rules UI.**
 
@@ -215,5 +218,5 @@ List<ModelVersion> versions = RuleEngine.versions("invoice-discount");
 1. Convert the XLS decision table into a `.dmn` file: one column per condition and action,
    one rule per row. An AI assistant does this well; review the result in the DMN editor.
 2. Run the same test cases against the old XLS rules and the new model and compare the results.
-   A draft can be evaluated on the runtime before it is active: `POST /api/models/{model}/versions/{version}/evaluate`.
+   A draft can be evaluated before it is active: `RuleEngine.evaluate(model, version, decision, input)`.
 3. Only identical results count as migrated.

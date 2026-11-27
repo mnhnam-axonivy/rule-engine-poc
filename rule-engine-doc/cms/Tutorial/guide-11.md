@@ -16,7 +16,7 @@ The Business Rule Task cannot reach the decision runtime: the container is not r
 
 ### Where are the versions of my rules stored? Are they lost when the container stops?
 
-In the database of the runtime, in the Docker volume `rule-engine-data`. Removing the container, `docker rm -f axonivy-rule-engine`, keeps the volume; `docker volume rm rule-engine-data` deletes it. In production, mount and back up a volume for `/data`, see [Run it in production].
+In the files of your Ivy application, in the file area of the Axon Ivy Engine: a folder `rule-engine` with a folder per model, holding the `.dmn` file of each version and `versions.json`. The container keeps nothing, so stopping or removing it loses nothing: the engine loads the versions into the runtime again. In production, back up the data directory of the engine, see [Run it in production].
 
 ---
 
@@ -44,7 +44,7 @@ The name of the new DMN is empty, or another `.dmn` file has it already. The Run
 
 ### Do I have to change the process when a rule changes?
 
-No. The process refers to the decision by its name, not to its rules. Change a rule in the `.dmn` file and save it: the next evaluation registers the changed file as a new version and uses it. A rule owner can also change the rule on the runtime, in the Portal, without a Designer.
+No. The process refers to the decision by its name, not to its rules. Change a rule in the `.dmn` file and save it: the next evaluation stores the changed file as a new version and uses it. A rule owner can also change the rule in the Portal, without a Designer.
 
 | What changes | Does the process change? |
 | --- | --- |
@@ -60,9 +60,9 @@ Without such a field the element throws `rule:engine:mapping`. Then add a field 
 
 ### I changed the .dmn file, but the old result comes back. Why?
 
-A rule owner has activated a version on the runtime, in the Portal or through the API. Such a version stays active: a project never replaces it. Your changed file is registered too, but as a draft beside it.
+A rule owner has activated a version, in the Portal or through the Java API. Such a version stays active: a project never replaces it. Your changed file is stored too, but as a draft beside it.
 
-To make your file live, activate its version on purpose, in the Portal or in the editor of the runtime. The rule is explained on the page [Edit rules in the Portal], under *Who has the last word*.
+To make your file live, activate its version on purpose: the Portal offers it in the row of the rule, or use `RuleEngine.activate`. The rule is explained on the page [Edit rules in the Portal], under *Who has the last word*.
 
 ### How do I go back to the version before?
 

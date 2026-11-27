@@ -125,12 +125,13 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 
 | Blocks | Ids |
 | --- | --- |
-| Axon Ivy Engine and its projects | `ivy`, `portal`, `demo`, `connector` |
-| Docker container and what is in its image | `container`, `api`, `editor`, `engine`, `db` |
-| Around the container | `browser`, `volume` |
-| Links | `http` (connector and REST API, both ways: `http>`, `http<`), `ui` (browser to editor page), `store` (database to volume), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
+| Axon Ivy Engine, its projects and the files of the application | `ivy`, `portal`, `demo`, `connector`, `files` |
+| Docker container and what is in its image | `container`, `api`, `editor`, `engine`, `memory` |
+| Beside the container | `browser` |
+| Links | `http` (connector and REST API, both ways: `http>`, `http<`), `ui` (browser to editor page), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |
 
-The diagram is live. It reads the simulation: the state of the container, the versions in the database, the
+The diagram is live. It reads the simulation: the state of the container, the stored versions, the versions the
+runtime holds in memory, the
 `.dmn` files of the project, `RuleEngine.Url`, and the last call of a Business Rule Task. That is why the tab
 has no bottom panel (log, decision runtime, process data): it is hidden while the tab is open, so a walkthrough
 cannot show `d.panel(...)` there. A walkthrough lights blocks with `d.arch`. While a note points at a block
@@ -152,8 +153,7 @@ When a project or a part of the image is added or renamed, change the blocks her
 
 `runtime/ui/portal.js` stands for the Axon Ivy Portal at Admin Settings › Rule Management, in the light look of the
 Portal, for lessons with `portal: true`. It works on the simulated runtime the way the real tab works on the real
-one through `Portal/RuleManagement`: the rules with their active version and the files the runtime does not know
-yet, the editor (the decision tables and formulas of the KIE editor, with **+ Input** for a new input data node and its
+one through `Portal/RuleManagement`: the rules with their active version and the files that are not stored yet, the editor (the decision tables and formulas of the KIE editor, with **+ Input** for a new input data node and its
 column in the table `portalTable` of the lesson),
 **Check**, **Save as draft**, **Save and activate** (a version from the source `PORTAL`, author `admin`), and the
 versions with activate and roll back. Its texts are the keys `portal.*` in `runtime/i18n.js`, worded like the real tab.
@@ -167,8 +167,8 @@ The simulation has no engine and no container. It implements what a learner can 
 | Part | In `runtime/model/` | Mirrors |
 | --- | --- | --- |
 | Process run | `runner.js`, `process.js`, `ivyscript.js` | The demo process: the start of a callable sub process with its parameters, scripts, the Business Rule Task, the Error Boundary Event. A subset of IvyScript, with loops over a list and BigDecimal arithmetic for the Scripts of the demo; like IvyScript it gives a field it reads a default value. |
-| Business Rule Task | `runner.js`, `mapping.js` | `RuleTaskExecutor` of the connector: mapping by name, field lists, result and version mapping, the BPMN errors `rule:engine:*`, and the inputs of a version from the Portal that the file does not have. |
-| Decision runtime | `decision-runtime.js` | `VersionStore` of the runtime: versions, status, source, the source of truth rule, rollback. It can be running, slow or stopped. |
+| Business Rule Task | `runner.js`, `mapping.js` | `RuleTaskExecutor` of the connector: a new or changed file stored first, the inputs of the active version (also one from the Portal), mapping by name, field lists, result and version mapping, the BPMN errors `rule:engine:*`. |
+| Versions and decision runtime | `decision-runtime.js` | `VersionStore` of the connector: versions, status, source, the source of truth rule, rollback. The runtime: the versions it holds in memory, lost when it stops. It can be running, slow or stopped. |
 | DMN | `dmn.js`, `feel.js`, `decision-runtime.js` | Decision tables with the conditions the tutorial uses: `-`, literals, comparisons, ranges of numbers and dates, lists, `not()`; hit policies FIRST, UNIQUE (two matches are an error), ANY, PRIORITY, COLLECT with or without an aggregation, RULE ORDER. Literal expressions in a subset of FEEL: arithmetic rounded as with decimals, `if`, `for`, contexts, paths over lists, filters and functions such as `sum`, `min`, `round half up`, `decimal`, `list contains`, `date`. Business knowledge models as functions, called once per element of a list. The inputs are checked against their types, allowed values and `null` included, as the DMN engine does with `rule.engine.type-check`. For the demo model the simulation answers exactly what the real runtime answers (`test/runner.test.mjs`, `RuleEngineContainerTest`); the features the demo does not use are tested on a model with functions and every hit policy, `test/fixtures/invoice-pricing.dmn`. |
 | New DMN... | `dmn-generator.js` | `DmnGenerator` of `rule-engine`: one input per field, one table, a placeholder rule. |
 

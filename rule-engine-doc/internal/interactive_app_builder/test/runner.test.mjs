@@ -69,7 +69,7 @@ test('runner: the callable sums the lines, the table decides the discount, the p
   const call = callOf(result);
   assert.deepEqual(call.mappings.map(m => [m.name, m.expression]), [['customerTier', 'in.invoice.customerTier'], ['orderAmount', 'in.invoice.orderAmount']]);
   assert.deepEqual(call.input, { customerTier: 'Silver', orderAmount: 9200 }, 'the order amount the Script summed');
-  assert.equal(call.url, 'http://localhost:8090/api/models/invoice-discount/evaluate');
+  assert.equal(call.url, 'http://localhost:8090/api/models/invoice-discount/versions/1/evaluate');
   assert.equal(call.decision, DECISION);
   assert.equal(call.version, 1);
   assert.deepEqual([call.rule.index, call.rule.outputs], [5, ['2', '"Silver customer"']], 'the rule that decided');
@@ -81,7 +81,7 @@ test('runner: the callable sums the lines, the table decides the discount, the p
     'the entries of the result, each to the field of its name');
   assert.deepEqual([invoice.discountAmount, invoice.total], [184, 9016]);
   assert.ok(!('discount' in invoice), 'a structure without a field of its own is unfolded');
-  assert.ok(messages(result).includes("Rule engine: registered invoice-discount.dmn as version 1 of model 'invoice-discount' (ACTIVE)"));
+  assert.ok(messages(result).includes("Rule engine: stored version 1 of model 'invoice-discount' (source PROJECT, ACTIVE)"));
   assert.ok(messages(result).includes('Invoice INV-2026-0042: 2% (Silver customer), total 9016'));
 });
 
@@ -95,7 +95,7 @@ test('runner: other tiers and amounts, other rules', async () => {
   assert.equal(await of('Gold', 5), '8 Gold, order of 10,000 or more 9568');
 });
 
-test('runner: an unchanged file is registered once, a changed file is live with the next evaluation', async () => {
+test('runner: an unchanged file is stored once, a changed file is live with the next evaluation', async () => {
   const env = setup();
   await env.run();
   const again = await env.run();
@@ -108,7 +108,7 @@ test('runner: an unchanged file is registered once, a changed file is live with 
   assert.deepEqual([changed.data.invoice.discountPercent, changed.data.invoice.total, callOf(changed).version], [3, 8924, 2]);
   assert.deepEqual(env.runtime.versions(MODEL).map(v => [v.version, v.status, v.source]), [[1, 'RETIRED', 'PROJECT'], [2, 'ACTIVE', 'PROJECT']]);
 
-  // a rollback on the runtime stays, the unchanged file is not sent again
+  // a rollback stays, the unchanged file is not stored again
   env.runtime.rollback(MODEL);
   const rolledBack = await env.run();
   assert.deepEqual([rolledBack.data.invoice.discountPercent, callOf(rolledBack).version], [2, 1]);

@@ -434,8 +434,8 @@ console.log('Tutorial: the path and the pages');
   const seen = [];
   const lookAtArchitecture = lookAtArchitectureInto(seen);
   const page = await playWalkthrough('02',
-    ['ivy', 'http', 'demo', 'connector', 'portal', 'image', 'db', 'editor', 'flowRegister', 'flowStored', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
-    ['ivy', 'container', 'http', 'why', 'demo', 'connector', 'requires', 'portal', 'image', 'api', 'engine', 'db', 'editor',
+    ['ivy', 'http', 'demo', 'connector', 'portal', 'image', 'memory', 'editor', 'flowRegister', 'flowStored', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
+    ['ivy', 'container', 'http', 'why', 'demo', 'connector', 'requires', 'portal', 'image', 'api', 'engine', 'memory', 'editor',
       'flowProcess', 'flowConnector', 'flowRegister', 'flowStored', 'flowEvaluate', 'flowDecide', 'flowResult', 'flowWritten', 'designer'],
     lookAtArchitecture);
   const at = key => seen.find(stop => stop.key === key) || { lit: [], covered: [] };
@@ -444,8 +444,8 @@ console.log('Tutorial: the path and the pages');
   check(at('portal').lit.includes('portal') && at('portal').lit.includes('connector') && at('portal').flowing === 1,
     'it shows the Portal, and how it calls the connector');
   check(at('ivy').lit.join() === 'ivy' && at('demo').lit.join() === 'demo' && at('image').lit.join() === 'container', 'it lights the block it talks about: the engine, a project, the container');
-  check(at('connector').lit.join() === 'connector' && at('db').lit.includes('volume') && at('editor').lit.includes('browser'),
-    'and the connector, and what belongs together: database and volume, editor page and browser');
+  check(at('connector').lit.join() === 'connector,files' && at('memory').lit.join() === 'memory' && at('editor').lit.includes('browser'),
+    'and what belongs together: the connector and the files it keeps, editor page and browser; and the memory of the runtime');
   check(at('http').flowing === 2 && at('flowRegister').flowing === 1 && at('flowResult').flowing === 1, 'the link between engine and container flows in the direction of the call');
   const framing = stops => {
     const covering = stops.filter(stop => stop.covered.length);
@@ -465,7 +465,7 @@ console.log('Tutorial: the path and the pages');
     return {
       blocks: [...root.querySelectorAll('.arch-diagram [data-arch]')].map(node => node.dataset.arch).sort().join(),
       links: [...root.querySelectorAll('.arch-link')].filter(link => (link.querySelector('.arch-wire').getAttribute('d') || '').length > 10).map(link => link.dataset.link).sort().join(),
-      db: text('db'), api: text('api'), engine: text('engine'), demo: text('demo'),
+      files: text('files'), memory: text('memory'), api: text('api'), engine: text('engine'), demo: text('demo'),
       state: root.querySelector('.arch-state').textContent,
       stopped: root.querySelector('.arch-container').classList.contains('stopped'),
       broken: root.querySelector('.arch-link[data-link="http"]').classList.contains('broken')
@@ -474,9 +474,10 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   let view = await arch();
-  check(view.blocks === 'api,browser,callable,connector,container,db,demo,editor,engine,http,ivy,portal,store,ui,volume', 'the diagram has the engine with the Portal and two projects, the container with what is in its image, browser and volume');
-  check(view.links === 'callable,http,store,ui', 'and the four links between them');
-  check(view.db === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo), 'it starts with an empty database: ' + view.db);
+  check(view.blocks === 'api,browser,callable,connector,container,demo,editor,engine,files,http,ivy,memory,portal,ui', 'the diagram has the engine with the Portal, two projects and the files of the application, the container with what is in its image, and the browser');
+  check(view.links === 'callable,http,ui', 'and the three links between them');
+  check(view.files === 'no model yet' && view.memory === 'nothing loaded' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo),
+    'it starts without a version and with an empty runtime: ' + view.files + ' | ' + view.memory);
   const panelShown = () => page.evaluate(() => getComputedStyle(window.reInteractive.instances()[0].host.shadowRoot.querySelector('.panel')).display !== 'none');
   check(!await panelShown(), 'the tab has no bottom panel');
   // the details of a block: a drawer on the right, that changes with the block and closes again
@@ -502,9 +503,9 @@ console.log('Tutorial: the path and the pages');
   check(side.open && side.right && !side.covers && /BusinessRuleTask/.test(side.text) && /DMN generator/.test(side.text),
     'selecting a block shows what is in it in a drawer on the right, beside the block');
   await shot(page, '02-91-architecture');
-  await inApp(page, '[data-arch="db"]');
+  await inApp(page, '[data-arch="files"]');
   side = await drawer();
-  check(side.open && side.selected === 'db' && side.title === 'Database' && !/BusinessRuleTask/.test(side.text), 'selecting another block changes the details: ' + side.title);
+  check(side.open && side.selected === 'files' && side.title === 'Files of the application' && !/BusinessRuleTask/.test(side.text), 'selecting another block changes the details: ' + side.title);
   await inApp(page, '.arch-details-close');
   side = await drawer();
   check(!side.open && !side.selected, 'the close button closes the details');
@@ -512,8 +513,8 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '.arch-scroll');
   side = await drawer();
   check(!side.open && !side.selected, 'a click beside the blocks closes the details');
-  await inApp(page, '[data-arch="volume"]');
-  await page.evaluate(() => window.reInteractive.instances()[0].host.shadowRoot.querySelector('[data-arch="volume"]').focus());
+  await inApp(page, '[data-arch="memory"]');
+  await page.evaluate(() => window.reInteractive.instances()[0].host.shadowRoot.querySelector('[data-arch="memory"]').focus());
   await page.keyboard.press('Escape');
   side = await drawer();
   check(!side.open && await page.$('.re-walkthrough') !== null, 'Escape closes the details, the walkthrough dialog stays open');
@@ -534,8 +535,9 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   view = await arch();
-  check(/invoice-discount: version 1 active \(project\), 1 stored/.test(view.db) && /last answer: discount = .*, version 1/.test(view.api) && /rule 6 of discount decided/.test(view.engine),
-    'after a run it shows what happened: ' + view.db + ' | ' + view.api + ' | ' + view.engine);
+  check(/invoice-discount: version 1 active \(project\), 1 stored/.test(view.files) && view.memory === 'invoice-discount version 1'
+    && /last answer: discount = .*, version 1/.test(view.api) && /rule 6 of discount decided/.test(view.engine),
+    'after a run it shows what happened: ' + view.files + ' | ' + view.memory + ' | ' + view.api + ' | ' + view.engine);
   await shot(page, '02-92-after-run');
   await withApp(page, app => app.setRuntimeState('stopped'));
   view = await arch();
@@ -569,8 +571,8 @@ console.log('Tutorial: the path and the pages');
     }, key));
   };
   const page = await playWalkthrough('02',
-    ['why', 'demo', 'connector', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten'],
-    ['ivy', 'why', 'demo', 'connector', 'db', 'editor', 'flowStored', 'flowDecide', 'flowWritten', 'designer'],
+    ['why', 'demo', 'connector', 'memory', 'editor', 'flowStored', 'flowDecide', 'flowWritten'],
+    ['ivy', 'why', 'demo', 'connector', 'memory', 'editor', 'flowStored', 'flowDecide', 'flowWritten', 'designer'],
     lookAround, { width: 1800, height: 650 });
   const stops = seen.filter(stop => stop.onArch);
   const covering = stops.filter(stop => stop.covered.length);
@@ -615,7 +617,7 @@ const lookAround = seen => async (page, key) => {
   check(/discount = 2 % · Silver customer\s+\(version 1\)/.test(seen.mapped.quote), 'and the result comes back: ' + seen.mapped.quote);
   check(/order 9200\.00 · 2 % · −184\.00 · total 9016\.00/.test(seen.applied.quote), 'the process applies the discount: ' + seen.applied.quote);
   check(/^1:ACTIVE:PROJECT$/.test(seen.versionOne.statuses['invoice-discount']), 'the runtime holds version 1, active, from the project: ' + seen.versionOne.statuses['invoice-discount']);
-  check(seen.stored.tab === 'arch', 'the version is shown in the database of the container');
+  check(seen.stored.tab === 'arch', 'the version is shown in the files of the application');
   check(/rule:engine:unreachable/.test(seen.unreachable.quote) && seen.notPriced.tab === 'process', 'a stopped runtime: rule:engine:unreachable, caught, path "not priced"');
   await shot(page, '03-90-end');
   check(await explore(page) === 'explore', 'after the walkthrough the simulator is editable');

@@ -30,7 +30,7 @@ async function projects(d) {
   await d.tab('arch');
   d.arch({ lit: ['demo'] });
   await d.note('demo', { target: 'arch:demo' });
-  d.arch({ lit: ['connector'] });
+  d.arch({ lit: ['connector', 'files'] });
   await d.note('connector', { target: 'arch:connector' });
   d.arch({ lit: ['demo', 'connector'] });
   await d.note('requires', { target: 'arch:demo' });
@@ -48,8 +48,8 @@ async function image(d) {
   await d.note('api', { target: 'arch:api' });
   d.arch({ lit: ['engine'] });
   await d.note('engine', { target: 'arch:engine' });
-  d.arch({ lit: ['db', 'volume'], flow: ['store>'] });
-  await d.note('db', { target: 'arch:db' });
+  d.arch({ lit: ['memory'] });
+  await d.note('memory', { target: 'arch:memory' });
   d.arch({ lit: ['editor', 'browser'], flow: ['ui>'] });
   await d.note('editor', { target: 'arch:editor' });
   d.arch(null);
@@ -64,22 +64,23 @@ async function flow(d) {
   d.arch({ lit: ['demo', 'connector'] });
   await d.note('flowConnector', { target: 'arch:connector' });
 
-  d.arch({ lit: ['connector', 'api'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/versions' } });
+  d.arch({ lit: ['connector', 'api', 'engine'], flow: ['http>'], label: { http: 'POST /api/validate' } });
   await d.note('flowRegister', { target: 'arch:http' });
-  // the simulated runtime does what the container does with the file
+  // the simulation stores the file, as the connector does once the runtime accepted it
   app.runtime.register(MODEL, app.findDmn(MODEL), { source: 'PROJECT', author: 'rule-engine-demo' });
   app.refreshRuntimeViews();
-  d.arch({ lit: ['api', 'engine', 'db', 'volume'], flow: ['store>'] });
-  await d.note('flowStored', { target: 'arch:db' });
+  d.arch({ lit: ['connector', 'files'] });
+  await d.note('flowStored', { target: 'arch:files' });
 
-  d.arch({ lit: ['connector', 'api'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/evaluate' } });
+  d.arch({ lit: ['connector', 'api', 'memory'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/versions/1/evaluate' } });
   await d.note('flowEvaluate', { target: 'arch:http', quote: lines(INPUT) });
   const answer = app.runtime.evaluate(MODEL, DECISION, INPUT);
   const table = answer.dmn.decisions.find(decision => decision.name === DECISION).table;
   const index = answer.matched[DECISION][0];
   const rule = { index, inputs: table.rules[index].inputs, outputs: table.rules[index].outputs };
   app.arch.setCall({ model: MODEL, decision: DECISION, results: answer.results, version: answer.version, rule, rules: [] });
-  d.arch({ lit: ['api', 'engine', 'db'] });
+  app.refreshRuntimeViews();
+  d.arch({ lit: ['api', 'engine', 'memory'] });
   await d.note('flowDecide', { target: 'arch:engine', quote: 'rule ' + (index + 1) + ':  ' + rule.inputs.join('  |  ') + '  →  ' + rule.outputs.join(', ') });
 
   const result = answer.results[DECISION];

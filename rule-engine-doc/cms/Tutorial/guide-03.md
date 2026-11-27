@@ -32,7 +32,7 @@ docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime
 The first build takes a few minutes. Then start the container:
 
 ```bash
-docker run -d --name axonivy-rule-engine -p 8090:8080 -v rule-engine-data:/data --restart unless-stopped axonivy/rule-engine-runtime:dev
+docker run -d --name axonivy-rule-engine -p 8090:8080 --restart unless-stopped axonivy/rule-engine-runtime:dev
 ```
 
 It starts in seconds. Port 8090 of your computer leads to port 8080 of the container.
@@ -43,9 +43,9 @@ Check that it is ready:
 curl http://localhost:8090/q/health/ready
 ```
 
-The answer contains `"status": "UP"` and `"activeModels": 0`. The runtime starts **empty**. It gets its models from your project, as you will see in step 3.
+The answer contains `"status": "UP"` and `"loadedVersions": 0`. The runtime starts **empty**. It gets its models from your application, as you will see in step 3.
 
-> The container holds the rule engine and its database. Every version of every model is stored in the Docker volume `rule-engine-data` and is loaded again after a restart. `docker stop axonivy-rule-engine` stops the container, `docker start axonivy-rule-engine` starts it again. `docker rm -f axonivy-rule-engine` removes it and keeps the volume; `docker volume rm rule-engine-data` then deletes the versions.
+> The container holds the rule engine, not your rules. The versions of the models are files of your Ivy application, and the engine loads them into the runtime again after a restart. `docker stop axonivy-rule-engine` stops the container, `docker start axonivy-rule-engine` starts it again. `docker rm -f axonivy-rule-engine` removes it; nothing is lost.
 
 ---
 
@@ -62,7 +62,7 @@ Variables:
     ApiKey: ""
     # Seconds to wait for a decision
     TimeoutSeconds: "10"
-    # Register the .dmn files of the project on the runtime
+    # Store the .dmn files of the project as versions
     AutoDeploy: "true"
 ```
 
@@ -71,7 +71,7 @@ Variables:
 | `RuleEngine.Url` | Where the runtime listens. Change it if you run the container on another host or port. |
 | `RuleEngine.ApiKey` | Must equal `RULE_ENGINE_API_KEY` of the container. Empty means the API is open, which is fine on your machine and nowhere else. |
 | `RuleEngine.TimeoutSeconds` | How long a Business Rule Task waits for the result. |
-| `RuleEngine.AutoDeploy` | `true`: the `.dmn` files of a project are sent to the runtime by the project itself. |
+| `RuleEngine.AutoDeploy` | `true`: a project stores its `.dmn` files as versions itself. |
 
 To change a value, set it in `config/variables.yaml` of your own project, or in the Engine Cockpit for a deployed application.
 
@@ -98,7 +98,7 @@ Invoice INV-2026-0042: 2% (Silver customer), total 9016.00
 That is all it takes. Here is what happened:
 
 1. The page called the callable sub process `InvoicePricing` with the invoice. A Script worked out the amount of each line and their sum, `orderAmount`.
-2. The Business Rule Task found that the runtime did not know the model `invoice-discount` yet, and sent it `dmn/invoice-discount.dmn` of the project. The runtime stored it as **version 1**.
+2. The Business Rule Task found no version of the model `invoice-discount` yet. The runtime checked `dmn/invoice-discount.dmn` of the project, and the connector stored it as **version 1**, in the files of the application. Then it loaded version 1 into the runtime.
 3. The element sent the two inputs of the decision, `customerTier` and `orderAmount`, and got back its two outputs. Rule 6 decided.
 4. The outputs were written to the fields with their names, `in.invoice.discountPercent` and `in.invoice.discountReason`. A last Script applied the discount. The page shows the result, and the version that decided.
 
@@ -108,22 +108,27 @@ How the element is configured, and how it finds its inputs, is on the page [Use 
 
 ---
 
-## Step 4: Look at what the runtime holds
+## Step 4: Look at the versions and the runtime
 
-The runtime has a REST API. Ask it for the versions of the model:
-
-```bash
-curl http://localhost:8090/api/models/invoice-discount/versions
-```
+The versions are files of the application, in the file area of the engine, the folder where IvyScript `File` writes too. The model `invoice-discount` has a folder `rule-engine/invoice-discount` there, with the DMN file of each version, `1.dmn`, and `versions.json`, which describes them:
 
 ```json
-[ { "model": "invoice-discount", "version": 1, "status": "ACTIVE", "source": "PROJECT", "author": "com.axonivy.utils.ruleengine:rule-engine-demo:14.0.1-SNAPSHOT" } ]
+{ "model" : "invoice-discount",
+  "versions" : [ { "version" : 1, "status" : "ACTIVE", "source" : "PROJECT",
+                   "author" : "<application> v1",
+                   "description" : "Deployed with project rule-engine-demo 14.0.1-SNAPSHOT", ... } ] }
 ```
 
-You can also evaluate a decision without Axon Ivy:
+The runtime has a REST API. Ask it which versions it holds in memory:
 
 ```bash
-curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}'      http://localhost:8090/api/models/invoice-discount/evaluate
+curl http://localhost:8090/api/models
+```
+
+It holds version 1 of `invoice-discount`, with its decision and the inputs it needs. You can also evaluate it without Axon Ivy:
+
+```bash
+curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}'      http://localhost:8090/api/models/invoice-discount/versions/1/evaluate
 ```
 
 ```json
@@ -134,7 +139,7 @@ curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount"
 
 Every input a decision needs must be in `input`, `null` if it has no value. The whole API is documented at `http://localhost:8090/q/swagger-ui`.
 
-Or look at it in the browser: `http://localhost:8090/editor/` is the DMN editor of the runtime. It lists the models with their versions and shows a model as diagram and decision tables.
+Or look at the rules in the browser: `http://localhost:8090/editor/` is the DMN editor of the runtime. **Open .dmn file…** shows `dmn/invoice-discount.dmn` as diagram and decision table.
 
 ---
 
@@ -144,7 +149,7 @@ Or look at it in the browser: `http://localhost:8090/editor/` is the DMN editor 
 | --- | --- | --- |
 | The page says `rule:engine:unreachable` | The container is not running, or `RuleEngine.Url` points somewhere else. | `docker ps -a --filter name=axonivy-rule-engine`, then `docker start axonivy-rule-engine`. Compare the port with `RuleEngine.Url`. |
 | `docker run` fails with "port is already allocated" | Something else uses port 8090. | Remove the container it created, `docker rm axonivy-rule-engine`, run `docker run` again with `-p 8091:8080` instead of `-p 8090:8080`, and set `RuleEngine.Url` to `http://localhost:8091`. |
-| `docker run` fails with "The container name ... is already in use" | The container exists from an earlier run. | `docker start axonivy-rule-engine` starts it. To start it from a new image, `docker rm -f axonivy-rule-engine` first; the versions stay in the volume. |
+| `docker run` fails with "The container name ... is already in use" | The container exists from an earlier run. | `docker start axonivy-rule-engine` starts it. To start it from a new image, `docker rm -f axonivy-rule-engine` first; nothing is lost. |
 | The page says `rule:engine:dmn` and "A valid API key is required" | The container was started with `RULE_ENGINE_API_KEY`, the engine has no or another key. | Set `RuleEngine.ApiKey` to the same value. |
 | The health check is not `UP` after a minute | The container is still starting or has stopped. | `docker logs axonivy-rule-engine` shows why. |
 

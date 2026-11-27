@@ -3,7 +3,7 @@
  * process, the invoice the page of the demo passes, and how the notes quote what a run gives. Plain JavaScript,
  * so that the unit tests use the same.
  */
-/** The model on the runtime: the name of the .dmn file. */
+/** The model: the name of the .dmn file. */
 export const MODEL = 'invoice-discount';
 /** Its one decision, a decision table. */
 export const DECISION = 'discount';

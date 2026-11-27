@@ -29,7 +29,7 @@ export const strings = {
     'tour.ruleChanged.title': 'A rule changes',
     'tour.ruleChanged.text': 'Silver customers get 3 percent now. Only the table changes, the process is not touched.',
     'tour.newVersion.title': 'A new version',
-    'tour.newVersion.text': 'The next evaluation registers the changed file on the runtime, as version 2.',
+    'tour.newVersion.text': 'The next evaluation stores the changed file as version 2.',
     'tour.after.title': 'After',
     'tour.after.text': 'The same invoice: 3 percent now.',
     'tour.sameProcess.title': 'The same process',

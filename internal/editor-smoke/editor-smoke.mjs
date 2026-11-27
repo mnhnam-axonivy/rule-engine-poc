@@ -5,13 +5,12 @@
  *                            (build it first: docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime), protected by an API key, runs the
  *                            checks in headless Chrome/Edge and removes the container again
  *   npm run smoke -- --url=http://localhost:8090/ [--key=<api key>]
- *                            the same against a runtime that runs already. It adds versions to it!
+ *                            the same against a runtime that runs already
  *
- * The page is used like a person would: API key prompt, open a model, change a rule, save and activate,
- * activate the old version, roll back, a model the runtime rejects, a new model, a .dmn file written back.
- * The first change is made in the KIE editor itself, like a person does it: select the decision, "Edit", type
- * into a cell. Later changes use the editor's API (setContent). Every request outside the runtime is blocked
- * and counted as a failure.
+ * The page is used like a person would: open a .dmn file, change a rule, let the runtime check it (API key prompt),
+ * a model the runtime rejects, write the file back, a new model, a browser without file access. The first change is
+ * made in the KIE editor itself, like a person does it: select the decision, "Edit", type into a cell. Later changes
+ * use the editor's API (setContent). Every request outside the runtime is blocked and counted as a failure.
  * Screenshots land in .preview/. Set CHROME_PATH if no browser is found.
  */
 import puppeteer from 'puppeteer-core';
@@ -69,13 +68,10 @@ if (!base) {
 if (!base.endsWith('/')) base += '/';
 const origin = new URL(base).origin;
 
-async function api(path, { method = 'GET', body, type } = {}) {
-  const headers = {};
-  if (key) headers['X-API-Key'] = key;
-  if (type) headers['Content-Type'] = type;
-  const response = await fetch(new URL('api/' + path, base), { method, headers, body });
+async function api(path) {
+  const response = await fetch(new URL('api/' + path, base), { headers: key ? { 'X-API-Key': key } : {} });
   const text = await response.text();
-  if (!response.ok) throw new Error(method + ' ' + path + ': ' + response.status + ' ' + text);
+  if (!response.ok) throw new Error('GET ' + path + ': ' + response.status + ' ' + text);
   return text ? JSON.parse(text) : null;
 }
 
@@ -89,11 +85,6 @@ async function ready() {
   throw new Error('The runtime at ' + base + ' did not get ready.');
 }
 
-const evaluate = async () => (await api('models/discount/evaluate', {
-  method: 'POST', type: 'application/json',
-  body: JSON.stringify({ decision: 'discount', input: { purchaseAmount: 1500, type: 'Gold', country: 'CH' } })
-})).result;
-
 const original = readFileSync(discountFile, 'utf8');
 const withDiscount = value => original.replace(/(<outputEntry id="_rule_1_output_discount">\s*<text>)15(<\/text>)/, '$1' + value + '$2');
 
@@ -103,7 +94,7 @@ let browser;
 const problems = [];
 const external = [];
 
-async function openPage(hash = '', { fakeFiles = false } = {}) {
+async function openPage({ fakeFiles = false } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   page.on('pageerror', e => problems.push('pageerror: ' + e.message));
@@ -139,25 +130,12 @@ async function openPage(hash = '', { fakeFiles = false } = {}) {
     // a browser without the File System Access API (e.g. Firefox): file input and download
     await page.evaluateOnNewDocument(() => { delete window.showOpenFilePicker; delete window.showSaveFilePicker; });
   }
-  await page.goto(base + 'editor/' + hash, { waitUntil: 'load' });
+  await page.goto(base + 'editor/', { waitUntil: 'load' });
   return page;
 }
 
 async function shot(page, name) {
   await page.screenshot({ path: join(shots, name + '.png') });
-}
-
-/** Enters the API key when the page asks for it, and waits until the models are listed. */
-async function enterKey(page) {
-  await page.waitForFunction(() => document.querySelector('#key-dialog').open
-    || document.querySelector('#runtime-hint').textContent !== 'Loading the models…', { timeout: 30000, polling: 100 });
-  if (await page.$eval('#key-dialog', d => d.open)) {
-    check(true, 'the protected runtime asks for its API key');
-    await shot(page, '01-api-key');
-    await page.type('#key-input', key);
-    await page.click('#key-dialog button.primary');
-  }
-  await page.waitForFunction(() => document.querySelector('#runtime-hint').textContent !== 'Loading the models…', { timeout: 30000, polling: 100 });
 }
 
 /** The content of the open editor, or null while the editor is still starting. */
@@ -208,100 +186,92 @@ const setModel = (page, xml, path = 'discount.dmn') => page.evaluate((p, x) => w
 
 const message = page => page.$eval('#messages', box => (box.hidden ? '' : box.textContent.replace(/^Close/, '').replace(/\s+/g, ' ').trim()));
 
-/** Clicks a button of the page and waits for the message it shows. */
+/** Clicks a button of the page and waits for the message it shows; enters the API key if the page asks for it. */
 async function act(page, selector, kind) {
   await page.$eval('#messages', box => { box.hidden = true; });
   await page.click(selector);
-  await page.waitForFunction(k => { const box = document.querySelector('#messages'); return !box.hidden && box.classList.contains(k); },
-    { timeout: 30000, polling: 100 }, kind);
+  await page.waitForFunction(k => {
+    const box = document.querySelector('#messages');
+    return document.querySelector('#key-dialog').open || (!box.hidden && box.classList.contains(k));
+  }, { timeout: 30000, polling: 100 }, kind);
+  if (await page.$eval('#key-dialog', d => d.open)) {
+    check(true, 'the protected runtime asks for its API key');
+    await shot(page, '02-api-key');
+    await page.type('#key-input', key);
+    await page.click('#key-dialog button.primary');
+    await page.waitForFunction(k => { const box = document.querySelector('#messages'); return !box.hidden && box.classList.contains(k); },
+      { timeout: 30000, polling: 100 }, kind);
+  }
   return message(page);
 }
-
-const versions = async () => (await api('models/discount/versions'))
-  .sort((a, b) => a.version - b.version).map(v => v.version + ':' + v.status + ':' + v.source).join(',');
 
 // ── checks ───────────────────────────────────────────────────────────────────
 
 try {
   await ready();
-  const project = await api('models/discount/versions?source=PROJECT&author=rule-engine-test', { method: 'POST', type: 'application/xml', body: original });
-  console.log('Model discount registered as version ' + project.version + ' (' + project.status + '), as a project would');
-
   browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--hide-scrollbars', '--force-color-profile=srgb'] });
 
-  console.log('\nOpen a model of the runtime');
-  let page = await openPage('#discount');
-  await enterKey(page);
-  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the deep link #discount opens the active version in the KIE DMN editor');
+  console.log('\nA .dmn file of a project, with file access (Chrome, Edge)');
+  let page = await openPage({ fakeFiles: true });
+  await page.click('#open-file');
+  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the KIE DMN editor');
   await sleep(2500); // let the editor draw
-  const toolbar = await page.$eval('#doc-state', n => n.textContent);
-  check(toolbar === 'version 1 · active · from project', 'the toolbar says which version is open: ' + toolbar);
-  check(await page.$$eval('#versions tr', rows => rows.length) === 1, 'the versions of the model are listed');
-  await shot(page, '02-opened');
+  const opened = await page.evaluate(() => ({
+    kind: document.querySelector('#doc-kind').textContent,
+    model: document.querySelector('#doc-model').value,
+    button: document.querySelector('#save-file').textContent
+  }));
+  check(opened.kind === 'File' && opened.model === 'discount' && opened.button === 'Save file',
+    'the model is named like the file, and Save file writes it itself: ' + JSON.stringify(opened));
+  await shot(page, '01-opened');
 
-  console.log('\nChange a rule and save it');
-  check((await act(page, '#save-activate', 'warn')).includes('Enter your name'), 'saving needs the name of the person');
-  await page.type('#author', 'rule.owner');
-  await page.type('#description', 'Gold discount raised to 20');
+  console.log('\nChange a rule, check it, write it back');
   await typeIntoTable(page, 4, 20); // rule 1, column discount
   check(Boolean(await waitForContent(page, '>20</', 20000)), 'a rule changed in the decision table of the KIE editor: 15 → 20');
   check(await page.$eval('#doc-dirty', n => !n.hidden), 'the page shows that there are unsaved changes');
-  await shot(page, '03-table-edited');
-  let text = await act(page, '#save-activate', 'ok');
-  check(text.includes('Saved as version 2') && text.includes('activated') && !text.includes('null'), 'Save and activate: ' + text);
-  check(await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'version 2 comes from a person (portal) and is active: ' + await versions());
-  check(await evaluate() === 20, 'the runtime decides with the new rule at once: 20');
-  const saved = (await api('models/discount/versions/2'));
-  check(saved.author === 'rule.owner' && saved.description === 'Gold discount raised to 20', 'author and description are stored with the version');
-  check(await page.$eval('#doc-state', n => n.textContent) === 'version 2 · active · from portal', 'the editor now shows version 2');
-  check(await page.evaluate(() => location.hash) === '#discount/2', 'the address points to version 2');
-  check(await page.$eval('#doc-dirty', n => n.hidden), 'after saving, nothing is unsaved');
-  await shot(page, '03-saved');
-
-  console.log('\nActivate and roll back');
-  await act(page, '#versions tr[data-version="1"] button[data-activate]', 'ok');
-  check(await evaluate() === 15, 'Activate on version 1: 15 again');
-  text = await act(page, '#rollback', 'ok');
-  check(text.includes('version 2') && await evaluate() === 20, 'Roll back: version 2 is active again, 20');
-  await shot(page, '04-rolled-back');
-
-  console.log('\nThe same content again, and a model the runtime rejects');
-  text = await act(page, '#save-draft', 'ok');
-  check(text.includes('Nothing new') && await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'unchanged content creates no version');
   check((await act(page, '#check', 'ok')).includes('accepts this model'), 'Check: the runtime accepts the model');
+  await shot(page, '03-checked');
+  await act(page, '#save-file', 'ok');
+  const written = await page.evaluate(() => window.__written);
+  check(Boolean(written) && /<(\w+:)?text>20<\/(\w+:)?text>/.test(written), 'Save file writes the changed model back to discount.dmn');
+  check(await page.$eval('#doc-dirty', n => n.hidden), 'after saving, nothing is unsaved');
+
+  console.log('\nA model the runtime rejects');
   await setModel(page, withDiscount('15 +'));
   await waitForContent(page, '15 +', 20000);
-  text = await act(page, '#save-activate', 'error');
-  check(text.includes('does not accept') && await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'an invalid rule is not saved, the findings are shown');
-  await shot(page, '05-rejected');
+  const text = await act(page, '#check', 'error');
+  check(text.includes('does not accept'), 'Check shows the findings of the DMN engine: ' + text.slice(0, 120));
+  await shot(page, '04-rejected');
 
-  console.log('\nA new model, saved as draft');
+  console.log('\nA new model, saved as a file');
+  await page.evaluate(() => { delete window.showSaveFilePicker; });
   await page.click('#new-model');
   await page.waitForSelector('#name-dialog[open]');
   await page.type('#name-input', 'member-bonus');
   await page.click('#name-dialog button.primary');
   await page.waitForFunction(() => document.querySelector('#doc-kind').textContent === 'New model', { timeout: 15000 });
   await page.waitForFunction(() => window.ruleEditor.ready, { timeout: 60000, polling: 200 });
-  check(await page.$eval('#save-draft', b => !b.disabled), 'the buttons work once the editor has started');
-  await sleep(1500);
-  await shot(page, '06-new-model');
+  check(await page.$eval('#save-file', b => !b.disabled && b.textContent === 'Save as file…'), 'the buttons work once the editor has started');
   await setModel(page, original.replace(/name="discount" namespace/, 'name="member-bonus" namespace'), 'member-bonus.dmn');
   await waitForContent(page, 'member-bonus', 20000);
-  text = await act(page, '#save-draft', 'ok');
-  const bonus = await api('models/member-bonus/versions');
-  check(text.includes('draft') && bonus.length === 1 && bonus[0].status === 'DRAFT', 'a new model is stored as draft version 1');
-  check(await page.$$eval('#models .model', nodes => nodes.map(n => n.dataset.model).join()) === 'discount,member-bonus', 'the list shows the new model');
+  await act(page, '#save-file', 'info');
+  let file = null;
+  for (let i = 0; i < 20 && !file; i++) {
+    await sleep(250);
+    file = readdirSync(downloads).find(name => name === 'member-bonus.dmn');
+  }
+  check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('member-bonus'), 'Save as file… downloads member-bonus.dmn');
+  await shot(page, '05-new-model');
   await page.close();
 
   console.log('\nA .dmn file of a project, without file access: open with a file input, save as download');
   page = await openPage();
-  await enterKey(page);
   const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('#open-file')]);
   await chooser.accept([discountFile]);
   check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the editor');
-  check(await page.$eval('#doc-kind', n => n.textContent) === 'File' && await page.$eval('#doc-model', n => n.value) === 'discount', 'the model is named like the file');
+  check(await page.$eval('#save-file', n => n.textContent) === 'Save as file…', 'the button says it downloads the file');
   await act(page, '#save-file', 'info');
-  let file = null;
+  file = null;
   for (let i = 0; i < 20 && !file; i++) {
     await sleep(250);
     file = readdirSync(downloads).find(name => name === 'discount.dmn');
@@ -309,25 +279,7 @@ try {
   check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('_rule_1_output_discount'), 'Save as file… downloads discount.dmn');
   await page.close();
 
-  console.log('\nA .dmn file of a project, with file access (Chrome, Edge): written back');
-  page = await openPage('', { fakeFiles: true });
-  await enterKey(page);
-  await page.click('#open-file');
-  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the editor');
-  const fileDoc = await page.evaluate(() => {
-    const doc = window.ruleEditor.state.doc;
-    return { kind: doc.kind, handle: Boolean(doc.fileHandle), picker: String(window.showOpenFilePicker).slice(0, 40), button: document.querySelector('#save-file').textContent };
-  });
-  check(fileDoc.button === 'Save file', 'the button says it writes the file itself' + (fileDoc.button === 'Save file' ? '' : ': ' + JSON.stringify(fileDoc)));
-  await setModel(page, withDiscount(25));
-  await waitForContent(page, '25', 20000);
-  await act(page, '#save-file', 'ok');
-  const written = await page.evaluate(() => window.__written);
-  check(Boolean(written) && /<(\w+:)?text>25<\/(\w+:)?text>/.test(written), 'Save file writes the changed model back to discount.dmn');
-  check(await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'saving the file does not touch the runtime');
-  await shot(page, '07-file-saved');
-  await page.close();
-
+  check((await api('models')).length === 0, 'the page stores nothing on the runtime');
   check(problems.length === 0, 'no errors in the browser' + (problems.length ? ': ' + problems.slice(0, 3).join(' | ') : ''));
   check(external.length === 0, 'nothing is loaded from outside the runtime' + (external.length ? ': ' + external.slice(0, 3).join(', ') : ''));
 } catch (e) {

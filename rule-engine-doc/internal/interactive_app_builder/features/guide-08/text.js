@@ -12,7 +12,7 @@ export const strings = {
     'tour.intro.duration': 'about 3 min',
     'tour.chapter.unreachable': 'The runtime is not reachable',
     'tour.chapter.catch': 'Catch the error',
-    'tour.chapter.missing': 'A model the runtime does not have',
+    'tour.chapter.missing': 'A model without a version',
     'tour.chapter.timeout': 'Timeout',
 
     'tour.running.title': 'The decision runtime',
@@ -42,11 +42,11 @@ export const strings = {
     'tour.unhandledLog.text': 'The log names the error. In a real application the case would now be in the error state, waiting for an administrator.',
 
     'tour.autoDeploy.title': 'AutoDeploy',
-    'tour.autoDeploy.text': 'With `true` a project brings its models along: the element registers the `.dmn` file before it evaluates it.',
+    'tour.autoDeploy.text': 'With `true` a project brings its models along: the element stores the `.dmn` file as a version before it evaluates it.',
     'tour.off.title': 'Switched off',
     'tour.off.text': 'Now the project sends nothing. The models have to reach the runtime another way, through its API or a Rules UI.',
-    'tour.notLoaded.title': 'The runtime refuses',
-    'tour.notLoaded.text': 'The runtime is up, but empty. It answers `MODEL_NOT_FOUND`, and the element throws `rule:engine:dmn`: the call got through, the answer is an error.',
+    'tour.notLoaded.title': 'No version',
+    'tour.notLoaded.text': 'There is no version of the model, so there is nothing to evaluate. The element throws `rule:engine:dmn` with the code `MODEL_NOT_FOUND`.',
     'tour.refused.title': 'Caught as well',
     'tour.refused.text': '`rule:engine` also catches `rule:engine:dmn`. Retrying would not help here, though: the model has to be loaded first.',
 

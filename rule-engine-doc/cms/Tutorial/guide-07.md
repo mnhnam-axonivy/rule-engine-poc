@@ -1,6 +1,6 @@
 # Edit rules in the Portal
 
-The people who own a rule should be able to change it without a Designer and without a deployment. With the Axon Ivy Portal they do it in the browser: **Admin Settings › Rule Management** lists the rules, opens them in the DMN editor and saves every change as a new version on the decision runtime.
+The people who own a rule should be able to change it without a Designer and without a deployment. With the Axon Ivy Portal they do it in the browser: **Admin Settings › Rule Management** lists the rules, opens them in the DMN editor and saves every change as a new version of the application.
 
 This page follows one change from the business to the invoice. The rules of the demo do not know who the customer is. A key account signs a framework contract, and the rule owner adds the customer as an input and a discount for it in the Portal. The same process gives the same invoice a higher discount.
 
@@ -35,13 +35,13 @@ The invoice also has the field `customer`, but no rule reads it yet.
 1. Open the Portal and log in as Portal administrator.
 2. Open **Admin settings** from the user menu and select the tab **Rule Management**.
 
-The table lists the models of the decision runtime with their active version, and the `.dmn` files of the projects that the runtime does not know yet. `invoice-discount` is at version 1, from the project: the first Apply registered it.
+The table lists the stored models with their active version, and the `.dmn` files of the projects that are not stored yet. `invoice-discount` is at version 1, from the project: the first Apply stored it.
 
 | Action | What it does |
 | --- | --- |
-| **Edit** | Opens the active version in the DMN editor of Apache KIE, inside the Portal. A file that is not on the runtime yet is opened from its project. |
+| **Edit** | Opens the active version in the DMN editor of Apache KIE, inside the Portal. A file that is not stored yet is opened from its project. |
 | **Show versions** | Lists every version with status, source, author and what changed. Open, activate, roll back. |
-| **Refresh** | Reads the runtime again. |
+| **Refresh** | Reads the versions again. |
 
 The DMN editor is the one of the Designer and of VS Code. The engine fetches it from the runtime, so the browser of the rule owner never talks to the runtime, and the API key stays on the server.
 
@@ -70,7 +70,7 @@ Then:
 2. Fill in **What changed?**, e.g. "Key account discount for Bluebird Architects".
 3. **Save and activate**. The runtime checks the model again and refuses it with the findings of the DMN engine if a rule is not valid.
 
-The result is version 2, from the source **portal**, with the Portal user as author. It is live on the runtime at once. **Save as draft** stores it without making it live.
+The result is version 2, from the source **portal**, with the Portal user as author. It is live at once. **Save as draft** stores it without making it live.
 
 ---
 
@@ -87,7 +87,7 @@ Click **Apply rules** on the page again, without changing anything:
 
 Nothing was changed in the project, and nothing was deployed. What happened:
 
-- The runtime answers with version 2, the one from the Portal.
+- The Business Rule Task evaluates version 2, the active one, from the Portal.
 - The Business Rule Task sends the inputs that this version needs: the two of the file, and `customer`, which it finds in the process data by name.
 - The page reads the table of version 2 and marks its rule 1, with the new column.
 
@@ -102,7 +102,7 @@ The `.dmn` file of the project still has the table without the customer. A versi
 | Version | Status | Source | Author | What changed |
 | --- | --- | --- | --- | --- |
 | 2 | active | portal | admin | Key account discount for Bluebird Architects |
-| 1 | retired | project | rule-engine-demo | |
+| 1 | retired | project | the application, e.g. `demo v1` | Deployed with project rule-engine-demo |
 
 **Roll back** makes version 1 active again, at once. The next Apply gives the invoice 2 percent again, without the key account discount. Any version can also be opened in the editor or activated on purpose.
 
@@ -110,42 +110,40 @@ The `.dmn` file of the project still has the table without the customer. A versi
 
 ## Who has the last word
 
-Two places can change a rule: the project and the runtime. The rule that decides between them is simple.
+Two places can change a rule: the project and the Portal. The rule that decides between them is simple.
 
-> **The Ivy project provides the initial version. The runtime holds the live versions.**
+> **The Ivy project provides the initial version. The application holds the live versions.**
 
 - A version from the project goes live if no version is active yet, or if the active version also came from a project. This is what makes a saved file live during development, as on [Change rules without deployment].
 - A version that was activated in the Portal or through the API is **never** replaced by a project. When the file of the project changes, or the project is deployed again, the file is stored as a draft beside it, and the log says so. The rule owner keeps the last word.
-- To make the file of the project live anyway, activate its version on purpose, in **Show versions**.
+- The Portal shows such a draft in the row of the rule: *The application provides a new version 3 (demo v2). It is not active yet: do you want to activate it?* **Activate version 3** makes it live. **Keep version 2** retires it, so it is not offered again; a later version of the application is offered anew. A version of the project is told by its source and author, the application and its version.
 - To bring the live rules back into the project, export the version: `RuleEngine.export("invoice-discount", 2, project)` writes it to the `dmn` folder.
 
-In the demo: with version 2 of the Portal active, a developer raises "Silver customer" in `dmn/invoice-discount.dmn` from 2 to 3 percent. The next Apply registers the file as version 3, a draft, and version 2 still decides: the key account discount of 10 percent stays.
+In the demo: with version 2 of the Portal active, a developer raises "Silver customer" in `dmn/invoice-discount.dmn` from 2 to 3 percent. The next Apply stores the file as version 3, a draft, and version 2 still decides: the key account discount of 10 percent stays. In the Portal, the row of `invoice-discount` asks whether version 3 should go live.
 
-Set the variable `RuleEngine.AutoDeploy` to `false` if a project should never send its files, and models are loaded through the Portal or the API only.
+Set the variable `RuleEngine.AutoDeploy` to `false` if a project should never store its files, and versions come from the Portal or the Java API only.
 
 ---
 
 ## Without the Portal
 
-The decision runtime has an editor page of its own, for rule owners without a Portal and for development: open `http://localhost:8090/editor/`.
+The decision runtime has an editor page of its own, for development: open `http://localhost:8090/editor/`. It edits the `.dmn` file of a project with a table instead of XML.
 
-1. Enter your name at the top right. It is stored with every version.
-2. Select the model on the left, for example `invoice-discount`. Its active version opens in the DMN editor of Apache KIE.
-3. Select the decision in the diagram, `discount`, and click **Edit** below it: the decision table opens.
-4. Click a cell, for example the result of rule 6, "Silver customer", type the new value and press Enter.
-5. Click **Save and activate**. The runtime checks the model first and refuses it if a rule is not valid.
+1. **Open .dmn file…** and choose `dmn/invoice-discount.dmn` of the project.
+2. Select the decision in the diagram, `discount`, and click **Edit** below it: the decision table opens.
+3. Click a cell, for example the result of rule 6, "Silver customer", type the new value and press Enter.
+4. **Check** lets the DMN engine look at the model. **Save file** writes it back (Chrome and Edge; other browsers download the changed file).
 
-The list on the left now shows a new version from the source **portal**, active. **Activate** and **Roll back** in the same list do what their names say. **Save as draft** stores a version without making it live.
-
-The editor also opens a file: **Open .dmn file…** loads the `.dmn` file of a project, and **Save file** writes it back (Chrome and Edge; other browsers download the changed file). That is the way to edit the rules of the project with a table instead of XML, and the change goes live through the project, like any saved file.
+The change goes live through the project, like any saved file. The page stores no versions: without a Portal, activate and roll back versions with the Java API, see [Several decisions and the Java API].
 
 ---
 
 ## What happens underneath
 
 ```text
- Browser ──► Portal (Admin Settings) ──► rule-engine: Portal/RuleManagement ──► decision runtime, REST API
-                                         (callable sub process)                  (with the API key)
+ Browser ──► Portal (Admin Settings) ──► rule-engine: Portal/RuleManagement ──► versions: files of the application
+                                         (callable sub process)              └──► decision runtime: checks a model
+                                                                                  (with the API key)
 ```
 
 - The Portal finds the callable sub process `Portal/RuleManagement` of the connector by its signatures in the security context, the way it finds Smart Workflow. Without it, there is no tab and nothing else changes.
@@ -157,7 +155,7 @@ The editor also opens a file: **Open .dmn file…** loads the `.dmn` file of a p
 ## Good to know
 
 - An input that the Portal version adds must exist in the process data: a field of the same name, set before the Business Rule Task. Otherwise the element throws `rule:engine:mapping`, as described in [Handle errors].
-- The table shows the models of this application. Applications that share one runtime are separated by `RuleEngine.ModelPrefix`.
+- The table shows the models of this application: every application stores its own versions. Applications that share one runtime are separated there by `RuleEngine.ModelPrefix`.
 
 ---
 

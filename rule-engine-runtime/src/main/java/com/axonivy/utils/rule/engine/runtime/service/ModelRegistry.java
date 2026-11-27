@@ -1,10 +1,14 @@
 package com.axonivy.utils.rule.engine.runtime.service;
 
-import java.util.HashSet;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -12,124 +16,119 @@ import org.jboss.logging.Logger;
 import com.axonivy.utils.rule.engine.runtime.dmn.CompiledModel;
 import com.axonivy.utils.rule.engine.runtime.dmn.DmnCompiler;
 
-import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
 /**
- * The executable models held in memory.
- * <p>The active version of every model is loaded at startup and replaced whenever another version becomes active.
- * A replacement only swaps a reference: evaluations that are running keep the version they started with.</p>
+ * Memory only: the Ivy application loads a version again whenever the runtime does not have it, after a restart or
+ * once the version made room for others as the least recently used one.
  */
 @ApplicationScoped
 public class ModelRegistry {
 
   private static final Logger LOG = Logger.getLogger(ModelRegistry.class);
-
-  @Inject
-  VersionStore store;
+  private static final Pattern MODEL_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,199}");
 
   @Inject
   DmnCompiler compiler;
 
-  @ConfigProperty(name = "rule.engine.version-cache-size", defaultValue = "20")
-  int versionCacheSize;
+  @ConfigProperty(name = "rule.engine.model-cache-size", defaultValue = "100")
+  int cacheSize;
 
-  private final Map<String, CompiledModel> active = new ConcurrentHashMap<>();
-  private final Map<String, String> failures = new ConcurrentHashMap<>();
-  private final Map<String, CompiledModel> versionCache = new LinkedHashMap<>(16, 0.75f, true);
-  private volatile boolean loaded;
+  public record Loaded(CompiledModel model, String contentHash) {}
 
-  void onStart(@Observes StartupEvent event) {
-    sync();
-    LOG.infof("Rules engine started with %d active model(s): %s", active.size(), active.keySet());
-  }
+  private record Key(String model, int version) {}
+
+  /** In the order of use: the first one is the least recently used. */
+  private final Map<Key, Loaded> versions = new LinkedHashMap<>(16, 0.75f, true);
 
   /**
-   * Aligns the models in memory with the active versions in the store.
+   * Compiles the content and holds it as this version of the model. The same content is not compiled again.
+   * @throws com.axonivy.utils.rule.engine.runtime.dmn.InvalidModelException if the content is not a valid DMN model
    */
-  public synchronized void sync() {
-    var refs = store.activeRefs();
-    var models = new HashSet<String>();
-    for (var ref : refs) {
-      models.add(ref.model());
-      var current = active.get(ref.model());
-      if (current != null && current.version() == ref.version()) {
-        continue;
-      }
-      load(ref.model(), ref.version());
+  public Loaded load(String model, int version, String content) {
+    requireValidName(model);
+    if (version < 1) {
+      throw RuleEngineException.invalidRequest("Invalid version " + version + ". Versions start at 1.");
     }
-    active.keySet().removeIf(model -> !models.contains(model));
-    failures.keySet().removeIf(model -> !models.contains(model));
-    loaded = true;
-  }
-
-  private void load(String model, int version) {
-    try {
-      var content = store.get(model, version).content;
-      var compiled = compiler.compile(model, version, content);
-      var previous = active.put(model, compiled);
-      failures.remove(model);
-      LOG.infof("Model '%s' is now served by version %d%s", model, version,
-          previous == null ? "" : " (was " + previous.version() + ")");
-    } catch (Exception ex) {
-      failures.put(model, "Version " + version + " cannot be loaded: " + ex.getMessage());
-      LOG.errorf(ex, "Version %d of model '%s' cannot be loaded", version, model);
+    if (content == null || content.isBlank()) {
+      throw RuleEngineException.invalidRequest("The request needs the DMN file.");
     }
-  }
-
-  public Optional<CompiledModel> active(String model) {
-    return Optional.ofNullable(active.get(model));
-  }
-
-  /**
-   * @return a specific version, compiled on demand. Used for test runs of versions that are not active.
-   */
-  public CompiledModel version(String model, int version) {
-    var current = active.get(model);
-    if (current != null && current.version() == version) {
-      return current;
-    }
-    var key = model + "#" + version;
-    synchronized (versionCache) {
-      var cached = versionCache.get(key);
-      if (cached != null) {
-        return cached;
+    var key = new Key(model, version);
+    String hash = sha256(content);
+    synchronized (versions) {
+      var current = versions.get(key);
+      if (current != null && current.contentHash().equals(hash)) {
+        return current;
       }
     }
-    var compiled = compiler.compile(model, version, store.get(model, version).content);
-    synchronized (versionCache) {
-      versionCache.put(key, compiled);
-      var eldest = versionCache.keySet().iterator();
-      while (versionCache.size() > Math.max(1, versionCacheSize) && eldest.hasNext()) {
-        eldest.next();
+    var loaded = new Loaded(compiler.validateAndCompile(model, version, content), hash);
+    synchronized (versions) {
+      versions.put(key, loaded);
+      var eldest = versions.keySet().iterator();
+      while (versions.size() > Math.max(1, cacheSize) && eldest.hasNext()) {
+        var evicted = eldest.next();
         eldest.remove();
+        LOG.infof("Version %d of model '%s' made room for another one", evicted.version(), evicted.model());
       }
     }
-    return compiled;
-  }
-
-  /**
-   * Forgets everything about a model that was deleted.
-   */
-  public synchronized void evict(String model) {
-    active.remove(model);
-    failures.remove(model);
-    synchronized (versionCache) {
-      versionCache.keySet().removeIf(key -> key.startsWith(model + "#"));
-    }
-  }
-
-  public boolean isLoaded() {
+    LOG.infof("Loaded version %d of model '%s'", version, model);
     return loaded;
   }
 
-  public int activeCount() {
-    return active.size();
+  /**
+   * @throws RuleEngineException MODEL_NOT_FOUND or VERSION_NOT_FOUND if the version is not loaded: load it, then
+   *         evaluate again
+   */
+  public CompiledModel get(String model, int version) {
+    synchronized (versions) {
+      var loaded = versions.get(new Key(model, version));
+      if (loaded != null) {
+        return loaded.model();
+      }
+      boolean modelKnown = versions.keySet().stream().anyMatch(key -> key.model().equals(model));
+      throw modelKnown ? RuleEngineException.versionNotFound(model, version) : RuleEngineException.modelNotFound(model);
+    }
   }
 
-  public Map<String, String> failures() {
-    return Map.copyOf(failures);
+  public List<Loaded> loaded() {
+    synchronized (versions) {
+      return versions.values().stream()
+          .sorted(Comparator.comparing((Loaded loaded) -> loaded.model().model())
+              .thenComparing(loaded -> loaded.model().version(), Comparator.reverseOrder()))
+          .toList();
+    }
+  }
+
+  public void unload(String model) {
+    synchronized (versions) {
+      versions.keySet().removeIf(key -> key.model().equals(model));
+    }
+  }
+
+  public int size() {
+    synchronized (versions) {
+      return versions.size();
+    }
+  }
+
+  private static void requireValidName(String model) {
+    if (model == null || !MODEL_NAME.matcher(model).matches()) {
+      throw RuleEngineException.invalidRequest("Invalid model name '" + model
+          + "'. Use letters, digits, '.', '_' and '-' (max. 200 characters).");
+    }
+  }
+
+  /**
+   * Line endings are ignored, so the same file checked out on Windows and Linux is one version.
+   */
+  static String sha256(String content) {
+    try {
+      var digest = MessageDigest.getInstance("SHA-256");
+      var normalized = content.replace("\r\n", "\n").replace('\r', '\n').strip();
+      return HexFormat.of().formatHex(digest.digest(normalized.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException ex) {
+      throw new IllegalStateException(ex);
+    }
   }
 }

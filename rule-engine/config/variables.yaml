@@ -11,8 +11,8 @@ Variables:
     TimeoutSeconds: "10"
     # Seconds to wait for the connection to the runtime.
     ConnectTimeoutSeconds: "5"
-    # "true" registers the .dmn files of a project as versions on the runtime: when the project starts and
-    # when a file has changed. "false" leaves the loading of models to you (API or Rules UI).
+    # "true" stores the .dmn files of a project as versions in the file area of the application: when the project
+    # starts and when a file has changed. "false" leaves the versions to you (API or Rules UI).
     AutoDeploy: "true"
     # Optional prefix for model names on the runtime, e.g. "sales-".
     # Needed if several applications with equally named .dmn files share one runtime.

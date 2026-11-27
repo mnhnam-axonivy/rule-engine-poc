@@ -7,7 +7,7 @@ package com.axonivy.utils.rule.engine.api;
 public enum VersionSource {
   /** Registered from the .dmn file of an Ivy project. */
   PROJECT,
-  /** Changed by a business user, e.g. in the DMN editor of the runtime or a Rules UI of the Portal. */
+  /** Changed by a business user, e.g. in the tab Rule Management of the Portal. */
   PORTAL,
   /** Loaded by any other API client. */
   API

@@ -7,8 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * One version of a model on the decision runtime.
- *
+ * @param effectiveDate when the version went live, or goes live if its activation is planned
  * @param created only on registration: false if the same content was already stored
  */
 @JsonInclude(Include.NON_NULL)
@@ -21,12 +20,8 @@ public record ModelVersion(
     String description,
     OffsetDateTime createdAt,
     OffsetDateTime effectiveDate,
-    OffsetDateTime activatedAt,
     String activatedBy,
     Integer previousVersion,
-    String dmnName,
-    String dmnNamespace,
-    String contentHash,
     Boolean created) {
 
   @JsonIgnore

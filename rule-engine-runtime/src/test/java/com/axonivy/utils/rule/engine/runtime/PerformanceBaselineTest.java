@@ -92,7 +92,7 @@ class PerformanceBaselineTest {
     assertThat(last.results().get("band").toString()).isEqualTo(String.valueOf(RULES - 1));
 
     // through the REST API
-    given().contentType(ContentType.XML).body(dmn).post("/api/models/perf-large/versions").then().statusCode(201);
+    given().contentType(ContentType.XML).body(dmn).put("/api/models/perf-large/versions/1").then().statusCode(200);
     var http = HttpClient.newHttpClient();
     Callable<Object> call = () -> post(http, RULES - 1);
     for (int i = 0; i < WARMUP; i++) {
@@ -135,7 +135,7 @@ class PerformanceBaselineTest {
   }
 
   private String post(HttpClient http, int rule) throws Exception {
-    var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/models/perf-large/evaluate"))
+    var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/models/perf-large/versions/1/evaluate"))
         .header("Content-Type", "application/json")
         .POST(HttpRequest.BodyPublishers.ofString(
             "{\"input\":{\"amount\":" + (rule * 100 + 50) + ",\"segment\":\"S" + (rule % 50) + "\"}}"))

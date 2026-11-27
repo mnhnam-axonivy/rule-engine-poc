@@ -2,10 +2,10 @@ package com.axonivy.utils.rule.engine.portal;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 
@@ -13,18 +13,19 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.axonivy.utils.rule.engine.RuleEngine;
 import com.axonivy.utils.rule.engine.RuleEngineConfig;
-import com.axonivy.utils.rule.engine.api.ActivateRequest;
 import com.axonivy.utils.rule.engine.api.Message;
-import com.axonivy.utils.rule.engine.api.ModelInfo;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
-import com.axonivy.utils.rule.engine.client.RuleEngineClient;
+import com.axonivy.utils.rule.engine.api.VersionStatus;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableException;
+import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
+import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles.DmnFile;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.app.Application;
 import ch.ivyteam.ivy.environment.Ivy;
@@ -37,13 +38,15 @@ import ch.ivyteam.ivy.environment.Ivy;
  * context, the way it finds Smart Workflow, and shows the tab only if it is there. So everything that crosses
  * is a JDK type: String, Integer, Boolean, List and Map.</p>
  *
+ * <p>The versions are stored in the file area of this application ({@link VersionStore}). The decision runtime
+ * checks a model before it is saved.</p>
+ *
  * <p>Every call answers with a <code>result</code> and an <code>error</code>. On success the error is null.
- * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code of the
- * runtime such as INVALID_MODEL or MODEL_NOT_FOUND, or FAILED), <code>message</code> and <code>details</code>
+ * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code such as
+ * INVALID_MODEL, MODEL_NOT_FOUND or INVALID_STATE, or FAILED), <code>message</code> and <code>details</code>
  * (the findings of the DMN engine, as text).</p>
  *
- * <p>Model names are the names of the .dmn files, as in the Business Rule Task: the prefix of
- * <code>RuleEngine.ModelPrefix</code> is added and removed here.</p>
+ * <p>Model names are the names of the .dmn files, as in the Business Rule Task.</p>
  */
 public final class RuleManagement {
 
@@ -79,37 +82,40 @@ public final class RuleManagement {
   }
 
   /**
-   * @return the models of the runtime and the .dmn files of the projects of this application that the runtime
-   *         does not know yet, by name. A model has name, onRuntime, activeVersion, latestVersion, versionCount,
-   *         decisions (names), and project and file if a project has a .dmn file of that name.
+   * @return the stored models and the .dmn files of the projects of this application that are not stored yet, by
+   *         name. A model has name, stored, activeVersion, latestVersion, versionCount, decisions (names), and
+   *         project and file if a project has a .dmn file of that name. If the application brought a version
+   *         that is not live, see {@link #pending(List)}, also pendingVersion and pendingFrom (its author: the
+   *         application and its version).
    */
   public static RuleManagementAnswer models() {
     return answer(() -> {
-      var config = RuleEngineConfig.fromVariables();
-      String prefix = config.modelPrefix();
+      var store = VersionStore.current();
       var models = new TreeMap<String, Map<String, Object>>(String.CASE_INSENSITIVE_ORDER);
-      for (ModelInfo info : client(config).models()) {
-        if (!info.name().startsWith(prefix)) {
-          continue; // another application on the same runtime
-        }
-        String name = info.name().substring(prefix.length());
+      for (String name : store.models()) {
+        var versions = store.versions(name);
+        var active = versions.stream().filter(ModelVersion::isActive).findFirst();
         var model = new LinkedHashMap<String, Object>();
         model.put("name", name);
-        model.put("onRuntime", true);
-        model.put("activeVersion", info.activeVersion());
-        model.put("latestVersion", info.latestVersion());
-        model.put("versionCount", info.versionCount());
-        model.put("decisions", info.decisions().stream().map(ModelInfo.Decision::name).toList());
+        model.put("stored", true);
+        model.put("activeVersion", active.map(ModelVersion::version).orElse(null));
+        model.put("latestVersion", versions.get(0).version());
+        model.put("versionCount", versions.size());
+        model.put("decisions", decisions(store.describe(active.orElse(versions.get(0)))));
+        pending(versions).ifPresent(version -> {
+          model.put("pendingVersion", version.version());
+          model.put("pendingFrom", version.author());
+        });
         models.put(name, model);
       }
       for (DmnFile file : projectFiles()) {
         var model = models.computeIfAbsent(file.model(), name -> {
-          var notYetOnRuntime = new LinkedHashMap<String, Object>();
-          notYetOnRuntime.put("name", name);
-          notYetOnRuntime.put("onRuntime", false);
-          notYetOnRuntime.put("versionCount", 0);
-          notYetOnRuntime.put("decisions", List.of());
-          return notYetOnRuntime;
+          var notStored = new LinkedHashMap<String, Object>();
+          notStored.put("name", name);
+          notStored.put("stored", false);
+          notStored.put("versionCount", 0);
+          notStored.put("decisions", decisions(ProjectDmnFiles.load(file).info()));
+          return notStored;
         });
         model.putIfAbsent("project", file.project());
         model.putIfAbsent("file", file.path().getFileName().toString());
@@ -118,49 +124,51 @@ public final class RuleManagement {
     });
   }
 
-  /** @return the versions of a model, newest first: see {@link #version(ModelVersion, String)} */
+  /**
+   * A new .dmn file of a project is stored as a draft while a version that a rule owner activated stays active.
+   * @param versions newest first
+   */
+  static Optional<ModelVersion> pending(List<ModelVersion> versions) {
+    var active = versions.stream().filter(ModelVersion::isActive).findFirst();
+    return versions.stream()
+        .filter(version -> version.source() == VersionSource.PROJECT)
+        .findFirst()
+        .filter(version -> version.status() == VersionStatus.DRAFT)
+        .filter(version -> active.map(live -> version.version() > live.version()).orElse(false));
+  }
+
+  /** @return the versions of a model, newest first: see {@link #version(ModelVersion)} */
   public static RuleManagementAnswer versions(String model) {
-    return answer(() -> {
-      var config = RuleEngineConfig.fromVariables();
-      return client(config).versions(config.runtimeModel(model)).stream()
-          .sorted(Comparator.comparingInt(ModelVersion::version).reversed())
-          .map(version -> version(version, config.modelPrefix()))
-          .toList();
-    });
+    return answer(() -> VersionStore.current().versions(model).stream().map(RuleManagement::version).toList());
   }
 
   /**
    * @param version the version to open, or null for the active one (the newest, if none is active). A model that
-   *          is not on the runtime yet is read from the .dmn file of its project. 0 counts as null: the parameter
+   *          is not stored yet is read from the .dmn file of its project. 0 counts as null: the parameter
    *          mapping of a callable sub process turns a null Integer into 0, and versions start at 1.
    * @return model, version (null for a project file), dmn and project (for a project file)
    */
   public static RuleManagementAnswer content(String model, Integer version) {
     return answer(() -> {
-      var config = RuleEngineConfig.fromVariables();
-      var client = client(config);
-      String runtimeModel = config.runtimeModel(model);
+      var store = VersionStore.current();
       var content = new LinkedHashMap<String, Object>();
       content.put("model", model);
       Integer wanted = version == null || version.intValue() <= 0 ? null : version;
       if (wanted == null) {
-        var file = projectFiles().stream().filter(candidate -> candidate.model().equals(model)).findFirst();
-        ModelInfo info = onRuntime(client, runtimeModel);
-        if (info == null && file.isPresent()) {
+        if (!store.exists(model)) {
+          var file = projectFiles().stream().filter(candidate -> candidate.model().equals(model)).findFirst()
+              .orElseThrow(() -> new RuleEngineApiException(404, RuleEngineApiException.MODEL_NOT_FOUND,
+                  "There is no model '" + model + "', neither stored nor in a project.", null, null));
           content.put("version", null);
-          content.put("project", file.get().project());
-          content.put("dmn", ProjectDmnFiles.load(file.get()).content());
+          content.put("project", file.project());
+          content.put("dmn", ProjectDmnFiles.load(file).content());
           return content;
         }
-        if (info == null) {
-          throw new RuleEngineApiException(404, RuleEngineApiException.MODEL_NOT_FOUND,
-              "There is no model '" + model + "', neither on the runtime nor in a project.", null, null);
-        }
-        Integer active = info.activeVersion();
-        wanted = active != null ? active : Integer.valueOf(info.latestVersion());
+        var versions = store.versions(model);
+        wanted = versions.stream().filter(ModelVersion::isActive).findFirst().orElse(versions.get(0)).version();
       }
       content.put("version", wanted);
-      content.put("dmn", client.content(runtimeModel, wanted.intValue()));
+      content.put("dmn", store.content(model, wanted.intValue()));
       return content;
     });
   }
@@ -168,7 +176,7 @@ public final class RuleManagement {
   /** @return valid and messages: the findings of the DMN engine, as text */
   public static RuleManagementAnswer validate(String dmn) {
     return answer(() -> {
-      var result = client(RuleEngineConfig.fromVariables()).validate(dmn);
+      var result = RuleEngine.client().validate(dmn);
       var validation = new LinkedHashMap<String, Object>();
       validation.put("valid", result.valid());
       validation.put("messages", result.messages().stream().map(RuleManagement::text).toList());
@@ -182,8 +190,8 @@ public final class RuleManagement {
    * replaced by a project deployment.
    *
    * @param activate true: go live now; false: keep it as a draft
-   * @return the version, see {@link #version(ModelVersion, String)}. Its <code>created</code> is false if the runtime
-   *         had exactly this content already.
+   * @return the version, see {@link #version(ModelVersion)}. Its <code>created</code> is false if exactly this
+   *         content was stored already.
    */
   public static RuleManagementAnswer save(String model, String dmn, String author, String description, Boolean activate) {
     return answer(() -> {
@@ -191,56 +199,55 @@ public final class RuleManagement {
         throw new RuleEngineApiException(400, RuleEngineApiException.INVALID_REQUEST,
             "A model name and its DMN are required.", null, null);
       }
-      var config = RuleEngineConfig.fromVariables();
-      ModelVersion version = client(config).registerVersion(config.runtimeModel(model), RegisterVersionRequest.builder()
-          .content(dmn)
-          .author(author)
-          .description(StringUtils.trimToNull(description))
-          .source(VersionSource.PORTAL)
-          .activate(Boolean.TRUE.equals(activate))
-          .build());
-      return version(version, config.modelPrefix());
+      return version(ModelDeployer.register(RuleEngine.client(), VersionStore.current(), model,
+          RegisterVersionRequest.builder()
+              .content(dmn)
+              .author(author)
+              .description(StringUtils.trimToNull(description))
+              .source(VersionSource.PORTAL)
+              .activate(Boolean.TRUE.equals(activate))
+              .build()));
     });
   }
 
   /** Makes a version live at once. The version that was active is retired. */
   public static RuleManagementAnswer activate(String model, Integer version, String author) {
-    return answer(() -> {
-      if (version == null || version.intValue() <= 0) {
-        throw new RuleEngineApiException(400, RuleEngineApiException.INVALID_REQUEST,
-            "Which version of '" + model + "' should be activated?", null, null);
-      }
-      var config = RuleEngineConfig.fromVariables();
-      return version(client(config).activate(config.runtimeModel(model), version.intValue(),
-          ActivateRequest.now(author)), config.modelPrefix());
-    });
+    return answer(() -> version(VersionStore.current().activate(model, required(model, version), author, null)));
+  }
+
+  public static RuleManagementAnswer retire(String model, Integer version) {
+    return answer(() -> version(VersionStore.current().retire(model, required(model, version))));
+  }
+
+  private static int required(String model, Integer version) {
+    if (version == null || version.intValue() <= 0) {
+      throw new RuleEngineApiException(400, RuleEngineApiException.INVALID_REQUEST,
+          "Which version of '" + model + "' is meant?", null, null);
+    }
+    return version.intValue();
   }
 
   /** Activates the version that was active before the current one. */
   public static RuleManagementAnswer rollback(String model, String author) {
-    return answer(() -> {
-      var config = RuleEngineConfig.fromVariables();
-      return version(client(config).rollback(config.runtimeModel(model), author), config.modelPrefix());
-    });
+    return answer(() -> version(VersionStore.current().rollback(model, author)));
   }
 
   /**
-   * @return model, version, status, source, author, description, createdAt, activatedAt, activatedBy,
-   *         effectiveDate, previousVersion and created. Times are ISO-8601 texts, enums their names.
+   * @return model, version, status, source, author, description, createdAt, effectiveDate (live from; in the
+   *         future if the activation is planned), activatedBy, previousVersion and created. Times are ISO-8601 texts,
+   *         enums their names.
    */
-  static Map<String, Object> version(ModelVersion version, String prefix) {
+  static Map<String, Object> version(ModelVersion version) {
     var map = new LinkedHashMap<String, Object>();
-    String model = version.model();
-    map.put("model", model != null && model.startsWith(prefix) ? model.substring(prefix.length()) : model);
+    map.put("model", version.model());
     map.put("version", version.version());
     map.put("status", version.status() == null ? null : version.status().name());
     map.put("source", version.source() == null ? null : version.source().name());
     map.put("author", version.author());
     map.put("description", version.description());
     map.put("createdAt", text(version.createdAt()));
-    map.put("activatedAt", text(version.activatedAt()));
-    map.put("activatedBy", version.activatedBy());
     map.put("effectiveDate", text(version.effectiveDate()));
+    map.put("activatedBy", version.activatedBy());
     map.put("previousVersion", version.previousVersion());
     map.put("created", version.created());
     return map;
@@ -263,19 +270,8 @@ public final class RuleManagement {
     }
   }
 
-  private static RuleEngineClient client(RuleEngineConfig config) {
-    return RuleEngine.client(config);
-  }
-
-  private static ModelInfo onRuntime(RuleEngineClient client, String runtimeModel) {
-    try {
-      return client.model(runtimeModel);
-    } catch (RuleEngineApiException ex) {
-      if (ex.isModelMissing()) {
-        return null;
-      }
-      throw ex;
-    }
+  private static List<String> decisions(DmnModelInfo info) {
+    return info == null ? List.of() : info.decisions().stream().map(DmnModelInfo.Decision::name).toList();
   }
 
   /** The .dmn files of the projects of this application. A model of a project hides one of a later project. */

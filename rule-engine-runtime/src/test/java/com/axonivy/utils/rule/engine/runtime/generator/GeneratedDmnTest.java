@@ -14,7 +14,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
-import com.axonivy.utils.rule.engine.runtime.api.model.ModelInfo;
+import com.axonivy.utils.rule.engine.runtime.api.model.LoadedVersion;
 import com.axonivy.utils.rule.engine.dmn.generator.DmnField;
 import com.axonivy.utils.rule.engine.dmn.generator.DmnGenerator;
 import com.axonivy.utils.rule.engine.dmn.generator.DmnSpec;
@@ -111,10 +111,10 @@ class GeneratedDmnTest {
 
     var model = validAndCompiled(dmn);
     assertThat(model.dmnName()).isEqualTo("discount");
-    assertThat(model.inputs()).extracting(ModelInfo.Input::name)
+    assertThat(model.inputs()).extracting(LoadedVersion.Input::name)
         .as("node names equal field names")
         .containsExactlyInAnyOrder("purchaseAmount", "type", "country");
-    assertThat(model.decisions()).extracting(ModelInfo.Decision::name).containsExactly("discount");
+    assertThat(model.decisions()).extracting(LoadedVersion.Decision::name).containsExactly("discount");
 
     var result = evaluate(model, Map.of("purchaseAmount", 400, "type", "Gold", "country", "CH"));
     assertThat(result.results()).containsEntry("discount", BigDecimal.ZERO);
@@ -357,7 +357,7 @@ class GeneratedDmnTest {
     names.values().forEach(name -> inputs.add(DmnField.of(name, DmnType.STRING)));
     var model = validAndCompiled(generator.generate(new DmnSpec("duplicates", inputs,
         List.of(DmnField.of("ok", DmnType.BOOLEAN)))));
-    assertThat(model.inputs()).extracting(ModelInfo.Input::name)
+    assertThat(model.inputs()).extracting(LoadedVersion.Input::name)
         .containsExactlyInAnyOrder("memberType", "orderType", "name", "total", "function_");
 
     assertThatThrownBy(() -> new DmnSpec("duplicates",

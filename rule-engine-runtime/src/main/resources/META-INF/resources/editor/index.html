@@ -17,34 +17,10 @@
       <strong>Axon Ivy Rules Engine</strong>
       <span class="brand-sub">DMN editor</span>
     </div>
-    <label class="author">
-      <span>Your name</span>
-      <input id="author" autocomplete="name" placeholder="stored with every version" spellcheck="false">
-    </label>
   </header>
 
   <div class="layout">
-    <aside class="side" aria-label="Models and files">
-      <section>
-        <h2>On the runtime</h2>
-        <p id="runtime-hint" class="hint">Loading the models…</p>
-        <ul id="models" class="models"></ul>
-      </section>
-
-      <section id="versions-box" hidden>
-        <div class="section-head">
-          <h2>Versions of <span id="versions-model"></span></h2>
-          <button id="rollback" type="button" class="link" hidden>Roll back</button>
-        </div>
-        <table class="versions">
-          <colgroup><col class="c-version"><col class="c-status"><col class="c-source"><col class="c-author"><col class="c-act"></colgroup>
-          <thead>
-            <tr><th>Version</th><th>Status</th><th>Source</th><th>Author</th><th></th></tr>
-          </thead>
-          <tbody id="versions"></tbody>
-        </table>
-      </section>
-
+    <aside class="side" aria-label="Files">
       <section>
         <h2>Files</h2>
         <div class="file-buttons">
@@ -52,7 +28,9 @@
           <button id="new-model" type="button">New model…</button>
         </div>
         <p class="hint">Open the <code>.dmn</code> file of an Ivy project to edit it here. <strong>Save file</strong> writes it
-          back, and the Business Rule Task sends the changed file to the runtime with its next evaluation.</p>
+          back, and the Business Rule Task uses the changed file with its next evaluation.</p>
+        <p class="hint">The versions of a model are kept by the Ivy application: change, activate or roll them back in the
+          tab <strong>Rule Management</strong> of the Axon Ivy Portal.</p>
         <input id="file-input" type="file" accept=".dmn,.xml" hidden>
       </section>
     </aside>
@@ -63,7 +41,7 @@
           <span id="doc-kind" class="doc-kind"></span>
           <label class="doc-model">
             <span>Model</span>
-            <input id="doc-model" spellcheck="false" autocomplete="off" aria-label="Name of the model on the runtime">
+            <input id="doc-model" spellcheck="false" autocomplete="off" aria-label="Name of the model, the name of its file">
           </label>
           <span id="doc-state" class="doc-state"></span>
           <span id="doc-dirty" class="doc-dirty" hidden>● unsaved changes</span>
@@ -73,11 +51,7 @@
           <button id="redo" type="button" title="Redo">Redo</button>
           <button id="check" type="button" title="Let the decision runtime check the model">Check</button>
           <span class="sep" aria-hidden="true"></span>
-          <button id="save-file" type="button" title="Write the model to a .dmn file">Save file</button>
-          <span class="sep" aria-hidden="true"></span>
-          <input id="description" class="description" placeholder="What changed (optional)" spellcheck="true">
-          <button id="save-draft" type="button" title="Store a new version on the runtime, without making it live">Save as draft</button>
-          <button id="save-activate" type="button" class="primary" title="Store a new version on the runtime and make it live">Save and activate</button>
+          <button id="save-file" type="button" class="primary" title="Write the model to a .dmn file">Save file</button>
         </div>
       </div>
       <div id="messages" class="messages" role="status" aria-live="polite" hidden></div>
@@ -85,9 +59,8 @@
         <div id="editor" class="editor"></div>
         <div id="empty" class="empty">
           <h1>Edit decision tables</h1>
-          <p>Open a model of the runtime on the left to change its rules. Every save is a new version: the runtime
-            keeps all of them, and a version can be activated again at any time.</p>
-          <p>To change the <code>.dmn</code> file of an Ivy project instead, choose <strong>Open .dmn file…</strong>.</p>
+          <p>Open the <code>.dmn</code> file of an Ivy project with <strong>Open .dmn file…</strong>, or start a new model.
+            <strong>Check</strong> lets the DMN engine of this runtime look at it before you save it.</p>
         </div>
       </div>
     </main>
@@ -110,7 +83,7 @@
   <dialog id="name-dialog">
     <form method="dialog">
       <h2>New model</h2>
-      <p>The name of the model on the runtime. Name it like the <code>.dmn</code> file, e.g. <code>discount</code>.</p>
+      <p>Name it like its <code>.dmn</code> file, e.g. <code>discount</code>.</p>
       <input id="name-input" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,199}" required spellcheck="false">
       <div class="dialog-actions">
         <button value="cancel" formnovalidate>Cancel</button>

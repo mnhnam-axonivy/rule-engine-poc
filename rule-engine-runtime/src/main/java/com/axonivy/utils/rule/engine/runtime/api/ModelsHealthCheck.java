@@ -10,7 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
- * Ready once the active versions are loaded from the store. Reports active versions that could not be loaded.
+ * Ready from the start: the runtime holds no data, the Ivy application loads the versions it needs.
  */
 @Readiness
 @ApplicationScoped
@@ -21,11 +21,9 @@ public class ModelsHealthCheck implements HealthCheck {
 
   @Override
   public HealthCheckResponse call() {
-    var failures = registry.failures();
-    var response = HealthCheckResponse.named("Active DMN models")
-        .status(registry.isLoaded() && failures.isEmpty())
-        .withData("activeModels", registry.activeCount());
-    failures.forEach((model, failure) -> response.withData("failed." + model, failure));
-    return response.build();
+    return HealthCheckResponse.named("Loaded DMN models")
+        .up()
+        .withData("loadedVersions", registry.size())
+        .build();
   }
 }

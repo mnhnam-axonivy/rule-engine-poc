@@ -7,6 +7,7 @@ import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.program.internal.DesignTimeCreation;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskEditor;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskExecutor;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.Ivy;
@@ -52,8 +53,8 @@ public class BusinessRuleTask implements ProgramExecutor, ProgramEditorUi, Progr
   }
 
   /**
-   * On project start, e.g. after a deployment: the .dmn files of the project are registered as versions.
-   * If the runtime is not reachable now, they are registered with the first evaluation.
+   * On project start, e.g. after a deployment: the .dmn files of the project are stored as versions.
+   * If the runtime is not reachable now to check them, they are stored with the first evaluation.
    */
   @Override
   public void start() {
@@ -63,7 +64,7 @@ public class BusinessRuleTask implements ProgramExecutor, ProgramEditorUi, Progr
       if (project == null || !config.autoDeploy() || config.url().isBlank()) {
         return;
       }
-      ModelDeployer.deployAll(project, RuleEngine.client(config), config);
+      ModelDeployer.deployAll(project, RuleEngine.client(config), VersionStore.current());
     } catch (RuntimeException ex) {
       Ivy.log().debug("Rule engine: models are registered with the first evaluation: " + ex.getMessage());
     }

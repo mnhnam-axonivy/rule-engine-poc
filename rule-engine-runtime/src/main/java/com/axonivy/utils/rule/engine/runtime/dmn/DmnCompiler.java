@@ -26,8 +26,8 @@ import org.kie.dmn.validation.DMNValidator;
 import org.kie.dmn.validation.DMNValidatorFactory;
 import org.kie.internal.io.ResourceFactory;
 
+import com.axonivy.utils.rule.engine.runtime.api.model.LoadedVersion;
 import com.axonivy.utils.rule.engine.runtime.api.model.Message;
-import com.axonivy.utils.rule.engine.runtime.api.model.ModelInfo;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -155,10 +155,10 @@ public class DmnCompiler {
     }
   }
 
-  private static List<ModelInfo.Decision> decisions(DMNModel dmnModel) {
+  private static List<LoadedVersion.Decision> decisions(DMNModel dmnModel) {
     return dmnModel.getDecisions().stream()
         .sorted(Comparator.comparing(DecisionNode::getName))
-        .map(decision -> new ModelInfo.Decision(
+        .map(decision -> new LoadedVersion.Decision(
             decision.getName(),
             typeName(decision.getResultType()),
             dmnModel.getRequiredInputsForDecisionName(decision.getName()).stream()
@@ -168,10 +168,10 @@ public class DmnCompiler {
         .toList();
   }
 
-  private static List<ModelInfo.Input> inputs(DMNModel dmnModel) {
+  private static List<LoadedVersion.Input> inputs(DMNModel dmnModel) {
     return dmnModel.getInputs().stream()
         .sorted(Comparator.comparing(InputDataNode::getName))
-        .map(input -> new ModelInfo.Input(
+        .map(input -> new LoadedVersion.Input(
             input.getName(),
             typeName(input.getType()),
             input.getType() != null && input.getType().isCollection()))

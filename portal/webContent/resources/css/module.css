@@ -5744,55 +5744,10 @@ body.edit-mode {
   color: var(--ivy-primary-color-grey-medium);
 }
 
-.rule-editor-bar {
-  padding-bottom: 0.75rem;
-}
-
-.rule-editor-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.rule-editor-name {
-  font-size: var(--large-font-size, 1.125rem);
-  font-weight: 600;
-}
-
-.rule-editor-state,
-.rule-editor-loading {
-  color: var(--ivy-primary-color-grey-medium);
-}
-
-.rule-editor-dirty {
-  color: var(--ivy-tertinary-color-orange-dark);
-  font-weight: 600;
-}
-
-.rule-editor-loading.rule-editor-problem {
-  color: var(--ivy-tertinary-color-red-dark);
-}
-
-.rule-editor-description {
-  width: 20rem;
-  max-width: 100%;
-}
-
-/* the KIE editor brings its own (light) look; it gets the room below the bar */
-.rule-editor-container {
-  position: relative;
-  height: calc(100vh - 19rem);
-  min-height: 30rem;
-  overflow: hidden;
-  border: 1px solid var(--ivy-primary-color-grey-light);
-  border-radius: var(--portal-card-radius, 0.5rem);
-  background: #fff;
-}
-
-.rule-editor-container iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
+/* the DMN editor dialog of the rule engine project; it takes the height of the tab */
+.rule-editor-frame {
+  height: calc(100vh - 13rem);
+  min-height: 36rem;
 }
 
 .rule-versions-table .rule-description-column {

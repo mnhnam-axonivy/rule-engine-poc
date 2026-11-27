@@ -27,9 +27,6 @@ public final class RuleEngineBridge {
   static final String INFO = "ruleManagementInfo()";
   static final String MODELS = "ruleManagementModels()";
   static final String VERSIONS = "ruleManagementVersions(String)";
-  static final String CONTENT = "ruleManagementContent(String,Integer)";
-  static final String VALIDATE = "ruleManagementValidate(String)";
-  static final String SAVE = "ruleManagementSave(String,String,String,String,Boolean)";
   static final String ACTIVATE = "ruleManagementActivate(String,Integer,String)";
   static final String ROLLBACK = "ruleManagementRollback(String,String)";
   static final String RETIRE = "ruleManagementRetire(String,Integer)";
@@ -49,12 +46,12 @@ public final class RuleEngineBridge {
     }
   }
 
-  /** runtimeUrl, reachable, editorScript (link of the DMN editor script) and modelPrefix */
+  /** runtimeUrl (of the DMN engine), reachable and editorLink (the start of the DMN editor dialog) */
   public static RuleEngineAnswer info() {
     return call(INFO, null);
   }
 
-  /** The models of the decision runtime and the .dmn files of the projects, see {@link RuleModel} */
+  /** The stored models and the .dmn files of the projects, see {@link RuleModel} */
   public static RuleEngineAnswer models() {
     return call(MODELS, null);
   }
@@ -62,22 +59,6 @@ public final class RuleEngineBridge {
   /** The versions of a model, newest first, see {@link RuleVersion} */
   public static RuleEngineAnswer versions(String model) {
     return call(VERSIONS, params("model", model));
-  }
-
-  /** model, version and dmn of a version; version null opens the active one */
-  public static RuleEngineAnswer content(String model, Integer version) {
-    return call(CONTENT, params("model", model, "version", version));
-  }
-
-  /** valid and messages: the findings of the DMN engine */
-  public static RuleEngineAnswer validate(String dmn) {
-    return call(VALIDATE, params("dmn", dmn));
-  }
-
-  /** Stores a new version with the source Portal: live at once, or as draft */
-  public static RuleEngineAnswer save(String model, String dmn, String author, String description, boolean activate) {
-    return call(SAVE, params("model", model, "dmn", dmn, "author", author, "description", description,
-        "activate", activate));
   }
 
   public static RuleEngineAnswer activate(String model, int version, String author) {

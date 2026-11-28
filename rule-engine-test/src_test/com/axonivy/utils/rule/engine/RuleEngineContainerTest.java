@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -19,7 +18,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
-import com.axonivy.utils.rule.engine.api.Message;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
@@ -233,47 +231,6 @@ class RuleEngineContainerTest {
     }
     assertThat(discount).as("active at the effective date, on its own").isEqualTo(30);
     store.delete(model);
-  }
-
-  @Test
-  void generatedDmn_isValidAndRunsInTheDmnEngine(BpmClient client) throws IOException {
-    Path generated = Project.current().directory().resolve("dmn").resolve("test-generated.dmn");
-    Files.deleteIfExists(generated);
-    try {
-      TestData data = TestBusinessRuleTask.sampleData();
-      data.setDiscount(99);
-
-      TestData result = TestBusinessRuleTask.run(client, "create", data);
-
-      assertThat(result.getErrorMessage()).isNull();
-      assertThat(generated).as("generated from the selected fields of the process data").exists();
-      assertThat(RuleEngine.client().validate(Files.readString(generated)).messages())
-          .as("errors found by the DMN validator; it may still advise on the decision table")
-          .extracting(Message::severity).doesNotContain(Message.ERROR);
-      assertThat(result.getDiscount().intValue()).as("the placeholder rule of the generated table").isZero();
-
-      // the rule author fills in a rule, the changed file is live with the next evaluation
-      String withRule = Files.readString(generated).replace("<rule id=\"_rule_1\">", """
-          <rule id="_rule_gold">
-            <inputEntry id="_rule_gold_1"><text>&gt;= 1000</text></inputEntry>
-            <inputEntry id="_rule_gold_2"><text>"GOLD"</text></inputEntry>
-            <inputEntry id="_rule_gold_3"><text>true</text></inputEntry>
-            <inputEntry id="_rule_gold_4"><text>"Zug"</text></inputEntry>
-            <inputEntry id="_rule_gold_5"><text>-</text></inputEntry>
-            <outputEntry id="_rule_gold_out"><text>12.5</text></outputEntry>
-            <annotationEntry><text>VIP Gold customers from Zug</text></annotationEntry>
-          </rule>
-          <rule id="_rule_1">""");
-      Files.writeString(generated, withRule);
-      ProjectDmnFiles.refresh();
-
-      TestData decided = TestBusinessRuleTask.run(client, "create", TestBusinessRuleTask.sampleData());
-      assertThat(decided.getErrorMessage()).isNull();
-      assertThat(decided.getDiscount()).isEqualTo(12.5);
-    } finally {
-      Files.deleteIfExists(generated); // the folder dmn stays: it holds the models of the tests
-      ProjectDmnFiles.refresh();
-    }
   }
 
   @Test

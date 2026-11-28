@@ -1,4 +1,4 @@
-package com.axonivy.utils.rule.engine.dmn.generator;
+package com.axonivy.utils.rule.engine.mapping;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;

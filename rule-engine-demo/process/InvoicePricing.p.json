@@ -73,7 +73,11 @@
       "config" : {
         "javaClass" : "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig" : {
-          "decision" : "invoice-discount#discount"
+          "decision" : "invoice-discount#discount",
+          "decision[invoice-discount#discount].input.customerTier" : "in.invoice.customerTier",
+          "decision[invoice-discount#discount].input.orderAmount" : "in.invoice.orderAmount",
+          "decision[invoice-discount#discount].output.discountPercent" : "in.invoice.discountPercent",
+          "decision[invoice-discount#discount].output.discountReason" : "in.invoice.discountReason"
         }
       },
       "visual" : {

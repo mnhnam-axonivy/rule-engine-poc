@@ -9,12 +9,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import com.axonivy.utils.rule.engine.dmn.generator.BeanProperties;
-import com.axonivy.utils.rule.engine.dmn.generator.DmnType;
-import com.axonivy.utils.rule.engine.dmn.generator.JavaTypeMapper;
+import com.axonivy.utils.rule.engine.mapping.BeanProperties;
 import com.axonivy.utils.rule.engine.mapping.FieldLocator;
 import com.axonivy.utils.rule.engine.mapping.ValueConverter;
-import com.axonivy.utils.rule.engine.program.internal.FieldSelection;
 import com.axonivy.utils.rule.engine.test.Customer;
 import com.axonivy.utils.rule.engine.test.Recommendation;
 import com.axonivy.utils.rule.engine.test.Segment;
@@ -27,35 +24,10 @@ import ch.ivyteam.ivy.scripting.objects.Duration;
 import ch.ivyteam.ivy.scripting.objects.Time;
 
 /**
- * Mapping between Ivy data classes and DMN: types, values and fields by name.
+ * Mapping between Ivy data classes and DMN: values, and the fields a mapping names.
  */
 @IvyTest
 class TestMapping {
-
-  @Test
-  void ivyDataClass_isMappedToDmnTypes() {
-    var type = (DmnType.Structure) new JavaTypeMapper().toDmnType(TestData.class);
-    var fields = type.fields().stream().collect(java.util.stream.Collectors.toMap(f -> f.name(), f -> f.type()));
-
-    assertThat(fields.get("amount")).as("Ivy Number").isEqualTo(DmnType.NUMBER);
-    assertThat(fields.get("quantity")).as("Integer").isEqualTo(DmnType.NUMBER);
-    assertThat(fields.get("nextStep")).as("String").isEqualTo(DmnType.STRING);
-    assertThat(fields.get("approved")).as("Boolean").isEqualTo(DmnType.BOOLEAN);
-    assertThat(fields.get("orderDate")).as("Ivy Date").isEqualTo(DmnType.DATE);
-    assertThat(fields.get("orderedAt")).as("Ivy DateTime").isEqualTo(DmnType.DATE_TIME);
-    assertThat(fields.get("openingTime")).as("Ivy Time").isEqualTo(DmnType.TIME);
-    assertThat(fields.get("deliveryTime")).as("Ivy Duration").isEqualTo(DmnType.DAYS_TIME_DURATION);
-    assertThat(fields.get("labels")).as("Ivy List<String>").isEqualTo(new DmnType.Collection(DmnType.STRING));
-    assertThat(fields.get("upgrade")).as("enum").isInstanceOf(DmnType.Enumeration.class);
-    assertThat(((DmnType.Enumeration) fields.get("upgrade")).values()).containsExactly("GOLD", "SILVER", "STANDARD");
-
-    var customer = (DmnType.Structure) fields.get("customer");
-    assertThat(customer.name()).as("nested data class").isEqualTo("tCustomer");
-    assertThat(customer.fields()).extracting(f -> f.name())
-        .containsExactly("name", "segment", "age", "vip", "birthday", "lastContact", "tags", "address");
-    var positions = (DmnType.Collection) fields.get("positions");
-    assertThat(positions.element()).as("list of data classes").isInstanceOf(DmnType.Structure.class);
-  }
 
   @Test
   void dataClassProperties_areFoundInDeclarationOrder() {
@@ -128,22 +100,10 @@ class TestMapping {
   }
 
   @Test
-  void fieldsAreFoundByName() {
-    assertThat(FieldLocator.findByName(TestData.class, "in", "amount"))
-        .get().extracting(FieldLocator.Field::expression).isEqualTo("in.amount");
-    assertThat(FieldLocator.findByName(TestData.class, "in", "segment"))
-        .get().extracting(FieldLocator.Field::expression).isEqualTo("in.customer.segment");
-    assertThat(FieldLocator.findByName(TestData.class, "in", "city"))
-        .as("a field of a nested data class, two levels down")
-        .get().extracting(FieldLocator.Field::expression).isEqualTo("in.customer.address.city");
-    assertThat(FieldLocator.findByName(TestData.class, "in", "Next Step"))
-        .as("names of hand-written DMN models may differ in case and blanks")
-        .get().extracting(FieldLocator.Field::expression).isEqualTo("in.nextStep");
-    assertThat(FieldLocator.findByName(TestData.class, "in", "product"))
-        .get().extracting(FieldLocator.Field::expression).isEqualTo("in.recommendation.product");
-    assertThat(FieldLocator.findByName(TestData.class, "in", "creditScore")).isEmpty();
-
+  void fieldsAreTypedByTheirPath() {
     assertThat(FieldLocator.typeOf(TestData.class, "in.customer.age")).contains(Integer.class);
+    assertThat(FieldLocator.typeOf(TestData.class, "in.customer.address.city")).as("two levels down")
+        .contains(String.class);
     assertThat(FieldLocator.typeOf(TestData.class, "in.customer.unknown")).isEmpty();
   }
 
@@ -155,21 +115,5 @@ class TestMapping {
     data.setAmount(5);
     assertThat(FieldLocator.read(data, "in.amount")).contains(java.util.Optional.of(5));
     assertThat(FieldLocator.read(data, "in.unknown")).as("not a field").isEmpty();
-  }
-
-  @Test
-  void selectedFields_getTheirDmnNames() {
-    var selection = FieldSelection.parse("""
-        in.member.purchaseAmount, in.member.type
-        in.order.type; in.amount
-        in.member.purchaseAmount
-        """);
-    assertThat(selection.expressionsByName()).containsExactly(
-        Map.entry("purchaseAmount", "in.member.purchaseAmount"),
-        Map.entry("memberType", "in.member.type"),
-        Map.entry("orderType", "in.order.type"),
-        Map.entry("amount", "in.amount"));
-    assertThat(FieldSelection.parse(null).isEmpty()).isTrue();
-    assertThat(FieldSelection.parse("  ").isEmpty()).isTrue();
   }
 }

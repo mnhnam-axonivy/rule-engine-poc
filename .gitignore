@@ -27,3 +27,6 @@ node_modules/
 
 # decision runtime: local database of dev mode
 rule-engine-runtime/data/
+
+# vscode-designer: Node.js and pnpm of package-vscode-extension.ps1
+vscode-designer/.tools/

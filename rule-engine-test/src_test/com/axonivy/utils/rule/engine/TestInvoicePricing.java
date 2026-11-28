@@ -22,8 +22,8 @@ import ch.ivyteam.ivy.environment.AppFixture;
 import tools.jackson.databind.JsonNode;
 
 /**
- * The callable InvoicePricing of the demo: the lines are summed, the customer tier and the order amount go to the
- * runtime by name, the discount comes back into the invoice by name and is applied. The runtime is
+ * The callable InvoicePricing of the demo: the lines are summed, the Business Rule Task maps the customer tier and
+ * the order amount to the runtime and the discount back into the invoice, where it is applied. The runtime is
  * {@link MockDmnEngine}, answering what the DMN engine answers for the sample invoice.
  */
 @IvyProcessTest(enableWebServer = true)
@@ -40,7 +40,7 @@ class TestInvoicePricing {
   }
 
   @Test
-  void tierAndOrderAmountAreSentByName_andTheDiscountIsApplied(BpmClient client) {
+  void tierAndOrderAmountAreSent_andTheDiscountIsApplied(BpmClient client) {
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":{\"discountPercent\":2,\"discountReason\":\"Silver customer\"}}"));
 
     var execution = execute(client, InvoiceSamples.standard());
@@ -51,7 +51,7 @@ class TestInvoicePricing {
     assertThat(call.dmn()).as("the file of the active version")
         .isEqualTo(VersionStore.current().content("invoice-discount", 1));
     JsonNode input = call.input();
-    assertThat(input.propertyNames()).as("the inputs of dmn/invoice-discount.dmn, found in in.invoice by name")
+    assertThat(input.propertyNames()).as("the inputs of dmn/invoice-discount.dmn, mapped from in.invoice")
         .containsExactlyInAnyOrder("customerTier", "orderAmount");
     assertThat(input.get("customerTier").asString()).isEqualTo("Silver");
     assertThat(input.get("orderAmount").decimalValue()).as("summed by the Script before the task").isEqualByComparingTo("9200");

@@ -1,7 +1,6 @@
 package com.axonivy.utils.rule.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.lang.reflect.Proxy;
@@ -12,17 +11,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.program.internal.Conf;
-import com.axonivy.utils.rule.engine.program.internal.DesignTimeCreation;
-import com.axonivy.utils.rule.engine.program.internal.DmnCreator;
-import com.axonivy.utils.rule.engine.program.internal.FieldSelection;
-import com.axonivy.utils.rule.engine.test.TestData;
+import com.axonivy.utils.rule.engine.program.internal.RuleTaskEditor;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.IvyTest;
@@ -31,7 +26,7 @@ import ch.ivyteam.ivy.process.program.ui.ProgramWidget;
 import ch.ivyteam.ivy.process.program.ui.select.SelectItem;
 
 /**
- * The .dmn files of a project: what the inscription mask offers and what "New DMN" generates.
+ * The .dmn files of a project: what they offer and how the inscription mask lists and maps them.
  */
 @IvyTest
 class TestProjectDmn {
@@ -42,6 +37,9 @@ class TestProjectDmn {
     final List<String> groups = new ArrayList<>();
     final List<String> fields = new ArrayList<>();
     final List<String> labels = new ArrayList<>();
+    final Map<String, String> fieldLabels = new LinkedHashMap<>();
+    final Map<String, String> fieldHelps = new LinkedHashMap<>();
+    final Map<String, Class<?>> fieldTypes = new LinkedHashMap<>();
     final Map<String, List<SelectItem>> selects = new LinkedHashMap<>();
 
     ProgramUiBuilder ui() {
@@ -67,29 +65,22 @@ class TestProjectDmn {
         if (method.getName().equals("items") && args != null) {
           selects.put(key, (List<SelectItem>) args[0]);
         }
+        if (method.getName().equals("label") && args != null) {
+          fieldLabels.put(key, (String) args[0]);
+        }
+        if (method.getName().equals("help") && args != null) {
+          fieldHelps.put(key, (String) args[0]);
+        }
+        if (method.getName().equals("requireType") && args != null) {
+          fieldTypes.put(key, (Class<?>) args[0]);
+        }
         return method.getReturnType().isInstance(proxy) ? proxy : null;
       });
     }
   }
 
-  private Path generated;
-
   @BeforeEach
-  public void locate() {
-    ProjectDmnFiles.refresh();
-    generated = Project.current().directory().resolve("dmn").resolve("test-generated.dmn");
-  }
-
-  @AfterEach
-  public void cleanup() throws IOException {
-    Files.deleteIfExists(generated);
-    if (Files.isDirectory(generated.getParent())) {
-      try (var remaining = Files.list(generated.getParent())) {
-        if (remaining.findAny().isEmpty()) {
-          Files.delete(generated.getParent());
-        }
-      }
-    }
+  public void refresh() {
     ProjectDmnFiles.refresh();
   }
 
@@ -194,15 +185,16 @@ class TestProjectDmn {
     var ui = new RecordingUi();
     new BusinessRuleTask().editor(ui.ui());
 
-    assertThat(ui.groups).containsExactly("⚖️ Decision", "✨ New DMN");
-    assertThat(ui.fields).containsExactly(Conf.DECISION, Conf.NEW_MODEL, Conf.INPUTS, Conf.OUTPUTS);
+    assertThat(ui.groups).as("the decision, the process data of its inputs and the fields of its results")
+        .containsExactly(RuleTaskEditor.DECISION_GROUP, RuleTaskEditor.INPUT_GROUP, RuleTaskEditor.OUTPUT_GROUP);
+    assertThat(ui.fields.get(0)).isEqualTo(Conf.DECISION);
     var decisions = ui.selects.get(Conf.DECISION);
     assertThat(decisions).extracting(SelectItem::id).contains(
         "discount#discount",
         "invoice-approval#riskLevel", "invoice-approval#approval", "invoice-approval#dueDate",
         "invoice-approval");
-    assertThat(decisions.get(decisions.size() - 1).id()).isEqualTo(Conf.CREATE_NEW);
-    assertThat(decisions.get(decisions.size() - 1).label()).isEqualTo("New DMN...");
+    assertThat(decisions).extracting(SelectItem::label).as("files are created in the menu of the project")
+        .doesNotContain("New DMN...");
     var discount = decisions.stream().filter(item -> item.id().equals("discount#discount")).findFirst().orElseThrow();
     assertThat(discount.label()).isEqualTo("discount › discount");
     assertThat(discount.description())
@@ -211,102 +203,53 @@ class TestProjectDmn {
   }
 
   @Test
+  void inscriptionMask_mapsTheInputsAndResultsOfEachChoice() {
+    var ui = new RecordingUi();
+    new BusinessRuleTask().editor(ui.ui());
+
+    String dueDate = Conf.choice("invoice-approval", "dueDate");
+    String approval = Conf.choice("invoice-approval", "approval");
+    String allOfApproval = Conf.choice("invoice-approval", null);
+    assertThat(ui.fieldLabels).as("a script field per input and result of a choice, named like it")
+        .containsEntry(Conf.inputKey("discount#discount", "purchaseAmount"), "purchaseAmount")
+        .containsEntry(Conf.inputKey(dueDate, "invoiceDate"), "invoiceDate")
+        .containsEntry(Conf.outputKey(approval, "approval", "fourEyes"), "fourEyes")
+        .containsEntry(Conf.inputKey(allOfApproval, "amount"), "amount")
+        .containsEntry(Conf.outputKey(allOfApproval, "approval", "fourEyes"), "fourEyes")
+        .containsEntry(Conf.outputKey("invoice-discount#discount", "discount", "discountPercent"), "discountPercent");
+    assertThat(ui.fieldLabels).as("only the inputs the decision needs")
+        .doesNotContainKey(Conf.inputKey(dueDate, "amount"));
+    assertThat(ui.fields).as("each field once").doesNotHaveDuplicates();
+    assertThat(ui.fieldHelps).as("its type, shown below the name")
+        .containsEntry(Conf.inputKey("discount#discount", "purchaseAmount"), "number")
+        .containsEntry(Conf.inputKey(dueDate, "invoiceDate"), "date")
+        .containsEntry(Conf.outputKey(approval, "approval", "fourEyes"), "boolean")
+        .containsEntry(Conf.outputKey(allOfApproval, "approval", "fourEyes"), "boolean · approval")
+        .containsEntry(Conf.outputKey("invoice-discount#discount", "discount", "discountPercent"), "number");
+    assertThat(ui.fieldTypes).as("the Ivy type of the DMN type, which the Designer checks the process data against")
+        .containsEntry(Conf.inputKey("discount#discount", "purchaseAmount"), Number.class)
+        .containsEntry(Conf.inputKey("discount#discount", "type"), String.class)
+        .containsEntry(Conf.inputKey(dueDate, "invoiceDate"), ch.ivyteam.ivy.scripting.objects.Date.class)
+        .containsEntry(Conf.outputKey(approval, "approval", "fourEyes"), Boolean.class)
+        .containsEntry(Conf.outputKey(allOfApproval, "approval", "fourEyes"), Boolean.class);
+  }
+
+  @Test
+  void mappingKey_namesTheChoiceOfTheDropdown() {
+    assertThat(Conf.inputKey(Conf.choice("discount", "discount"), "type")).isEqualTo("decision[discount#discount].input.type");
+    assertThat(Conf.outputKey(Conf.choice("invoice-approval", "approval"), "approval", "nextStep"))
+        .isEqualTo("decision[invoice-approval#approval].output.nextStep");
+    assertThat(Conf.outputKey(Conf.choice("invoice-approval", null), "approval", "nextStep"))
+        .as("with all decisions selected, the decision of the result too")
+        .isEqualTo("decision[invoice-approval].output.approval.nextStep");
+  }
+
+  @Test
   void inscriptionMask_explainsEachGroupOnce() {
     var ui = new RecordingUi();
     new BusinessRuleTask().editor(ui.ui());
 
-    assertThat(ui.labels).hasSize(2);
-    assertThat(ui.labels.get(0)).as("the group Decision")
-        .startsWith("A decision of a .dmn file of this project.")
-        .endsWith("Choose 'New DMN...' to create a new DMN file.");
-    assertThat(ui.labels.get(1)).as("on top of the group New DMN, instead of a remark in every help text")
-        .startsWith("Only used with 'New DMN...'");
-  }
-
-  @Test
-  void createNewDmn_generatesFileFromSelectedFields_andSelectsIt() throws IOException {
-    assertThat(generated).doesNotExist();
-
-    // the process RuleTest has a Business Rule Task with 'New DMN...':
-    // opening an inscription mask generates its file
-    var ui = new RecordingUi();
-    new BusinessRuleTask().editor(ui.ui());
-
-    assertThat(generated).as("generated in the dmn folder of the project").exists();
-    assertThat(ui.selects.get(Conf.DECISION)).extracting(SelectItem::id)
-        .as("the new file is offered in the dropdown")
-        .contains("test-generated#discount");
-
-    String dmn = Files.readString(generated);
-    DmnModelInfo info = DmnModelInfo.parse(dmn);
-    assertThat(info.name()).isEqualTo("test-generated");
-    assertThat(info.inputNames()).as("node names equal field names")
-        .containsExactly("amount", "segment", "vip", "address");
-    assertThat(info.decisions()).extracting(DmnModelInfo.Decision::name).containsExactly("discount");
-    assertThat(dmn)
-        .as("enum as allowed values").contains("&quot;GOLD&quot;, &quot;SILVER&quot;, &quot;STANDARD&quot;, null")
-        .as("nested data class as structure").contains("name=\"tAddress\"")
-        .contains("<text>address.city</text>")
-        .as("diagram layout").contains("<dmndi:DMNDiagram");
-
-    // the element switches from 'create' to the generated decision
-    assertThat(dmn).as("the file says which fields it was generated from")
-        .contains("<description>Generated by a Business Rule Task. Inputs: in.amount, in.customer.segment, "
-            + "in.customer.vip, in.customer.address. Outputs: in.discount.</description>");
-    var config = Map.of(Conf.DECISION, Conf.CREATE_NEW, Conf.NEW_MODEL, "test-generated",
-        Conf.INPUTS, "in.amount, in.customer.segment, in.customer.vip, in.customer.address", Conf.OUTPUTS, "in.discount");
-    assertThat(new BusinessRuleTask().migrateConfig(config))
-        .containsEntry(Conf.DECISION, "test-generated#discount")
-        .containsEntry(Conf.NEW_MODEL, "test-generated");
-    var otherFields = Map.of(Conf.DECISION, Conf.CREATE_NEW, Conf.NEW_MODEL, "test-generated",
-        Conf.INPUTS, "in.amount", Conf.OUTPUTS, "in.discount");
-    assertThat(new BusinessRuleTask().migrateConfig(otherFields))
-        .as("a file of that name from other fields is not this element's: it stays at 'New DMN...'")
-        .isSameAs(otherFields);
-
-    // an existing file is never overwritten
-    Files.writeString(generated, dmn.replace("Placeholder", "My rule"));
-    assertThat(DesignTimeCreation.createPending(Project.current())).isEmpty();
-    assertThat(Files.readString(generated)).contains("My rule");
-  }
-
-  /** A new DMN needs a name, and one that no other file has. */
-  @Test
-  void newDmn_needsANameOfItsOwn() {
-    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, " ",
-        FieldSelection.parse("in.amount"), FieldSelection.parse("in.discount")))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("'New DMN name' is empty. Name the new DMN, e.g. member-discount.");
-    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "discount",
-        FieldSelection.parse("in.amount"), FieldSelection.parse("in.discount")))
-        .as("dmn/discount.dmn of this project was not generated from these fields")
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("A DMN named 'discount' exists already (discount.dmn)");
-    var noName = Map.of(Conf.DECISION, Conf.CREATE_NEW, Conf.NEW_MODEL, "", Conf.INPUTS, "in.amount",
-        Conf.OUTPUTS, "in.discount");
-    assertThat(new BusinessRuleTask().migrateConfig(noName)).as("nothing to select without a name").isSameAs(noName);
-  }
-
-  /** The element reads the inputs and writes the results of a generated DMN by name, like those of any other. */
-  @Test
-  void newDmn_thatTheMappingByNameCouldNotRead_isRefused() {
-    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "test-generated",
-        FieldSelection.parse("in.amount"), FieldSelection.parse("in.amount")))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("'amount' is selected as input and as output");
-    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "test-generated",
-        FieldSelection.parse("amount = in.amount"), FieldSelection.parse("in.discount")))
-        .as("an input is named like its field: there is nothing to rename")
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("List fields with their path");
-    assertThat(generated).as("no file for a refused selection").doesNotExist();
-  }
-
-  @Test
-  void configOfOtherElements_isNotTouched() {
-    var config = Map.of(Conf.DECISION, "discount#discount");
-    assertThat(new BusinessRuleTask().migrateConfig(config)).isSameAs(config);
-    var pending = Map.of(Conf.DECISION, Conf.CREATE_NEW, Conf.NEW_MODEL, "not-yet-there", Conf.OUTPUTS, "in.discount");
-    assertThat(new BusinessRuleTask().migrateConfig(pending)).isSameAs(pending);
+    assertThat(ui.labels).as("on top of each group, instead of a remark in every row")
+        .containsExactly(RuleTaskEditor.DECISION_HELP, RuleTaskEditor.INPUT_HELP, RuleTaskEditor.OUTPUT_HELP);
   }
 }

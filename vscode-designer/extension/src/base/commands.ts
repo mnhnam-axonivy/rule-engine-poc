@@ -60,6 +60,7 @@ type ProjectViewCommand =
   | 'ivyProjects.addNewDataClass'
   | 'ivyProjects.addNewEntityClass'
   | 'ivyProjects.addNewCaseMap'
+  | 'ivyProjects.addNewDmnRule'
   | 'ivyProjects.stopBpmEngine'
   | 'ivyProjects.convertProject'
   | 'ivyProjects.convertAllProjects'

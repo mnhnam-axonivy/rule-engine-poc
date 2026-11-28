@@ -1,0 +1,15 @@
+{
+  "addMore": "Add more",
+  "create": "Create decision table",
+  "inputs": "Inputs",
+  "inputsHelp": "The fields the decision reads. Each becomes an input named like its field.",
+  "intro": "Choose fields of your data classes. The Business Rule Task finds inputs and results by name in the process data.",
+  "noDataClasses": "No data class was found in the Axon Ivy projects of the workspace. Skip, and name the input and the decision in the DMN editor like fields of the process data.",
+  "noFieldFound": "No field found",
+  "outputs": "Outputs",
+  "outputsHelp": "The fields the decision fills. Each becomes an output named like its field.",
+  "remove": "Remove",
+  "searchPlaceholder": "Search a field of a data class, e.g. Customer segment",
+  "skip": "Skip, keep the empty table",
+  "title": "Inputs and outputs of {{model}}"
+}

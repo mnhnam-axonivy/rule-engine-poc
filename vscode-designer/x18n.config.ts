@@ -8,6 +8,7 @@ export default defineConfig({
     { pattern: 'extension/l10n/bundle.l10n.{ext}' },
     { pattern: 'extension/package.nls.{locale}.{ext}' },
     { pattern: 'extension/package.nls.{ext}' },
-    { pattern: 'webviews/welcome-page/src/translation/welcome-page/{locale}.json' }
+    { pattern: 'webviews/welcome-page/src/translation/welcome-page/{locale}.json' },
+    { pattern: 'webviews/dmn-rule/src/translation/dmn-rule/{locale}.json' }
   ]
 });

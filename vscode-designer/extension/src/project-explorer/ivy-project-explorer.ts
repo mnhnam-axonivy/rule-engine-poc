@@ -20,6 +20,7 @@ import { IvyProjectManager } from './ivy-project-manager';
 import { IvyProjectTreeDataProvider, type Entry } from './ivy-project-tree-data-provider';
 import { addNewCaseMap } from './new-case-map';
 import { addNewDataClass } from './new-data-class';
+import { addNewDmnRule } from './dmn-rule/new-dmn-rule';
 import { addNewProcess, type ProcessKind } from './new-process';
 import { addNewProject } from './new-project';
 import { addNewTestProject } from './new-test-project';
@@ -97,6 +98,7 @@ export class IvyProjectExplorer {
     registerCmd(`${VIEW_ID}.addNewDataClass`, (s: TreeSelection) => this.addDataClass(s));
     registerCmd(`${VIEW_ID}.addNewEntityClass`, (s: TreeSelection) => this.addEntityClass(s));
     registerCmd(`${VIEW_ID}.addNewCaseMap`, (s: TreeSelection) => this.addCaseMap(s));
+    registerCmd(`${VIEW_ID}.addNewDmnRule`, (s: TreeSelection) => this.addDmnRule(s));
     registerCmd(`${VIEW_ID}.convertProject`, (s: TreeSelection) => this.convertProject(s));
     registerCmd(`${VIEW_ID}.convertAllProjects`, (s: TreeSelection) => this.convertProject(s, true));
     registerCmd(`${VIEW_ID}.convertDialogFormToJsf`, (s: TreeSelection) => this.convertSelectedDialogFormToJsf(s));
@@ -183,6 +185,17 @@ export class IvyProjectExplorer {
       return;
     }
     await addNewCaseMap(addCommandContext);
+  }
+
+  private async addDmnRule(selection: TreeSelection) {
+    if (isWorkspaceLocked({ warn: true })) {
+      return;
+    }
+    const addCommandContext = await this.getAddCommandSelectionContext(selection);
+    if (!addCommandContext) {
+      return;
+    }
+    await addNewDmnRule(this.context, addCommandContext);
   }
 
   private async importBpmnProcess(selection: TreeSelection) {

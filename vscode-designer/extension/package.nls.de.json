@@ -62,6 +62,7 @@
   "command.newDataClass": "Neue Datenklasse erstellen",
   "command.newEntityClass": "Neue Entitätsklasse erstellen",
   "command.newCaseMap": "Neue Case Map erstellen",
+  "command.newDmnRule": "Neue DMN-Regel erstellen",
   "command.addProjectDependency": "Projektabhängigkeit hinzufügen",
   "command.downloadDependencySources": "Quellen der Abhängigkeiten herunterladen",
   "command.addDevContainer": "Dev Container hinzufügen",

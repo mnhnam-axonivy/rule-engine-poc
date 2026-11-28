@@ -781,7 +781,7 @@ ch.ivy.addon.portalkit.ui.jsf:
       KeepActiveHint: "アプリケーションのバージョン {0} を廃止します。有効なバージョンはそのまま使われます。"
       Messages:
         Activated: "{0} のバージョン {1} が有効になりました。"
-        EditorNotFound: "ルールエンジンの DMN エディターが見つかりませんでした。"
+        EditorNotFound: "DMN エディターが見つかりませんでした。このアプリケーションにプロジェクト rule-engine-editor をデプロイしてください。"
         MoreFindings: "…ほか {0} 件の指摘があります。"
         NotConfigured: "DMN エンジンが設定されていません。変数 RuleEngine.Url を設定してください。"
         PendingRetired: "{0} のバージョン {1} を廃止しました。バージョン {2} が引き続き有効です。"

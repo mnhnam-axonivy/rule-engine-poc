@@ -39,8 +39,9 @@ import ch.ivyteam.ivy.environment.Ivy;
  * is a JDK type: String, Integer, Boolean, List and Map.</p>
  *
  * <p>The versions are stored in the file area of this application ({@link VersionStore}). The DMN engine checks a
- * model before it is saved. The rules are changed in the dialog RuleEditor of this project, which uses
- * {@link #content}, {@link #validate} and {@link #save}; the Portal opens it through {@link #info()}'s editorLink.</p>
+ * model before it is saved. The rules are changed in the dialog RuleEditor of the project rule-engine-editor, which
+ * uses {@link #content}, {@link #validate} and {@link #save}; the Portal opens it through {@link #info()}'s
+ * editorLink.</p>
  *
  * <p>Every call answers with a <code>result</code> and an <code>error</code>. On success the error is null.
  * Otherwise it is a map with <code>code</code> (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code such as
@@ -51,7 +52,7 @@ import ch.ivyteam.ivy.environment.Ivy;
  */
 public final class RuleManagement {
 
-  /** The process start of the DMN editor dialog: process/RuleEditor.p.json */
+  /** The process start of the DMN editor dialog: process/RuleEditor.p.json of the project rule-engine-editor */
   public static final String EDITOR_START = "editRule(String,Number)";
 
   public static final String UNREACHABLE = "UNREACHABLE";
@@ -63,7 +64,7 @@ public final class RuleManagement {
 
   /**
    * @return runtimeUrl (of the DMN engine), reachable and editorLink: the link of the DMN editor dialog, to which the
-   *         parameters model and version (optional) are added
+   *         parameters model and version (optional) are added; null if the project rule-engine-editor is not deployed
    */
   public static RuleManagementAnswer info() {
     var config = RuleEngineConfig.fromVariables();

@@ -784,7 +784,7 @@ ch.ivy.addon.portalkit.ui.jsf:
       KeepActiveHint: "Retirer la version {0} de l’application. La version active reste en service."
       Messages:
         Activated: "La version {1} de {0} est active."
-        EditorNotFound: "L'éditeur DMN du moteur de règles est introuvable."
+        EditorNotFound: "L'éditeur DMN est introuvable. Déployez le projet rule-engine-editor dans cette application."
         MoreFindings: "… et {0} autres constats."
         NotConfigured: "Le moteur DMN n'est pas configuré. Définissez la variable RuleEngine.Url."
         PendingRetired: "La version {1} de {0} est retirée. La version {2} reste active."

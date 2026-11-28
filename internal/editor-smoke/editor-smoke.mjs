@@ -1,10 +1,10 @@
 /**
- * Browser check of the DMN editor dialog of the connector (RuleEditor) on a running Axon Ivy Engine whose DMN engine
- * container runs too:
+ * Browser check of the DMN editor dialog RuleEditor of the project rule-engine-editor on a running Axon Ivy Engine
+ * whose DMN engine container runs too:
  *
  *   npm run smoke -- --url=http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/ [--model=discount]
  *
- * It opens the process start RuleEditor/editRule.ivp of the project rule-engine for a model (default: discount, the
+ * It opens the process start RuleEditor/editRule.ivp of the project rule-engine-editor for a model (default: discount, the
  * small model of rule-engine-test) and uses the dialog like a person would: change a rule in the KIE editor, let the
  * DMN engine check it, save it as a draft (never live), a model the DMN engine rejects. Then it opens the dialog in an
  * iframe, as the Portal does, and closes it: the parent page must hear of it. Every request outside the engine is
@@ -18,8 +18,8 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const shots = resolve(here, '.preview');
 const arg = name => (process.argv.find(a => a.startsWith('--' + name + '=')) || '').slice(name.length + 3);
-/** process/RuleEditor.p.json of the project rule-engine */
-const START = 'pro/rule-engine/023F72FE11C582F1/editRule.ivp';
+/** process/RuleEditor.p.json of the project rule-engine-editor */
+const START = 'pro/rule-engine-editor/023F72FE11C582F1/editRule.ivp';
 
 const browserPath = process.env.CHROME_PATH || [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',

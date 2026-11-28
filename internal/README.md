@@ -7,7 +7,7 @@ repository refers to either folder. The repository builds, tests and ships witho
 
 | Where | What it is | Was before |
 | --- | --- | --- |
-| `internal/editor-smoke` | Browser check of the DMN editor dialog `RuleEditor` of the connector. | `internal/interactive_app_builder/tools` |
+| `internal/editor-smoke` | Browser check of the DMN editor dialog `RuleEditor` of the project `rule-engine-editor`. | `internal/interactive_app_builder/tools` |
 | `rule-engine-doc` | Ivy project with the tutorial: process start **Rule Engine Tutorial**, its dialog, the eleven pages of its path in the CMS, the built walkthroughs. Requires `rule-engine-demo`. | Part of `rule-engine-demo` |
 | `rule-engine-doc/src_test` | `TestTutorial` and `TutorialWebIT`, with the Maven profile `web.test`. | `rule-engine-test` |
 | `rule-engine-doc/internal/interactive_app_builder` | Builds the walkthroughs (Node.js). | `internal/interactive_app_builder` |
@@ -18,8 +18,8 @@ The Java package of the tutorial is `com.axonivy.utils.rule.engine.doc` (was `..
 
 ## The editor dialog check
 
-`editor-smoke` uses the editor dialog of the connector on a running Axon Ivy Engine, with its DMN engine container
-running too, like a person would. It opens the process start `RuleEditor/editRule.ivp` for a model (default:
+`editor-smoke` uses the editor dialog of `rule-engine-editor` on a running Axon Ivy Engine, with its DMN engine
+container running too, like a person would. It opens the process start `RuleEditor/editRule.ivp` for a model (default:
 `discount` of `rule-engine-test`), changes a rule in the KIE editor, lets the DMN engine check it, saves it as a draft
 (never live) and checks a model the DMN engine rejects. Then it opens the dialog in an iframe, as the Portal does,
 and closes it: the parent page must hear of it. Every request that leaves the engine is blocked and counts as a

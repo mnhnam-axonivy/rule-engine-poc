@@ -9,7 +9,7 @@ const ABOUT_RULES = [
   'The tab Portal stands for the Axon Ivy Portal at Admin Settings › Rule Management. Its editor shows the decision tables and formulas of the DMN editor of Apache KIE; the real one also has the diagram and the data types.',
   'A version saved in the Portal has the source portal. It is never replaced by the project, and the Business Rule Task sends the inputs it needs, also ones the file of the project does not have.',
   'It evaluates decision tables with the hit policies FIRST, UNIQUE and COLLECT, FEEL literal expressions and the functions of a model, as the DMN engine does.',
-  'The API key, the Portal login and effective dates are not simulated.'
+  'The Portal login and effective dates are not simulated.'
 ].join('|');
 
 export const strings = {
@@ -35,11 +35,11 @@ export const strings = {
     'tour.bridge.title': 'The Portal finds the rule engine',
     'tour.bridge.text': 'The Portal has no dependency on the rule engine. It looks for the callable sub process `Portal/RuleManagement` of the connector in the security context, the way it finds Smart Workflow. Only if it is there, the Admin Settings have the tab Rule Management.',
     'tour.tab.title': 'Admin Settings › Rule Management',
-    'tour.tab.text': 'Portal administrators find the tab beside Role Management. The browser only talks to the Portal: the engine calls the runtime, with the API key.',
+    'tour.tab.text': 'Portal administrators find the tab beside Role Management. The browser only talks to the Portal: the engine calls the DMN engine.',
     'tour.row.title': 'The rules',
-    'tour.row.text': 'The models of the runtime with their active version, and the `.dmn` files of the projects that the runtime does not know yet. `invoice-discount` is at version 1, from the project.',
+    'tour.row.text': 'The stored models with their active version, and the `.dmn` files of the projects that are not stored yet. `invoice-discount` is at version 1, from the project.',
     'tour.editor.title': 'The DMN editor',
-    'tour.editor.text': 'Edit opens the active version in the DMN editor of Apache KIE, inside the Portal. It is the editor of the Designer and of VS Code, here in the browser of the rule owner.',
+    'tour.editor.text': 'Edit opens the active version in the editor dialog of `rule-engine-editor`, inside the tab. It is the DMN editor of Apache KIE, the one of VS Code, here in the browser of the rule owner.',
 
     'tour.goal.title': 'What the business wants',
     'tour.goal.text': 'Bluebird Architects signed a framework contract: 10 percent off every invoice, whatever the tier.',
@@ -63,7 +63,7 @@ export const strings = {
     'tour.lower.title': 'A lower total',
     'tour.lower.text': 'The process applies the discount as always: the same invoice costs 8,280.00 instead of 9,016.00.',
     'tour.untouched.title': 'The project is untouched',
-    'tour.untouched.text': 'The file of the project still has the table without the customer. The runtime holds the version of the rule owner. `RuleEngine.export` brings it into the project, if you want it there.',
+    'tour.untouched.text': 'The file of the project still has the table without the customer. The application holds the version of the rule owner. `RuleEngine.export` brings it into the project, if you want it there.',
 
     'tour.versionList.title': 'Every version is kept',
     'tour.versionList.text': 'Version 2 from the Portal is active, version 1 from the project is retired. Any version can be opened in the editor or activated again.',

@@ -57,11 +57,10 @@ export class PortalView {
 
   /** The rules: the models of the runtime (of this application) and the files it does not know yet. */
   models() {
-    const prefix = this.settings().prefix;
     const runtime = this.app.runtime;
     const rows = new Map();
-    runtime.modelNames().filter(name => name.startsWith(prefix)).forEach(runtimeName => {
-      const name = runtimeName.slice(prefix.length);
+    runtime.modelNames().forEach(runtimeName => {
+      const name = runtimeName;
       const active = runtime.active(runtimeName);
       const versions = runtime.versions(runtimeName);
       const latest = versions[versions.length - 1];
@@ -81,7 +80,7 @@ export class PortalView {
 
   /** Opens a rule: the active version (or the one asked for), or the file of the project. */
   open(model, version = null) {
-    const runtimeName = this.settings().prefix + model;
+    const runtimeName = model;
     const runtime = this.app.runtime;
     const versions = runtime.versions(runtimeName);
     let entry = version ? versions.find(candidate => candidate.version === version) : runtime.active(runtimeName);
@@ -167,7 +166,7 @@ export class PortalView {
       this.renderMessages();
       return null;
     }
-    const runtimeName = this.settings().prefix + this.edit.model;
+    const runtimeName = this.edit.model;
     let result = null;
     this.app.onRuntime(() => {
       result = this.app.runtime.register(runtimeName, this.edit.dmn, { source: 'PORTAL', author: PORTAL_USER, activate: Boolean(activate) });
@@ -199,14 +198,14 @@ export class PortalView {
   }
 
   activateVersion(version) {
-    const runtimeName = this.settings().prefix + this.versionsOf;
+    const runtimeName = this.versionsOf;
     this.app.onRuntime(() => this.app.runtime.activate(runtimeName, version));
     this.messages = [{ tone: 'info', text: this.app.t('portal.msg.activated', { model: this.versionsOf, version }) }];
     this.render();
   }
 
   rollback() {
-    const runtimeName = this.settings().prefix + this.versionsOf;
+    const runtimeName = this.versionsOf;
     let back = null;
     this.app.onRuntime(() => { back = this.app.runtime.rollback(runtimeName); });
     if (back) this.messages = [{ tone: 'info', text: this.app.t('portal.msg.rolledBack', { model: this.versionsOf, version: back.version }) }];
@@ -374,7 +373,7 @@ export class PortalView {
 
   renderVersions() {
     const t = this.app.t;
-    const runtimeName = this.settings().prefix + this.versionsOf;
+    const runtimeName = this.versionsOf;
     const versions = this.app.runtime.versions(runtimeName).slice().reverse();
     const active = this.app.runtime.active(runtimeName);
     return h('div.portal-dialog-layer', null, h('div.portal-dialog', { 'data-tour': 'dialog', role: 'dialog', 'aria-label': t('portal.versionsOf', { model: this.versionsOf }) },

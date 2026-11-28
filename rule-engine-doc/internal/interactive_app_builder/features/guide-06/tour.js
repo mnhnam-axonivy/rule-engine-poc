@@ -53,7 +53,7 @@ async function save(d) {
   });
 }
 
-/** 2 — what the runtime keeps. */
+/** 2 — what the application keeps. */
 async function versions(d) {
   seedTwoVersions(d.app);
   await d.panel('runtime');

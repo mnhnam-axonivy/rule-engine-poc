@@ -27,8 +27,8 @@
  *                                                  editor tab: the process, a .dmn file,
  *                                                  variables.yaml, the architecture
  *   d.arch({ lit, flow, label } | null)            on the tab "Architecture": light blocks
- *                                                  (['connector', 'api']), let links flow
- *                                                  (['http>'] to the runtime, ['http<'] back,
+ *                                                  (['connector', 'engine']), let links flow
+ *                                                  (['http>'] to the DMN engine, ['http<'] back,
  *                                                  'ui>', 'store>', 'code') and quote on a
  *                                                  link ({ http: 'POST …' }); null ends it
  *   d.edit(target, value | old => value)           type a change: 'f4.inputs', 'f2.code', 'vars',

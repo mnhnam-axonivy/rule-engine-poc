@@ -628,8 +628,6 @@ export class DesignerApp {
       row(t('variables.url'), settings.url || '—', VARIABLES.URL, rightUrl ? 'ok' : 'bad'),
       row(t('variables.timeout'), settings.timeout + ' s', VARIABLES.TIMEOUT),
       row(t('variables.autoDeploy'), t(settings.autoDeploy ? 'variables.on' : 'variables.off'), VARIABLES.AUTO_DEPLOY),
-      row(t('variables.prefix'), settings.prefix || t('variables.none'), VARIABLES.PREFIX),
-      row(t('variables.key'), t(settings.apiKey ? 'variables.key.set' : 'variables.key.none'), t('variables.key.hint')),
       h('div.var-effect.' + (ok ? 'ok' : 'bad'), null, icon(ok ? 'check' : 'error', 14), t(effect, { url: this.runtime.url, timeout: settings.timeout })));
   }
 
@@ -863,8 +861,8 @@ export class DesignerApp {
       case 'request': {
         showRuntime();
         this.panel.setCall(call, 'request');
-        this.setCaption(t('note.rule.request', { model: call.runtimeModel }));
-        await fx.remoteOpen(element, { title: t('remote.title'), subtitle: call.runtimeModel + (call.decision ? ' › ' + call.decision : '') });
+        this.setCaption(t('note.rule.request', { model: call.model }));
+        await fx.remoteOpen(element, { title: t('remote.title'), subtitle: call.model + (call.decision ? ' › ' + call.decision : '') });
         const packets = (call.mappings || []).map(m => ({ tone: 'user', tag: 'input', text: m.name + ' = ' + json(m.value) }));
         if (!packets.length) packets.push({ tone: 'user', tag: 'input', text: t('remote.noInputs') });
         await fx.remoteSend(packets);
@@ -874,7 +872,7 @@ export class DesignerApp {
         // the .dmn file of the project was new to the runtime: it is a version now
         this.panel.setCall(call, 'registered');
         this.refreshRuntimeViews();
-        this.setCaption(t(p.status === 'ACTIVE' ? 'note.rule.registered' : 'note.rule.registered.draft', { version: p.version, model: call.runtimeModel }));
+        this.setCaption(t(p.status === 'ACTIVE' ? 'note.rule.registered' : 'note.rule.registered.draft', { version: p.version, model: call.model }));
         const file = this.findDmn(call.model);
         await fx.remoteSend([{ tone: 'tool', tag: 'dmn', text: t('remote.register', { file: file ? file.file.split('/').pop() : call.model, version: p.version }) }]);
         break;
@@ -1098,12 +1096,12 @@ export class DesignerApp {
     const t = this.t;
     const info = clear(file.info);
     const settings = readSettings(parseYaml(this.variablesText).value || {});
-    const model = settings.prefix + file.id;
+    const model = file.id;
     const active = this.runtime.active(model);
     const stored = this.runtime.versions(model).find(version => version.hash === fingerprint(file.current));
     const row = (label, value, hint, state) => h('div.var-row' + (state ? '.' + state : ''), null,
       h('span.var-label', null, label), h('span.var-value', null, value), hint ? h('span.var-hint', null, hint) : null);
-    info.append(row(t('dmn.side.model'), model, settings.prefix ? VARIABLES.PREFIX : ''));
+    info.append(row(t('dmn.side.model'), model, ''));
     info.append(row(t('dmn.side.active'), active ? t('dmn.side.version', { version: active.version, source: active.source.toLowerCase() }) : t('dmn.side.none'), '', active ? 'ok' : 'warn'));
     let effect;
     let tone = 'ok';
@@ -1138,7 +1136,6 @@ export class DesignerApp {
   /** 'running' | 'slow' | 'stopped': what `docker start` and `docker stop` do to the container. */
   setRuntimeState(state) {
     this.runtime.state = state;
-    if (state === 'stopped') this.runtime.stop();
     this.refreshRuntimeViews();
     this.emit({ type: 'runtime', state });
   }

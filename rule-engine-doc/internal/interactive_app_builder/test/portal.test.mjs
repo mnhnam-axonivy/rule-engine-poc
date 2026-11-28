@@ -22,7 +22,7 @@ const text = name => readFileSync(demo(name), 'utf8');
 const json = name => JSON.parse(text(name));
 const DATA = 'dataclass/com/axonivy/utils/rule/engine/demo/';
 const CLASSES = ['Invoice', 'InvoiceLine'];
-const VARIABLES = 'Variables:\n  RuleEngine:\n    Url: http://localhost:8090\n    ApiKey: ""\n    TimeoutSeconds: "10"\n    AutoDeploy: "true"\n';
+const VARIABLES = 'Variables:\n  RuleEngine:\n    Url: http://localhost:8090\n    TimeoutSeconds: "10"\n    AutoDeploy: "true"\n';
 
 function setup() {
   const model = loadProcess(json('process/InvoicePricing.p.json'), json(DATA + 'InvoicePricingData.d.json'),

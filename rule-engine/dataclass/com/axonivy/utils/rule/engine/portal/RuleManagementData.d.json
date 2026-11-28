@@ -13,24 +13,9 @@
     "type" : "Integer",
     "modifiers" : [ ]
   }, {
-    "name" : "dmn",
-    "type" : "String",
-    "comment" : "The model as DMN XML",
-    "modifiers" : [ ]
-  }, {
     "name" : "author",
     "type" : "String",
-    "comment" : "The user of the Portal who makes the change",
-    "modifiers" : [ ]
-  }, {
-    "name" : "description",
-    "type" : "String",
-    "comment" : "What changed",
-    "modifiers" : [ ]
-  }, {
-    "name" : "activate",
-    "type" : "Boolean",
-    "comment" : "true: the new version goes live at once, false: it stays a draft",
+    "comment" : "The user who activates, retires or rolls back",
     "modifiers" : [ ]
   }, {
     "name" : "result",

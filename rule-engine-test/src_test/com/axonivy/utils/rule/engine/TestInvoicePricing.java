@@ -9,8 +9,9 @@ import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
 import com.axonivy.utils.rule.engine.demo.Invoice;
 import com.axonivy.utils.rule.engine.demo.InvoiceSamples;
 import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
-import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
+import com.axonivy.utils.rule.engine.test.mock.MockDmnEngine;
 import com.axonivy.utils.rule.engine.test.mock.TestStore;
+import com.axonivy.utils.rule.engine.version.VersionStore;
 
 import ch.ivyteam.ivy.bpm.engine.client.BpmClient;
 import ch.ivyteam.ivy.bpm.engine.client.ExecutionResult;
@@ -23,7 +24,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * The callable InvoicePricing of the demo: the lines are summed, the customer tier and the order amount go to the
  * runtime by name, the discount comes back into the invoice by name and is applied. The runtime is
- * {@link MockRuntime}, answering what the real runtime answers for the sample invoice.
+ * {@link MockDmnEngine}, answering what the DMN engine answers for the sample invoice.
  */
 @IvyProcessTest(enableWebServer = true)
 class TestInvoicePricing {
@@ -32,27 +33,24 @@ class TestInvoicePricing {
 
   @BeforeEach
   public void setup(AppFixture fixture) {
-    MockRuntime.reset();
+    MockDmnEngine.reset();
     TestStore.clear();
-    fixture.var(Var.URL, MockRuntime.url());
-    fixture.var(Var.API_KEY, "test-key");
+    fixture.var(Var.URL, MockDmnEngine.url());
     fixture.var(Var.AUTO_DEPLOY, "true");
-    fixture.var(Var.MODEL_PREFIX, "");
   }
 
   @Test
   void tierAndOrderAmountAreSentByName_andTheDiscountIsApplied(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1,
-        "{\"discount\":{\"discountPercent\":2,\"discountReason\":\"Silver customer\"}}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":{\"discountPercent\":2,\"discountReason\":\"Silver customer\"}}"));
 
     var execution = execute(client, InvoiceSamples.standard());
     Invoice invoice = execution.subResult().param("invoice", Invoice.class);
 
     assertThat(execution.subResult().param("errorMessage", String.class)).isNullOrEmpty();
-    var call = MockRuntime.calls("evaluate").get(0);
-    assertThat(call.model()).isEqualTo("invoice-discount");
-    assertThat(call.body().get("decision").asString()).isEqualTo("discount");
-    JsonNode input = call.body().get("input");
+    var call = MockDmnEngine.calls("evaluate").get(0);
+    assertThat(call.dmn()).as("the file of the active version")
+        .isEqualTo(VersionStore.current().content("invoice-discount", 1));
+    JsonNode input = call.input();
     assertThat(input.propertyNames()).as("the inputs of dmn/invoice-discount.dmn, found in in.invoice by name")
         .containsExactlyInAnyOrder("customerTier", "orderAmount");
     assertThat(input.get("customerTier").asString()).isEqualTo("Silver");
@@ -69,8 +67,7 @@ class TestInvoicePricing {
 
   @Test
   void discountIsRoundedToTheCent(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1,
-        "{\"discount\":{\"discountPercent\":2.5,\"discountReason\":\"Odd\"}}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":{\"discountPercent\":2.5,\"discountReason\":\"Odd\"}}"));
     Invoice sample = InvoiceSamples.standard();
     sample.getLines().get(0).setQuantity(1);
     sample.getLines().get(0).setUnitPrice(new java.math.BigDecimal("0.30"));
@@ -84,8 +81,7 @@ class TestInvoicePricing {
 
   @Test
   void ruleEngineError_isAnswered_notThrown(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.error(422, "EVALUATION_FAILED",
-        "Evaluation of model 'invoice-discount' version 1 failed: no rule matched"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.failed("discount", "no rule matched"));
 
     var result = execute(client, InvoiceSamples.standard()).subResult();
 

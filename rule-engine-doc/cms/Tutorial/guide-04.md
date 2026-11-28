@@ -11,7 +11,7 @@ The process has three steps:
 | Element | What it does |
 | --- | --- |
 | **Sum the lines** | A Script that works out the amount of each line and their sum, `in.invoice.orderAmount`. The invoice itself comes from the page; in your own process the values come from a form, a service or a Script. |
-| **Business Rule Task invoice-discount** | Sends the inputs of the decision to the runtime and writes its outputs back to the process data. |
+| **Business Rule Task invoice-discount** | Sends the inputs of the decision to the DMN engine and writes its outputs back to the process data. |
 | **Apply the discount** | A Script that works out the discount amount and the total, and writes a line to the Runtime Log. |
 
 Your project has no `.dmn` file yet? Start on the page [Create a new DMN from scratch].

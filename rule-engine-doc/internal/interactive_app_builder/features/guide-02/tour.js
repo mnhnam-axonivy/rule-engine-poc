@@ -18,14 +18,14 @@ async function parts(d) {
   await d.note('ivy', { target: 'arch:ivy' });
   d.arch({ lit: ['container'] });
   await d.note('container', { target: 'arch:container' });
-  d.arch({ lit: ['connector', 'api'], flow: ['http>', 'http<'] });
+  d.arch({ lit: ['connector', 'engine'], flow: ['http>', 'http<'] });
   await d.note('http', { target: 'arch:http' });
   d.arch({ lit: ['ivy', 'container', 'http'] });
   await d.note('why', { target: 'arch:container' });
   d.arch(null);
 }
 
-/** 2 — the two Ivy projects and what each is for, and the Portal beside them. */
+/** 2 — the Ivy projects and what each is for, and the Portal beside them. */
 async function projects(d) {
   await d.tab('arch');
   d.arch({ lit: ['demo'] });
@@ -36,6 +36,8 @@ async function projects(d) {
   await d.note('requires', { target: 'arch:demo' });
   d.arch({ lit: ['portal', 'connector'], flow: ['callable>'] });
   await d.note('portal', { target: 'arch:portal' });
+  d.arch({ lit: ['editor', 'browser'], flow: ['ui>'] });
+  await d.note('editor', { target: 'arch:editor' });
   d.arch(null);
 }
 
@@ -44,14 +46,8 @@ async function image(d) {
   await d.tab('arch');
   d.arch({ lit: ['container'] });
   await d.note('image', { target: 'arch:container' });
-  d.arch({ lit: ['api'] });
-  await d.note('api', { target: 'arch:api' });
   d.arch({ lit: ['engine'] });
   await d.note('engine', { target: 'arch:engine' });
-  d.arch({ lit: ['memory'] });
-  await d.note('memory', { target: 'arch:memory' });
-  d.arch({ lit: ['editor', 'browser'], flow: ['ui>'] });
-  await d.note('editor', { target: 'arch:editor' });
   d.arch(null);
 }
 
@@ -64,15 +60,15 @@ async function flow(d) {
   d.arch({ lit: ['demo', 'connector'] });
   await d.note('flowConnector', { target: 'arch:connector' });
 
-  d.arch({ lit: ['connector', 'api', 'engine'], flow: ['http>'], label: { http: 'POST /api/validate' } });
+  d.arch({ lit: ['connector', 'engine'], flow: ['http>'], label: { http: 'POST /jitdmn/validate' } });
   await d.note('flowRegister', { target: 'arch:http' });
-  // the simulation stores the file, as the connector does once the runtime accepted it
+  // the simulation stores the file, as the connector does once the DMN engine accepted it
   app.runtime.register(MODEL, app.findDmn(MODEL), { source: 'PROJECT', author: 'rule-engine-demo' });
   app.refreshRuntimeViews();
   d.arch({ lit: ['connector', 'files'] });
   await d.note('flowStored', { target: 'arch:files' });
 
-  d.arch({ lit: ['connector', 'api', 'memory'], flow: ['http>'], label: { http: 'POST …/' + MODEL + '/versions/1/evaluate' } });
+  d.arch({ lit: ['connector', 'engine'], flow: ['http>'], label: { http: 'POST /jitdmn/dmnresult' } });
   await d.note('flowEvaluate', { target: 'arch:http', quote: lines(INPUT) });
   const answer = app.runtime.evaluate(MODEL, DECISION, INPUT);
   const table = answer.dmn.decisions.find(decision => decision.name === DECISION).table;
@@ -80,11 +76,11 @@ async function flow(d) {
   const rule = { index, inputs: table.rules[index].inputs, outputs: table.rules[index].outputs };
   app.arch.setCall({ model: MODEL, decision: DECISION, results: answer.results, version: answer.version, rule, rules: [] });
   app.refreshRuntimeViews();
-  d.arch({ lit: ['api', 'engine', 'memory'] });
+  d.arch({ lit: ['engine'] });
   await d.note('flowDecide', { target: 'arch:engine', quote: 'rule ' + (index + 1) + ':  ' + rule.inputs.join('  |  ') + '  →  ' + rule.outputs.join(', ') });
 
   const result = answer.results[DECISION];
-  d.arch({ lit: ['connector', 'api'], flow: ['http<'], label: { http: '{ "results": { "discount": { "discountPercent": ' + result.discountPercent + ', … } }, "version": ' + answer.version + ' }' } });
+  d.arch({ lit: ['connector', 'engine'], flow: ['http<'], label: { http: '{ "decisionResults": [ { "decisionName": "discount", "result": { "discountPercent": ' + result.discountPercent + ', … } } ] }' } });
   await d.note('flowResult', { target: 'arch:http' });
   d.arch({ lit: ['connector', 'demo'] });
   await d.note('flowWritten', {

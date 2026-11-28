@@ -1,21 +1,24 @@
 /**
  * The tab "Architecture": the parts of the Rules Engine as blocks, and what connects them.
  *
- *   Axon Ivy Engine                         Docker container
+ *   Browser
+ *     ↓
+ *   Axon Ivy Engine                         Docker container (JIT runner of Apache KIE)
  *     Axon Ivy Portal    (Rule Management)
  *     ┆ calls Portal/RuleManagement
- *     rule-engine-demo   (your project)       REST API        DMN editor page  ← Browser
- *     rule-engine        (connector)  ⇄ HTTP  DMN engine      Versions in memory
+ *     rule-engine-demo   (your project)
+ *     rule-engine        (connector)  ⇄ HTTP  DMN engine (/jitdmn)
  *     Files of the application
+ *     rule-engine-editor (DMN editor dialog)
  *
- * The diagram is live: it shows the state of the container, the stored versions, what the runtime
- * holds in memory, the files of the project and the last call. A walkthrough lights blocks and lets a link flow
+ * The diagram is live: it shows the state of the container, the stored versions, the files of the project and
+ * the last call. A walkthrough lights blocks and lets a link flow
  * (setFocus); a learner selects a block to read what is in it, in a drawer on the right.
  *
  * Blocks and link labels carry data-arch="<id>", which is what the walkthrough points at
  * ('arch:demo', 'arch:http'):
- *   blocks  ivy, portal, demo, connector, files, container, api, editor, engine, memory, browser
- *   links   http (connector ⇄ api), ui (browser → editor),
+ *   blocks  ivy, portal, demo, connector, files, editor, container, engine, browser
+ *   links   http (connector ⇄ engine), ui (browser → editor),
  *           callable (portal → connector, along the side of the projects)
  */
 import { h, clear, brief } from '../util.js';
@@ -24,7 +27,7 @@ import { readSettings } from '../model/runner.js';
 import { parseYaml } from '../model/yaml.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
-const IMAGE = 'axonivy/rule-engine-runtime';
+const IMAGE = 'apache/incubator-kie-kogito-jit-runner';
 /** From this width of the tab on, the details stand beside the diagram (and leave it 840 px). */
 const DETAILS_BESIDE = 1180;
 /** How far the camera of a walkthrough zooms in and out. */
@@ -43,7 +46,7 @@ const compact = value => (value !== null && typeof value === 'object' && !Array.
  */
 const LINKS = [
   { id: 'callable', from: 'portal', to: 'connector', side: true },
-  { id: 'http', from: 'connector', to: 'api', both: true },
+  { id: 'http', from: 'connector', to: 'engine', both: true },
   { id: 'ui', from: 'browser', to: 'editor' }
 ];
 
@@ -172,14 +175,13 @@ export class ArchitectureView {
         t('arch.ivy.sub'), t('arch.ivy.kind'),
         h('div.arch-stack', null,
           block('portal', 'pointer', '.arch-optional'), calls(),
-          block('demo', 'process'), requires(), block('connector', 'extension'), stores(), block('files', 'database'))),
+          block('demo', 'process'), requires(), block('connector', 'extension'), stores(), block('files', 'database'),
+          block('editor', 'list'))),
       h('div.arch-outside.arch-top', null, block('browser', 'pointer', '.arch-small')),
       frame('container',
         h('span.arch-frame-title', null, icon('database', 15), t('arch.container.title'), h('code', null, t('arch.container.name')), this.stateEl),
         t('arch.container.sub', { image: IMAGE }), t('arch.container.kind'),
-        h('div.arch-cells', null,
-          block('api', 'arrowRight'), block('editor', 'list'),
-          block('engine', 'settings'), block('memory', 'list'))),
+        h('div.arch-cells', null, block('engine', 'settings'))),
       label('http', t('arch.link.http')), label('ui', t('arch.link.ui')));
     // the label of 'callable' was created above, in its row of the stack
 
@@ -333,7 +335,7 @@ export class ArchitectureView {
     // the details take room beside the diagram, or lie over it where there is too little room
     this.mainEl.classList.toggle('details-over', this.host.clientWidth < DETAILS_BESIDE);
     const width = this.scrollEl.clientWidth;
-    // wide: the browser stands beside the page it opens; otherwise above the container; narrow: one column
+    // wide: the browser stands beside the page it opens; otherwise above the engine; narrow: one column
     const mode = width >= 1330 ? 'wide' : width >= 840 ? 'medium' : 'narrow';
     this.diagram.classList.toggle('wide', mode === 'wide');
     this.diagram.classList.toggle('narrow', mode === 'narrow');
@@ -351,8 +353,8 @@ export class ArchitectureView {
     while (this.linksEl.firstChild) this.linksEl.removeChild(this.linksEl.firstChild);
     this.paths = {};
     LINKS.forEach(link => {
-      // The browser above the container: its link ends at the frame, so that it crosses none of its
-      // texts. In one column the frames are connected, at their left half, where the browser is not in the way.
+      // The browser above the engine: its link ends at the frame, so that it crosses none of its
+      // texts. In one column the frames are connected, at their left half.
       const edge = (frame, like, side) => {
         const y = side === 'top' ? frame.top : frame.bottom;
         return { left: like.left, right: like.right, width: like.width, top: y, bottom: y, height: 0 };
@@ -360,7 +362,7 @@ export class ArchitectureView {
       const half = r => ({ ...r, right: r.left + r.width / 2, width: r.width / 2 });
       let a = rectOf(link.from);
       let b = rectOf(link.to);
-      if (mode !== 'wide' && link.id === 'ui') b = edge(rectOf('container'), a, 'top');
+      if (mode !== 'wide' && link.id === 'ui') b = edge(rectOf('ivy'), a, 'top');
       if (mode === 'narrow' && link.id === 'http') {
         a = half(rectOf('ivy'));
         b = half(rectOf('container'));
@@ -466,7 +468,7 @@ export class ArchitectureView {
     const fromPortal = runtime.modelNames()
       .flatMap(name => runtime.versions(name).filter(version => version.source === 'PORTAL').map(version => ({ name, version })))
       .pop();
-    this.live.portal.textContent = fromPortal ? t('arch.live.portal', { model: fromPortal.name.slice(settings.prefix.length), version: fromPortal.version.version }) : '';
+    this.live.portal.textContent = fromPortal ? t('arch.live.portal', { model: fromPortal.name, version: fromPortal.version.version }) : '';
     this.live.connector.classList.toggle('bad', !settings.url || settings.url.replace(/\/+$/, '') !== runtime.url);
     const names = runtime.modelNames();
     this.live.files.textContent = names.length
@@ -478,9 +480,6 @@ export class ArchitectureView {
           : t('arch.live.files.inactive', { model: name, count });
       }).join(' · ')
       : t('arch.live.files.empty');
-    this.live.memory.textContent = runtime.loaded.size
-      ? [...runtime.loaded].map(key => t('arch.live.memory.version', { model: key.split('#')[0], version: key.split('#')[1] })).join(' · ')
-      : t('arch.live.memory.empty');
     const call = this.call;
     let last = '';
     let failed = false;
@@ -493,10 +492,10 @@ export class ArchitectureView {
       const result = names.length <= 2 ? names.map(name => name + ' = ' + compact(call.results[name])).join(', ') : t('arch.live.results', { count: names.length });
       last = t('arch.live.call.ok', { result, version: call.version });
     }
-    this.live.api.textContent = last;
-    this.live.api.classList.toggle('bad', failed);
-    this.live.engine.textContent = call && call.rule ? t('arch.live.rule', { n: call.rule.index + 1, decision: call.decision || call.model })
+    const decided = call && call.rule ? t('arch.live.rule', { n: call.rule.index + 1, decision: call.decision || call.model })
       : call && (call.rules || []).length ? t('arch.live.model', { model: call.model, count: call.rules.length }) : '';
+    this.live.engine.textContent = [last, decided].filter(Boolean).join('\n');
+    this.live.engine.classList.toggle('bad', failed);
     this.labels.http.sub.textContent = this.reachable ? runtime.url : t('arch.live.unreachable');
     this.stateEl.textContent = t('runtime.state.' + runtime.state);
     this.stateEl.className = 'arch-state ' + runtime.state;

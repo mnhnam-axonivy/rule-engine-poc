@@ -12,16 +12,16 @@ import ch.ivyteam.ivy.bpm.error.BpmError;
  */
 public final class RuleErrors {
 
-  /** The decision runtime cannot be reached. */
+  /** The DMN engine cannot be reached. */
   public static final String UNREACHABLE = "rule:engine:unreachable";
-  /** The decision runtime did not answer within the timeout. */
+  /** The DMN engine did not answer within the timeout. */
   public static final String TIMEOUT = "rule:engine:timeout";
-  /** The runtime rejected the call: unknown model or decision, invalid DMN file or a failed evaluation. */
+  /** The call was refused: unknown model or decision, invalid DMN file or a failed evaluation. */
   public static final String DMN = "rule:engine:dmn";
   /** The element is not configured completely or process data cannot be mapped to the decision. */
   public static final String MAPPING = "rule:engine:mapping";
 
-  /** Attribute of the BPMN error: error code of the runtime, e.g. MODEL_NOT_FOUND or EVALUATION_FAILED. */
+  /** Attribute of the BPMN error: error code, e.g. MODEL_NOT_FOUND or EVALUATION_FAILED. */
   public static final String ATTRIBUTE_CODE = "ruleEngineCode";
   /** Attribute of the BPMN error: findings of the DMN engine as text. */
   public static final String ATTRIBUTE_DETAILS = "ruleEngineDetails";

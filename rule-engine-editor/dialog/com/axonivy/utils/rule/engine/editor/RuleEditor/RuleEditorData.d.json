@@ -1,0 +1,11 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "RuleEditorData",
+  "namespace" : "com.axonivy.utils.rule.engine.editor.RuleEditor",
+  "fields" : [ {
+    "name" : "editor",
+    "type" : "com.axonivy.utils.rule.engine.editor.RuleEditorController",
+    "comment" : "The rule in the editor: model, version, DMN, and what the last check or save said",
+    "modifiers" : [ ]
+  } ]
+}

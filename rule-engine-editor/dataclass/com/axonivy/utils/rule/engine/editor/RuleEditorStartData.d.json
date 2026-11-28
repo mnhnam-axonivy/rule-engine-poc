@@ -1,0 +1,17 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName" : "RuleEditorStartData",
+  "namespace" : "com.axonivy.utils.rule.engine.editor",
+  "comment" : "The process start of the DMN editor dialog, see RuleEditor/editRule.ivp",
+  "fields" : [ {
+    "name" : "model",
+    "type" : "String",
+    "comment" : "Name of the model: the name of its .dmn file",
+    "modifiers" : [ ]
+  }, {
+    "name" : "version",
+    "type" : "Integer",
+    "comment" : "The version to open; null opens the active one, or the .dmn file of the project",
+    "modifiers" : [ ]
+  } ]
+}

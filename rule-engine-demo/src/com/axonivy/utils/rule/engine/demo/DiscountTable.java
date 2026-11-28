@@ -39,7 +39,7 @@ public final class DiscountTable {
   public record Table(String hitPolicy, List<String> inputs, List<String> outputs, List<RuleRow> rules) {
 
     /**
-     * The runtime answers the result, not the rule. With the hit policy FIRST the rule that decided is the first one
+     * The DMN engine answers the result, not the rule. With the hit policy FIRST the rule that decided is the first one
      * whose outputs are the result.
      *
      * @return the number of that rule, null if no rule has these outputs

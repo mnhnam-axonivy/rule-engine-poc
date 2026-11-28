@@ -49,7 +49,7 @@ export const strings = {
     'tour.noMatch.title': 'A condition does not match null',
     'tour.noMatch.text': 'A condition such as `"Silver"` or `>= 10000` does not match `null`. If no rule of a table matches at all, its result is `null`, and the field of the result is cleared.',
     'tour.allowedValues.title': 'Unless the type refuses it',
-    'tour.allowedValues.text': 'An input whose type lists allowed values takes `null` only if it lists it; otherwise the runtime refuses the call. The models that New DMN... generates list `null` for every enum. The tier of the demo is a plain text.',
+    'tour.allowedValues.text': 'An input whose type lists allowed values takes `null` only if it lists it; otherwise the DMN engine refuses the call. The models that New DMN... generates list `null` for every enum. The tier of the demo is a plain text.',
 
     'tour.newInput.title': 'A new input',
     'tour.newInput.text': 'A rule author added the input `creditLimit` to the table `discount`. The process data has no field with that name.',

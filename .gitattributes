@@ -1,3 +1,5 @@
 # LF on every machine, also in a Windows clone with core.autocrlf=true: the walkthroughs embed files of the demo
 # (build.mjs --check compares them) and tests compare .dmn files.
 * text=auto eol=lf
+# the DMN editor of Apache KIE, byte for byte as released (its folder names the version)
+rule-engine-editor/webContent/resources/js/dmn-editor-standalone-*/dmn-editor.js binary linguist-vendored

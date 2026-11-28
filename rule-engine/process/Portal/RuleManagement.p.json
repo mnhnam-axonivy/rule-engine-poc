@@ -262,315 +262,6 @@
       }
     },
     {
-      "id" : "f9",
-      "type" : "CallSubStart",
-      "name" : "ruleManagementContent(String,Integer)",
-      "config" : {
-        "signature" : "ruleManagementContent",
-        "input" : {
-          "params" : [
-            {
-              "name" : "model",
-              "type" : "String",
-              "desc" : "Name of the model: the name of its .dmn file"
-            },
-            {
-              "name" : "version",
-              "type" : "Integer",
-              "desc" : "Number of the version"
-            }
-          ],
-          "map" : {
-            "out.model" : "param.model",
-            "out.version" : "param.version"
-          }
-        },
-        "result" : {
-          "params" : [
-            {
-              "name" : "result",
-              "type" : "Object",
-              "desc" : "The answer, made of JDK types: String, Integer, Boolean, List, Map"
-            },
-            {
-              "name" : "error",
-              "type" : "Object",
-              "desc" : "null on success, else a Map with code, message and details"
-            }
-          ],
-          "map" : {
-            "result.result" : "in.#result",
-            "result.error" : "in.#error"
-          }
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 96,
-          "y" : 352
-        },
-        "labelOffset" : {
-          "x" : 13,
-          "y" : 37
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f106",
-          "to" : "f10"
-        }
-      ]
-    },
-    {
-      "id" : "f10",
-      "type" : "Script",
-      "name" : "content",
-      "config" : {
-        "output" : {
-          "code" : [
-            "import com.axonivy.utils.rule.engine.portal.RuleManagement;",
-            "import com.axonivy.utils.rule.engine.portal.RuleManagementAnswer;",
-            "",
-            "RuleManagementAnswer answer = RuleManagement.content(in.#model, in.#version);",
-            "in.result = answer.result();",
-            "in.error = answer.error();"
-          ]
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 448,
-          "y" : 352
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f107",
-          "to" : "f11"
-        }
-      ]
-    },
-    {
-      "id" : "f11",
-      "type" : "CallSubEnd",
-      "visual" : {
-        "at" : {
-          "x" : 640,
-          "y" : 352
-        }
-      }
-    },
-    {
-      "id" : "f12",
-      "type" : "CallSubStart",
-      "name" : "ruleManagementValidate(String)",
-      "config" : {
-        "signature" : "ruleManagementValidate",
-        "input" : {
-          "params" : [
-            {
-              "name" : "dmn",
-              "type" : "String",
-              "desc" : "The model as DMN XML"
-            }
-          ],
-          "map" : {
-            "out.dmn" : "param.dmn"
-          }
-        },
-        "result" : {
-          "params" : [
-            {
-              "name" : "result",
-              "type" : "Object",
-              "desc" : "The answer, made of JDK types: String, Integer, Boolean, List, Map"
-            },
-            {
-              "name" : "error",
-              "type" : "Object",
-              "desc" : "null on success, else a Map with code, message and details"
-            }
-          ],
-          "map" : {
-            "result.result" : "in.#result",
-            "result.error" : "in.#error"
-          }
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 96,
-          "y" : 448
-        },
-        "labelOffset" : {
-          "x" : 13,
-          "y" : 37
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f108",
-          "to" : "f13"
-        }
-      ]
-    },
-    {
-      "id" : "f13",
-      "type" : "Script",
-      "name" : "validate",
-      "config" : {
-        "output" : {
-          "code" : [
-            "import com.axonivy.utils.rule.engine.portal.RuleManagement;",
-            "import com.axonivy.utils.rule.engine.portal.RuleManagementAnswer;",
-            "",
-            "RuleManagementAnswer answer = RuleManagement.validate(in.#dmn);",
-            "in.result = answer.result();",
-            "in.error = answer.error();"
-          ]
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 448,
-          "y" : 448
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f109",
-          "to" : "f14"
-        }
-      ]
-    },
-    {
-      "id" : "f14",
-      "type" : "CallSubEnd",
-      "visual" : {
-        "at" : {
-          "x" : 640,
-          "y" : 448
-        }
-      }
-    },
-    {
-      "id" : "f15",
-      "type" : "CallSubStart",
-      "name" : "ruleManagementSave(String,String,String,String,Boolean)",
-      "config" : {
-        "signature" : "ruleManagementSave",
-        "input" : {
-          "params" : [
-            {
-              "name" : "model",
-              "type" : "String",
-              "desc" : "Name of the model: the name of its .dmn file"
-            },
-            {
-              "name" : "dmn",
-              "type" : "String",
-              "desc" : "The model as DMN XML"
-            },
-            {
-              "name" : "author",
-              "type" : "String",
-              "desc" : "User of the Portal who makes the change"
-            },
-            {
-              "name" : "description",
-              "type" : "String",
-              "desc" : "What changed"
-            },
-            {
-              "name" : "activate",
-              "type" : "Boolean",
-              "desc" : "true: live at once, false: draft"
-            }
-          ],
-          "map" : {
-            "out.model" : "param.model",
-            "out.dmn" : "param.dmn",
-            "out.author" : "param.author",
-            "out.description" : "param.description",
-            "out.activate" : "param.activate"
-          }
-        },
-        "result" : {
-          "params" : [
-            {
-              "name" : "result",
-              "type" : "Object",
-              "desc" : "The answer, made of JDK types: String, Integer, Boolean, List, Map"
-            },
-            {
-              "name" : "error",
-              "type" : "Object",
-              "desc" : "null on success, else a Map with code, message and details"
-            }
-          ],
-          "map" : {
-            "result.result" : "in.#result",
-            "result.error" : "in.#error"
-          }
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 96,
-          "y" : 544
-        },
-        "labelOffset" : {
-          "x" : 13,
-          "y" : 37
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f110",
-          "to" : "f16"
-        }
-      ]
-    },
-    {
-      "id" : "f16",
-      "type" : "Script",
-      "name" : "save",
-      "config" : {
-        "output" : {
-          "code" : [
-            "import com.axonivy.utils.rule.engine.portal.RuleManagement;",
-            "import com.axonivy.utils.rule.engine.portal.RuleManagementAnswer;",
-            "",
-            "RuleManagementAnswer answer = RuleManagement.save(in.#model, in.#dmn, in.#author, in.#description, in.#activate);",
-            "in.result = answer.result();",
-            "in.error = answer.error();"
-          ]
-        }
-      },
-      "visual" : {
-        "at" : {
-          "x" : 448,
-          "y" : 544
-        }
-      },
-      "connect" : [
-        {
-          "id" : "f111",
-          "to" : "f17"
-        }
-      ]
-    },
-    {
-      "id" : "f17",
-      "type" : "CallSubEnd",
-      "visual" : {
-        "at" : {
-          "x" : 640,
-          "y" : 544
-        }
-      }
-    },
-    {
       "id" : "f18",
       "type" : "CallSubStart",
       "name" : "ruleManagementActivate(String,Integer,String)",
@@ -622,7 +313,7 @@
       "visual" : {
         "at" : {
           "x" : 96,
-          "y" : 640
+          "y" : 352
         },
         "labelOffset" : {
           "x" : 13,
@@ -655,7 +346,7 @@
       "visual" : {
         "at" : {
           "x" : 448,
-          "y" : 640
+          "y" : 352
         }
       },
       "connect" : [
@@ -671,7 +362,7 @@
       "visual" : {
         "at" : {
           "x" : 640,
-          "y" : 640
+          "y" : 352
         }
       }
     },
@@ -721,7 +412,7 @@
       "visual" : {
         "at" : {
           "x" : 96,
-          "y" : 736
+          "y" : 448
         },
         "labelOffset" : {
           "x" : 13,
@@ -754,7 +445,7 @@
       "visual" : {
         "at" : {
           "x" : 448,
-          "y" : 736
+          "y" : 448
         }
       },
       "connect" : [
@@ -770,7 +461,7 @@
       "visual" : {
         "at" : {
           "x" : 640,
-          "y" : 736
+          "y" : 448
         }
       }
     },
@@ -820,7 +511,7 @@
       "visual" : {
         "at" : {
           "x" : 96,
-          "y" : 832
+          "y" : 544
         },
         "labelOffset" : {
           "x" : 13,
@@ -853,7 +544,7 @@
       "visual" : {
         "at" : {
           "x" : 448,
-          "y" : 832
+          "y" : 544
         }
       },
       "connect" : [
@@ -869,7 +560,7 @@
       "visual" : {
         "at" : {
           "x" : 640,
-          "y" : 832
+          "y" : 544
         }
       }
     },

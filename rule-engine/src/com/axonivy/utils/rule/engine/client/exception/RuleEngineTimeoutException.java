@@ -1,7 +1,7 @@
 package com.axonivy.utils.rule.engine.client.exception;
 
 /**
- * The decision runtime did not answer within the configured timeout.
+ * The DMN engine did not answer within the configured timeout.
  */
 public class RuleEngineTimeoutException extends RuleEngineException {
 

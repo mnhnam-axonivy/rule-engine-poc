@@ -1,6 +1,8 @@
 package com.axonivy.portal.bean;
 
 import java.io.Serializable;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -15,7 +17,6 @@ import jakarta.faces.view.ViewScoped;
 import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
-import org.primefaces.PrimeFaces;
 
 import com.axonivy.portal.components.service.DateTimeGlobalSettingService;
 import com.axonivy.portal.components.util.FacesMessageUtils;
@@ -30,8 +31,8 @@ import ch.ivyteam.ivy.environment.Ivy;
 
 /**
  * The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine, their
- * versions, and the DMN editor of Apache KIE to change them. Everything goes through {@link RuleEngineBridge}; the
- * editor itself runs in the browser (rule-management.js).
+ * versions, and the DMN editor to change them. Everything goes through {@link RuleEngineBridge}; the editor is the
+ * dialog RuleEditor of the rule engine project, in an iframe (rule-management.js).
  */
 @Named
 @ViewScoped
@@ -43,7 +44,7 @@ public class RuleManagementBean implements Serializable {
 
   private String runtimeUrl;
   private boolean reachable;
-  private String editorScript;
+  private String editorLink;
   private String loadProblem;
   private List<RuleModel> models = new ArrayList<>();
   private List<RuleModel> filteredModels;
@@ -52,19 +53,14 @@ public class RuleManagementBean implements Serializable {
   private List<RuleVersion> versions = new ArrayList<>();
 
   private boolean editing;
-  private String editModel;
-  private Integer editVersion;
-  private String editStatus;
-  private String editProject;
-  private String dmn;
-  private String description;
+  private String editorUrl;
 
   @PostConstruct
   public void init() {
     load();
   }
 
-  /** Reads the state of the runtime and its models again. */
+  /** Reads the state of the DMN engine and the models again. */
   public void refresh() {
     load();
   }
@@ -76,7 +72,7 @@ public class RuleManagementBean implements Serializable {
     RuleEngineAnswer info = RuleEngineBridge.info();
     runtimeUrl = info.isOk() ? (String) info.map().get("runtimeUrl") : null;
     reachable = info.isOk() && Boolean.TRUE.equals(info.map().get("reachable"));
-    editorScript = info.isOk() ? (String) info.map().get("editorScript") : null;
+    editorLink = info.isOk() ? (String) info.map().get("editorLink") : null;
     RuleEngineAnswer answer = RuleEngineBridge.models();
     if (answer.isOk()) {
       models = answer.list().stream().map(RuleModel::of).toList();
@@ -90,7 +86,7 @@ public class RuleManagementBean implements Serializable {
 
   // ── the editor ────────────────────────────────────────────────────────────────
 
-  /** Opens the active version of a rule, or the .dmn file of its project if the runtime does not know it yet. */
+  /** Opens the active version of a rule, or the .dmn file of its project if it is not stored yet. */
   public void edit(RuleModel model) {
     open(model.name(), null);
   }
@@ -104,69 +100,20 @@ public class RuleManagementBean implements Serializable {
     if (!allowed()) {
       return;
     }
-    RuleEngineAnswer answer = RuleEngineBridge.content(model, version);
-    if (!answer.isOk()) {
-      error(answer.error());
+    if (StringUtils.isBlank(editorLink)) {
+      error(new RuleEngineError(RuleEngineError.FAILED, cms("Messages/EditorNotFound"), List.of()));
       return;
     }
-    var content = answer.map();
-    editModel = model;
-    editVersion = content.get("version") instanceof Number number ? number.intValue() : null;
-    editProject = (String) content.get("project");
-    editStatus = statusOf(model, editVersion);
-    dmn = (String) content.get("dmn");
-    description = null;
+    editorUrl = editorLink + "?model=" + URLEncoder.encode(model, StandardCharsets.UTF_8)
+        + (version == null ? "" : "&version=" + version);
     editing = true;
-    PrimeFaces.current().ajax().addCallbackParam("opened", true);
   }
 
+  /** The dialog says it is closed: back to the rules, which it may have changed. */
   public void closeEditor() {
     editing = false;
-    dmn = null;
+    editorUrl = null;
     load();
-  }
-
-  /** Stores what the editor holds as a new version; the request parameter activate says whether it goes live. */
-  public void save() {
-    if (!allowed()) {
-      return;
-    }
-    boolean activate = "true".equals(FacesContext.getCurrentInstance().getExternalContext()
-        .getRequestParameterMap().get("activate"));
-    RuleEngineAnswer answer = RuleEngineBridge.save(editModel, dmn, author(), description, activate);
-    if (!answer.isOk()) {
-      error(answer.error());
-      return;
-    }
-    RuleVersion version = RuleVersion.of(answer.map());
-    editVersion = version.version();
-    editStatus = version.status();
-    editProject = null;
-    String key = Boolean.FALSE.equals(version.created()) ? "Messages/Unchanged"
-        : version.isActive() ? "Messages/SavedActive" : "Messages/SavedDraft";
-    info(cms(key, editModel, version.version()));
-    description = null;
-    PrimeFaces.current().ajax().addCallbackParam("saved", true);
-    load();
-  }
-
-  /** Lets the DMN engine check what the editor holds, without storing it. */
-  public void validate() {
-    if (!allowed()) {
-      return;
-    }
-    RuleEngineAnswer answer = RuleEngineBridge.validate(dmn);
-    if (!answer.isOk()) {
-      error(answer.error());
-      return;
-    }
-    if (Boolean.TRUE.equals(answer.map().get("valid"))) {
-      info(cms("Messages/Valid", editModel));
-    } else {
-      Object messages = answer.map().get("messages");
-      List<String> findings = messages instanceof List<?> list ? list.stream().map(String::valueOf).toList() : List.of();
-      error(new RuleEngineError(RuleEngineError.INVALID_MODEL, cms("Messages/Invalid", editModel), findings));
-    }
   }
 
   // ── versions ──────────────────────────────────────────────────────────────────
@@ -276,28 +223,8 @@ public class RuleManagementBean implements Serializable {
     }
   }
 
-  /** @return what is open in the editor, e.g. "Version 3 · Active" or "dmn/invoice-discount.dmn of rule-engine-demo" */
-  public String getEditorState() {
-    if (editVersion == null) {
-      return cms("ProjectFile", StringUtils.defaultString(editProject));
-    }
-    String state = cms("VersionLabel", editVersion);
-    return StringUtils.isBlank(editStatus) ? state : state + " · " + status(editStatus);
-  }
-
   public boolean isNotConfigured() {
     return StringUtils.isBlank(runtimeUrl);
-  }
-
-  private String statusOf(String model, Integer version) {
-    if (version == null) {
-      return null;
-    }
-    return models.stream()
-        .filter(candidate -> candidate.name().equals(model))
-        .findFirst()
-        .map(candidate -> version.equals(candidate.activeVersion()) ? RuleVersion.ACTIVE : null)
-        .orElse(null);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────────
@@ -357,9 +284,6 @@ public class RuleManagementBean implements Serializable {
     return reachable;
   }
 
-  public String getEditorScript() {
-    return editorScript;
-  }
 
   public String getLoadProblem() {
     return loadProblem;
@@ -389,23 +313,7 @@ public class RuleManagementBean implements Serializable {
     return editing;
   }
 
-  public String getEditModel() {
-    return editModel;
-  }
-
-  public String getDmn() {
-    return dmn;
-  }
-
-  public void setDmn(String dmn) {
-    this.dmn = dmn;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public void setDescription(String description) {
-    this.description = description;
+  public String getEditorUrl() {
+    return editorUrl;
   }
 }

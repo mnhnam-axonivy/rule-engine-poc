@@ -27,12 +27,12 @@ async function run(d) {
     }
   });
   await d.tab('arch');
-  d.arch({ lit: ['demo', 'connector', 'api', 'engine', 'memory'], flow: ['http>', 'http<'] });
+  d.arch({ lit: ['demo', 'connector', 'engine'], flow: ['http>', 'http<'] });
   await d.note('where', { target: 'arch:http' });
   d.arch(null);
 }
 
-/** Step 4: what the runtime holds after the first run. */
+/** Step 4: what is stored after the first run. */
 async function holds(d) {
   await d.run({ fast: true });
   await d.panel('runtime');
@@ -40,13 +40,13 @@ async function holds(d) {
   await d.note('lastCall', { target: 'runtime:call', extra: 600 });
   await d.panel(null);
   await d.tab('arch');
-  d.arch({ lit: ['files', 'memory'] });
+  d.arch({ lit: ['files', 'container'] });
   await d.note('stored', { target: 'arch:files' });
   d.arch(null);
   await d.tab('process');
 }
 
-/** If it does not work: the runtime is down. */
+/** If it does not work: the DMN engine is down. */
 async function fails(d) {
   await d.panel('runtime');
   await d.runtime('stopped');

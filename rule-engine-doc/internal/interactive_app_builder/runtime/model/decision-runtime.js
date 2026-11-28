@@ -1,8 +1,8 @@
 /**
- * Stand-in for the versions of the application and the decision runtime of the Axon Ivy Rules Engine.
+ * Stand-in for the versions of the application and the DMN engine of the Axon Ivy Rules Engine.
  * It keeps the versions of every model, as the connector stores them in the files of the application
- * (rule-engine: VersionStore), and evaluates decisions as the runtime does with the versions it holds
- * in memory (rule-engine-runtime: ModelRegistry, DecisionService):
+ * (rule-engine: VersionStore), and evaluates the file of the active version as the DMN engine container
+ * (the JIT runner of Apache KIE) does with the file that each call brings (rule-engine: Evaluator):
  *
  *   - content that is already stored does not create another version
  *   - the first version of a model goes live at once
@@ -10,9 +10,7 @@
  *   - a version that was activated from the Portal is never replaced by a deployment
  *   - exactly one version of a model is active; a rollback activates the one before it
  *
- * The runtime keeps nothing: `loaded` is what it holds in memory, lost when the container stops.
- *
- * Error codes are the ones of the connector and the runtime: MODEL_NOT_FOUND, NO_ACTIVE_VERSION,
+ * Error codes are the ones of the connector: MODEL_NOT_FOUND, NO_ACTIVE_VERSION,
  * DECISION_NOT_FOUND, EVALUATION_FAILED, INVALID_STATE.
  */
 import { decisionOf, evaluationOrder, requiredInputs, fingerprint, cloneDmn } from './dmn.js';
@@ -21,7 +19,7 @@ import { evaluateTable, evaluateExpression, FeelError, FeelDate, splitList, lite
 export const RUNTIME_URL = 'http://localhost:8090';
 
 export class RuntimeError extends Error {
-  /** @param {string} code  error code of the runtime API  @param {number} status  HTTP status */
+  /** @param {string} code  error code of the connector  @param {number} status  HTTP status */
   constructor(code, status, message) {
     super(message);
     this.name = 'RuntimeError';
@@ -38,9 +36,9 @@ const stripPrefix = (dmn, type) => {
 };
 
 /**
- * The value of an input as the DMN engine sees it, checked against its declared type (rule.engine.type-check):
- * a date becomes a FEEL date, an item definition restricts the allowed values, a structure checks its
- * components, a collection each element. A value that is not allowed throws, as the runtime does.
+ * The value of an input as the DMN engine sees it: a date becomes a FEEL date, an item definition restricts the
+ * allowed values, a structure checks its components, a collection each element. A value outside the allowed values
+ * throws, as the DMN engine does; a value of the wrong base type, e.g. a text for a number, becomes null.
  */
 function typed(dmn, type, value, depth = 0) {
   const name = stripPrefix(dmn, type);
@@ -53,15 +51,15 @@ function typed(dmn, type, value, depth = 0) {
     return null;
   }
   if (!item || depth > 8) {
-    if (name === 'number' && typeof value !== 'number') throw new TypeError(name);
-    if (name === 'string' && typeof value !== 'string') throw new TypeError(name);
-    if (name === 'boolean' && typeof value !== 'boolean') throw new TypeError(name);
+    if (name === 'number' && typeof value !== 'number') return null;
+    if (name === 'string' && typeof value !== 'string') return null;
+    if (name === 'boolean' && typeof value !== 'boolean') return null;
     if (name === 'date') {
       if (value instanceof FeelDate) return value;
-      if (typeof value !== 'string') throw new TypeError(name);
-      try { return new FeelDate(value.slice(0, 10)); } catch (e) { throw new TypeError(name); }
+      if (typeof value !== 'string') return null;
+      try { return new FeelDate(value.slice(0, 10)); } catch (e) { return null; }
     }
-    if (!BASE_TYPES.has(name) && typeof value !== 'object') throw new TypeError(name);
+    if (!BASE_TYPES.has(name) && typeof value !== 'object') return null;
     return value;
   }
   if (item.collection) {
@@ -104,13 +102,6 @@ export class DecisionRuntime {
     /** 'running' | 'slow' (answers too late) | 'stopped' (the container is down) */
     this.state = 'running';
     this.models = new Map(); // name → [{ version, status, source, author, dmn, hash, previousVersion }]
-    /** The versions the runtime holds in memory, as model#version: loaded before their first evaluation. */
-    this.loaded = new Set();
-  }
-
-  /** What `docker stop` does to the memory of the runtime: the versions are loaded again later. */
-  stop() {
-    this.loaded.clear();
   }
 
   versions(model) {
@@ -126,7 +117,7 @@ export class DecisionRuntime {
   }
 
   /**
-   * VersionStore.register, after the runtime checked the file (POST /api/validate)
+   * VersionStore.register, after the DMN engine checked the file (POST /jitdmn/validate)
    * @param {Object} dmn  the model as read by parseDmn
    * @param {{ source?: 'PROJECT'|'PORTAL'|'API', author?: string, activate?: boolean }} [options]
    *   `activate` not set: the store decides by the source of truth rule
@@ -189,8 +180,7 @@ export class DecisionRuntime {
   }
 
   /**
-   * The active version, loaded into the memory of the runtime if it does not hold it, then
-   * POST /api/models/{model}/versions/{version}/evaluate
+   * The active version: its file and the input go to the DMN engine, POST /jitdmn/dmnresult
    * @param {string|null} decision  the decision to evaluate, or null for all decisions of the model
    * @param {Object} input          values by the name of the DMN input
    * @returns {{ model, version, decision, results, matched, calls }}  `matched`: by decision name, the indexes of
@@ -201,13 +191,12 @@ export class DecisionRuntime {
     if (!this.models.has(model)) throw new RuntimeError('MODEL_NOT_FOUND', 404, "There is no model '" + model + "'.");
     const active = this.active(model);
     if (!active) throw new RuntimeError('NO_ACTIVE_VERSION', 409, "Model '" + model + "' has no active version. Activate one of its versions first.");
-    this.loaded.add(model + '#' + active.version);
     const dmn = active.dmn;
     if (decision && !decisionOf(dmn, decision)) {
-      throw new RuntimeError('DECISION_NOT_FOUND', 404, "Model '" + model + "' version " + active.version + " has no decision '" + decision +
-        "'. Available decisions: [" + dmn.decisions.map(d => d.name).join(', ') + ']');
+      throw new RuntimeError('DECISION_NOT_FOUND', 404, 'Version ' + active.version + " of model '" + model + "' has no decision '" + decision +
+        "'. Its decisions are: [" + dmn.decisions.map(d => d.name).join(', ') + ']');
     }
-    const failed = message => new RuntimeError('EVALUATION_FAILED', 422, "Evaluation of model '" + model + "' version " + active.version + ' failed: ' + message);
+    const failed = message => new RuntimeError('EVALUATION_FAILED', 422, 'Evaluation of version ' + active.version + " of model '" + model + "' failed: " + message);
     const context = {};
     (requiredInputs(dmn, decision) || []).forEach(name => {
       if (!Object.prototype.hasOwnProperty.call(input || {}, name)) throw failed("Required dependency '" + name + "' not found");
@@ -217,7 +206,8 @@ export class DecisionRuntime {
       } catch (e) {
         if (!(e instanceof TypeError)) throw e;
         const shown = JSON.stringify(input[name]);
-        throw failed("the value '" + (shown.length > 60 ? shown.slice(0, 57) + '...' : shown) + "' of '" + name + "' is not allowed by the declared type (" + declared.type + ')');
+        throw failed("Error while evaluating node '" + (decision || dmn.decisions[0].name) + "' for dependency '" + name + "': the dependency value '" +
+          (shown.length > 60 ? shown.slice(0, 57) + '...' : shown) + "' is not allowed by the declared type (" + declared.type + ')');
       }
     });
     // the functions of the model, callable from every decision; each call is recorded for the explanation

@@ -6,7 +6,7 @@ import com.axonivy.utils.rule.engine.api.Message;
 
 /**
  * A call was refused: an unknown model or version, a change the life cycle of versions does not allow, an invalid DMN
- * file or a failed evaluation. The decision runtime answers with it, and so does the store of the versions.
+ * file or a failed evaluation.
  */
 public class RuleEngineApiException extends RuleEngineException {
 
@@ -34,7 +34,7 @@ public class RuleEngineApiException extends RuleEngineException {
     this.details = details == null ? List.of() : List.copyOf(details);
   }
 
-  /** @return the HTTP status code of the answer, or the one the runtime would answer with */
+  /** @return the HTTP status code of the answer, or the one a REST API would answer with */
   public int statusCode() {
     return statusCode;
   }
@@ -51,10 +51,5 @@ public class RuleEngineApiException extends RuleEngineException {
   /** @return true if there is no version of the model that can be evaluated */
   public boolean isModelMissing() {
     return MODEL_NOT_FOUND.equals(code) || NO_ACTIVE_VERSION.equals(code);
-  }
-
-  /** @return true if the runtime does not hold the evaluated version in memory, e.g. after a restart */
-  public boolean isNotLoaded() {
-    return MODEL_NOT_FOUND.equals(code) || VERSION_NOT_FOUND.equals(code);
   }
 }

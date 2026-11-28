@@ -7,10 +7,10 @@
   <name>Axon Ivy Rules Engine</name>
 
   <modules>
-    <!-- decision runtime: Quarkus service with the DMN engine and its database, shipped as container image -->
-    <module>rule-engine-runtime</module>
-    <!-- Ivy connector: Business Rule Task, client of the runtime, DMN generator -->
+    <!-- Ivy connector: Business Rule Task, versions, client of the DMN engine container, DMN generator -->
     <module>rule-engine</module>
+    <!-- the DMN editor dialog: a project of its own, the KIE editor is big -->
+    <module>rule-engine-editor</module>
     <module>rule-engine-demo</module>
     <module>rule-engine-test</module>
     <module>rule-engine-product</module>

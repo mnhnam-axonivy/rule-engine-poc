@@ -12,8 +12,8 @@
   <version>14.0.1-SNAPSHOT</version>
   <packaging>iar</packaging>
   <properties>
-    <!-- image of the decision runtime used by the container tests: docker build -t axonivy/rule-engine-runtime:dev rule-engine-runtime -->
-    <rule.engine.image>axonivy/rule-engine-runtime:dev</rule.engine.image>
+    <!-- image of the DMN engine used by the container tests -->
+    <rule.engine.image>apache/incubator-kie-kogito-jit-runner:10.2.0</rule.engine.image>
   </properties>
   <dependencies>
     <dependency>
@@ -32,6 +32,12 @@
     <dependency>
       <groupId>com.axonivy.utils.ruleengine</groupId>
       <artifactId>rule-engine-demo</artifactId>
+      <version>${project.version}</version>
+      <type>iar</type>
+    </dependency>
+    <dependency>
+      <groupId>com.axonivy.utils.ruleengine</groupId>
+      <artifactId>rule-engine-editor</artifactId>
       <version>${project.version}</version>
       <type>iar</type>
     </dependency>
@@ -82,7 +88,7 @@
   </build>
   <profiles>
     <profile>
-      <!-- mvn verify -Pcontainer.test: runs the *ContainerTest classes against the real decision runtime in Docker -->
+      <!-- mvn verify -Pcontainer.test: runs the *ContainerTest classes against the real DMN engine in Docker -->
       <id>container.test</id>
       <build>
         <plugins>

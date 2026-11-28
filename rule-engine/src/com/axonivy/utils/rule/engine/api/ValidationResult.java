@@ -3,7 +3,7 @@ package com.axonivy.utils.rule.engine.api;
 import java.util.List;
 
 /**
- * Whether the runtime accepts a DMN file, and what its engine found.
+ * Whether the DMN engine accepts a DMN file, and what it found.
  */
 public record ValidationResult(boolean valid, List<Message> messages) {
 

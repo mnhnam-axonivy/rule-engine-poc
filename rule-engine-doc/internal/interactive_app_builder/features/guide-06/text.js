@@ -8,7 +8,7 @@ export const strings = {
   en: {
     'lang': 'en',
     'tour.intro.title': 'How a rule changes without a deployment',
-    'tour.intro.text': 'Watch a rule being edited and going live with the next run, the versions the runtime keeps, how the case knows which one decided, and a version being rolled back.',
+    'tour.intro.text': 'Watch a rule being edited and going live with the next run, the versions the application keeps, how the case knows which one decided, and a version being rolled back.',
     'tour.intro.duration': 'about 4 min',
     'tour.chapter.save': 'A saved file is live',
     'tour.chapter.versions': 'Versions of the application',
@@ -20,9 +20,9 @@ export const strings = {
     'tour.edited.title': 'A rule is edited',
     'tour.edited.text': 'Rule 6, "Silver customer", now gives 3 instead of 2. In the Designer you would do this in the DMN editor and save the file.',
     'tour.pending.title': 'Not stored yet',
-    'tour.pending.text': 'The file is saved, but the runtime still has version 1. Nothing has to be built or deployed: the next evaluation takes care of it.',
+    'tour.pending.text': 'The file is saved, but version 1 is still the active one. Nothing has to be built or deployed: the next evaluation takes care of it.',
     'tour.registered.title': 'A new version',
-    'tour.registered.text': 'The Business Rule Task sees that the file has changed. The runtime checks it, it is stored as version 2 and is active.',
+    'tour.registered.text': 'The Business Rule Task sees that the file has changed. The DMN engine checks it, it is stored as version 2 and is active.',
     'tour.live.title': 'Live',
     'tour.live.text': 'The same invoice, the same process, a new rule: 3 percent, decided by version 2. The total is 8,924.00 instead of 9,016.00.',
 
@@ -43,9 +43,9 @@ export const strings = {
     'tour.rollbackFile.text': 'A rollback changes the versions, not your project. Bring the file in line with it, or it will go live again the next time the project stores its file, for example after an engine restart.',
 
     'tour.answerNames.title': 'The answer names it',
-    'tour.answerNames.text': 'Every answer of the runtime says which version decided, here version 1.',
+    'tour.answerNames.text': 'The connector notes which version decided, here version 1.',
     'tour.activeOne.title': 'Always the active one',
-    'tour.activeOne.text': 'You do not choose a version. A Business Rule Task always evaluates the active version of the model; the runtime keeps the others for a roll back.',
+    'tour.activeOne.text': 'You do not choose a version. A Business Rule Task always evaluates the active version of the model; the application keeps the others for a roll back.',
     'tour.onTheCase.title': 'Stored on the case',
     'tour.onTheCase.text': 'The connector writes the version to the case, as custom field `ruleVersion_invoice-discount`. That is why the element needs no field for it. The page of the demo shows it next to the result.',
 

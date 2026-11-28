@@ -224,13 +224,6 @@ class TestProjectDmn {
   }
 
   @Test
-  void editorUrl() {
-    assertThat(RuleEngineConfig.editorUrl("http://localhost:8090")).isEqualTo("http://localhost:8090/editor/");
-    assertThat(RuleEngineConfig.editorUrl(" https://rules.example.com/runtime/ ")).isEqualTo("https://rules.example.com/runtime/editor/");
-    assertThat(RuleEngineConfig.editorUrl("")).isEqualTo("<RuleEngine.Url>/editor/");
-  }
-
-  @Test
   void createNewDmn_generatesFileFromSelectedFields_andSelectsIt() throws IOException {
     assertThat(generated).doesNotExist();
 

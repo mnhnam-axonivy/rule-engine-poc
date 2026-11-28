@@ -13,12 +13,12 @@ import com.axonivy.utils.rule.engine.RuleEngine;
 import com.axonivy.utils.rule.engine.RuleEngineConfig;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
-import com.axonivy.utils.rule.engine.api.LoadedVersion;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
+import com.axonivy.utils.rule.engine.deploy.Evaluator;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
-import com.axonivy.utils.rule.engine.deploy.RuntimeLoader;
+import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.mapping.FieldLocator;
 import com.axonivy.utils.rule.engine.mapping.ValueConverter;
@@ -30,7 +30,7 @@ import ch.ivyteam.ivy.environment.Ivy;
 import ch.ivyteam.ivy.process.program.exec.ProgramContext;
 
 /**
- * Runs a Business Rule Task: maps process data to the inputs of the decision, lets the runtime evaluate the
+ * Runs a Business Rule Task: maps process data to the inputs of the decision, lets the DMN engine evaluate the
  * active version of the model and writes the results back to the process data. The versions are stored in the file
  * area of the application; a changed .dmn file of the project is stored as a new version first.
  */
@@ -43,6 +43,9 @@ public class RuleTaskExecutor {
       .compile(DATA + "(\\.[A-Za-z_$][A-Za-z0-9_$]*)+");
   /** Prefix of the case custom field that stores the model version that produced the result. */
   public static final String VERSION_FIELD_PREFIX = "ruleVersion_";
+
+  private static final String UNREADABLE = "Version %d of model '%s' cannot be read as DMN.";
+  private static final String NO_DECISION = "Version %d of model '%s' has no decision '%s'. Its decisions are: %s";
 
   interface Variable {
     String RESULT = "result";
@@ -84,10 +87,8 @@ public class RuleTaskExecutor {
           .ifPresent(dmn -> ModelDeployer.ensureRegistered(client, store, selection.model(), dmn));
     }
     ModelVersion active = store.active(selection.model());
-    String runtimeModel = config.runtimeModel(selection.model());
-    LoadedVersion loaded = RuntimeLoader.ensureLoaded(client, store, runtimeModel, active);
-    var input = input(inputNames(selection, loaded), selection, dataClass);
-    EvaluateResponse response = RuntimeLoader.evaluate(client, store, runtimeModel, active, request(selection, input));
+    var input = input(inputNames(selection, active, store), selection, dataClass);
+    EvaluateResponse response = Evaluator.evaluate(client, store, active, request(selection, input));
     mapResults(response, selection, dataClass);
   }
 
@@ -155,17 +156,18 @@ public class RuleTaskExecutor {
    * @return the inputs the decision needs in the active version. That version may not be the file of the project: a
    *         version that a rule owner activated in the Portal stays active, and may need other inputs.
    */
-  private static List<String> inputNames(Selection selection, LoadedVersion loaded) {
-    if (selection.decision() == null) {
-      return loaded.inputs().stream().map(LoadedVersion.Input::name).toList();
+  private static List<String> inputNames(Selection selection, ModelVersion version, VersionStore store) {
+    DmnModelInfo info = store.describe(version);
+    if (info == null) {
+      throw new IllegalArgumentException(UNREADABLE.formatted(version.version(), selection.model()));
     }
-    return loaded.decisions().stream()
-        .filter(decision -> decision.name().equals(selection.decision()))
-        .findFirst()
-        .map(LoadedVersion.Decision::requiredInputs)
-        .orElseThrow(() -> new IllegalArgumentException("Version " + loaded.version() + " of model '"
-            + selection.model() + "' has no decision '" + selection.decision() + "'. Its decisions are: "
-            + loaded.decisions().stream().map(LoadedVersion.Decision::name).toList()));
+    if (selection.decision() == null) {
+      return info.inputNames();
+    }
+    return info.decision(selection.decision())
+        .map(DmnModelInfo.Decision::requiredInputs)
+        .orElseThrow(() -> new IllegalArgumentException(NO_DECISION.formatted(version.version(), selection.model(),
+            selection.decision(), info.decisions().stream().map(DmnModelInfo.Decision::name).toList())));
   }
 
   private void mapResults(EvaluateResponse response, Selection selection, Class<?> dataClass) {

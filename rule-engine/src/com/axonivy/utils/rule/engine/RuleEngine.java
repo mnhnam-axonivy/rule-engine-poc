@@ -14,8 +14,8 @@ import com.axonivy.utils.rule.engine.api.ModelVersion;
 import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
 import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
+import com.axonivy.utils.rule.engine.deploy.Evaluator;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
-import com.axonivy.utils.rule.engine.deploy.RuntimeLoader;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.version.VersionStore;
 
@@ -24,7 +24,7 @@ import ch.ivyteam.ivy.application.project.Project;
 /**
  * Java API of the Axon Ivy Rules Engine: evaluate decisions and manage the versions of DMN models.
  * <p>This is the API for a Rules UI. The versions are stored in the file area of the application, see
- * {@link VersionStore}. Decisions are evaluated by the decision runtime that is configured in the variables
+ * {@link VersionStore}. Decisions are evaluated by the DMN engine container that is configured in the variables
  * <code>RuleEngine.*</code>. A change is live as soon as the call returns.</p>
  *
  * <pre><code>
@@ -40,19 +40,18 @@ public final class RuleEngine {
 
   private RuleEngine() {}
 
-  /** @return a client of the decision runtime, configured by the variables <code>RuleEngine.*</code> */
+  /** @return a client of the DMN engine container, configured by the variables <code>RuleEngine.*</code> */
   public static RuleEngineClient client() {
     return client(RuleEngineConfig.fromVariables());
   }
 
   public static RuleEngineClient client(RuleEngineConfig config) {
     if (config.url().isBlank()) {
-      throw new IllegalStateException("The URL of the rule engine is not configured. Set the variable "
+      throw new IllegalStateException("The URL of the DMN engine is not configured. Set the variable "
           + RuleEngineConfig.Var.URL + ".");
     }
     return RuleEngineClient.builder()
         .baseUrl(config.url())
-        .apiKey(config.apiKey())
         .connectTimeout(config.connectTimeout())
         .readTimeout(config.timeout())
         .logRequests(config.logRequests())
@@ -67,9 +66,8 @@ public final class RuleEngine {
    * @param input values by the name of the DMN input
    */
   public static EvaluateResponse evaluate(String model, String decision, Map<String, Object> input) {
-    var config = RuleEngineConfig.fromVariables();
     var store = VersionStore.current();
-    return RuntimeLoader.evaluate(client(config), store, config.runtimeModel(model), store.active(model),
+    return Evaluator.evaluate(client(), store, store.active(model),
         EvaluateRequest.builder().decision(decision).input(input).build());
   }
 
@@ -77,9 +75,8 @@ public final class RuleEngine {
    * Evaluates a decision with a specific version, active or not, e.g. a draft for a test run before it goes live.
    */
   public static EvaluateResponse evaluate(String model, int version, String decision, Map<String, Object> input) {
-    var config = RuleEngineConfig.fromVariables();
     var store = VersionStore.current();
-    return RuntimeLoader.evaluate(client(config), store, config.runtimeModel(model), store.version(model, version),
+    return Evaluator.evaluate(client(), store, store.version(model, version),
         EvaluateRequest.builder().decision(decision).input(input).build());
   }
 
@@ -90,7 +87,7 @@ public final class RuleEngine {
 
   /**
    * Stores a changed DMN file as a new draft, e.g. from a Rules UI. It does not go live before it is activated.
-   * The decision runtime checks the file first.
+   * The DMN engine checks the file first.
    */
   public static ModelVersion register(String model, String dmn, String author, String description) {
     return ModelDeployer.register(client(), VersionStore.current(), model, RegisterVersionRequest.builder()

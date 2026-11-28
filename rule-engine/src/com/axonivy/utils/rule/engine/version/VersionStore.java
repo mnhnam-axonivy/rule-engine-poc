@@ -43,7 +43,7 @@ public final class VersionStore {
 
   /**
    * Stores the content as a new version of the model. Content that is stored already is not stored again: its version
-   * is answered, with <code>created</code> false. The content is not checked here, the decision runtime checks it
+   * is answered, with <code>created</code> false. The content is not checked here, the DMN engine checks it
    * before: see {@link com.axonivy.utils.rule.engine.deploy.ModelDeployer}.
    */
   public ModelVersion register(String model, RegisterVersionRequest request) {

@@ -50,10 +50,8 @@ export const RULE_ERRORS = {
 export const CREATE_NEW = '#create';
 export const VARIABLES = {
   URL: 'RuleEngine.Url',
-  API_KEY: 'RuleEngine.ApiKey',
   TIMEOUT: 'RuleEngine.TimeoutSeconds',
-  AUTO_DEPLOY: 'RuleEngine.AutoDeploy',
-  PREFIX: 'RuleEngine.ModelPrefix'
+  AUTO_DEPLOY: 'RuleEngine.AutoDeploy'
 };
 const DEFAULT_TIMEOUT = 10;
 
@@ -63,10 +61,8 @@ export function readSettings(variables) {
   const seconds = parseFloat(read(VARIABLES.TIMEOUT));
   return {
     url: read(VARIABLES.URL),
-    apiKey: read(VARIABLES.API_KEY),
     timeout: seconds > 0 ? seconds : DEFAULT_TIMEOUT,
-    autoDeploy: read(VARIABLES.AUTO_DEPLOY).toLowerCase() !== 'false',
-    prefix: read(VARIABLES.PREFIX)
+    autoDeploy: read(VARIABLES.AUTO_DEPLOY).toLowerCase() !== 'false'
   };
 }
 
@@ -466,30 +462,29 @@ export class ProcessRunner {
       decision = separator < 0 ? null : value.slice(separator + 1).trim() || null;
     }
     const runtime = this.runtime();
-    const runtimeModel = settings.prefix + model;
     const dmn = this.project.find(model); // the file of the project, as it is saved now
-    Object.assign(call, { model, runtimeModel, decision });
+    Object.assign(call, { model, decision });
 
-    // 3 — the version that answers: a new or changed file of the project is stored first, the runtime checks it
-    // (ModelDeployer); then the active version decides which inputs are needed, also a version from the Portal
+    // 3 — the version that answers: a new or changed file of the project is stored first, the DMN engine checks it
+    // (ModelDeployer); then the file of the active version says which inputs are needed, also a version from the Portal
     let registered = null;
-    if (settings.autoDeploy && dmn && this.#isNew(runtime, runtimeModel, dmn)) {
+    if (settings.autoDeploy && dmn && this.#isNew(runtime, model, dmn)) {
       const down = this.#unreachable(settings, runtime);
       if (down) {
         await tell('request', {});
         await tell('thinking', { failing: true });
         await fail(down.errorCode, down.message, { category: 'REST_CLIENT' });
       }
-      registered = this.#register(run, element, call, runtime, runtimeModel, dmn);
+      registered = this.#register(run, element, call, runtime, model, dmn);
     }
-    const active = runtime.active(runtimeModel);
+    const active = runtime.active(model);
     if (!active) {
-      const missing = runtime.versions(runtimeModel).length
+      const missing = runtime.versions(model).length
         ? { code: 'NO_ACTIVE_VERSION', message: "Model '" + model + "' has no active version. Activate one of its versions first." }
         : { code: 'MODEL_NOT_FOUND', message: "There is no model '" + model + "'." };
       await fail(RULE_ERRORS.DMN, missing.message, { runtimeCode: missing.code });
     }
-    call.url = settings.url + '/api/models/' + runtimeModel + '/versions/' + active.version + '/evaluate';
+    call.url = settings.url + '/jitdmn/dmnresult';
     const names = requiredInputs(active.dmn, decision);
     if (names === null) {
       await fail(RULE_ERRORS.MAPPING, 'Version ' + active.version + " of model '" + model + "' has no decision '" + decision +
@@ -512,7 +507,7 @@ export class ProcessRunner {
     await tell('request', {});
     if (registered) await tell('registered', registered);
 
-    // 4 — the round trip to the runtime; it gets the version into its memory first, if it does not hold it
+    // 4 — the round trip to the DMN engine, with the file of the active version and the inputs
     const down = this.#unreachable(settings, runtime);
     if (down) {
       await tell('thinking', { failing: true });
@@ -521,7 +516,7 @@ export class ProcessRunner {
     await tell('thinking', {});
     let response;
     try {
-      response = runtime.evaluate(runtimeModel, decision, input);
+      response = runtime.evaluate(model, decision, input);
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;
       await fail(RULE_ERRORS.DMN, e.message, { runtimeCode: e.code, category: 'REST_CLIENT' });
@@ -570,36 +565,36 @@ export class ProcessRunner {
   /** Why the runtime cannot answer, or null: a wrong URL, a stopped container, or one that is too slow. */
   #unreachable(settings, runtime) {
     if (!settings.url) {
-      return { errorCode: RULE_ERRORS.MAPPING, message: 'The URL of the rule engine is not configured. Set the variable ' + VARIABLES.URL + '.' };
+      return { errorCode: RULE_ERRORS.MAPPING, message: 'The URL of the DMN engine is not configured. Set the variable ' + VARIABLES.URL + '.' };
     }
     if (settings.url.replace(/\/+$/, '') !== (runtime.url || RUNTIME_URL) || runtime.state === 'stopped') {
       return {
         errorCode: RULE_ERRORS.UNREACHABLE,
-        message: 'The rule engine is not reachable at ' + settings.url + '. Check the variable ' + VARIABLES.URL + ' and that the runtime container is running.'
+        message: 'The DMN engine is not reachable at ' + settings.url + '. Check the variable ' + VARIABLES.URL + ' and that its container is running.'
       };
     }
     if (runtime.state === 'slow') {
-      return { errorCode: RULE_ERRORS.TIMEOUT, message: 'The rule engine at ' + settings.url + ' did not answer in time: Read timed out after ' + settings.timeout + ' seconds' };
+      return { errorCode: RULE_ERRORS.TIMEOUT, message: 'The DMN engine at ' + settings.url + ' did not answer in time: Read timed out after ' + settings.timeout + ' seconds' };
     }
     return null;
   }
 
   /** ModelDeployer.ensureRegistered: the file is stored, unless exactly this content already was. */
-  #isNew(runtime, runtimeModel, dmn) {
-    return this.registered.get(runtimeModel) !== JSON.stringify(dmn) || !runtime.versions(runtimeModel).length;
+  #isNew(runtime, model, dmn) {
+    return this.registered.get(model) !== JSON.stringify(dmn) || !runtime.versions(model).length;
   }
 
   /** @returns what the run tells about the stored file, or null if there is nothing to tell */
-  #register(run, element, call, runtime, runtimeModel, dmn) {
-    const { entry, created } = runtime.register(runtimeModel, dmn, { source: 'PROJECT', author: this.model.project });
-    this.registered.set(runtimeModel, JSON.stringify(dmn));
+  #register(run, element, call, runtime, model, dmn) {
+    const { entry, created } = runtime.register(model, dmn, { source: 'PROJECT', author: this.model.project });
+    this.registered.set(model, JSON.stringify(dmn));
     call.registered = { version: entry.version, status: entry.status, created };
     if (created) {
       this.#log(run, 'info', element, 'Rule engine: stored version ' + entry.version + " of model '" + call.model + "' (source PROJECT, " + entry.status + ')');
     }
     if (entry.status !== 'ACTIVE') {
       this.#log(run, 'info', element, 'Rule engine: version ' + entry.version + " of model '" + call.model + "' from project " + this.model.project +
-        ' is not active (' + entry.status + '). A newer version was activated, it stays the source of truth.');
+        ' is not active (' + entry.status + '). A newer version was activated, it stays the source of truth. The Portal offers to activate the version of the project.');
     }
     return created || entry.status !== 'ACTIVE' ? { version: entry.version, status: entry.status, created } : null;
   }

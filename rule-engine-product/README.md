@@ -2,7 +2,7 @@
 
 Use business rules in your processes without writing code. Rules are modelled as
 [DMN](https://www.omg.org/dmn/) decision tables, live as `.dmn` files in your Ivy project and are evaluated
-by a decision runtime that runs in a container next to the Axon Ivy Engine.
+by the DMN engine of Apache KIE, which runs in a container next to the Axon Ivy Engine.
 
 The Axon Ivy Rules Engine is based on Kogito and Drools from the open source project Apache KIE.
 
@@ -12,8 +12,10 @@ The Axon Ivy Rules Engine is based on Kogito and Drools from the open source pro
   Versions can be activated at an effective date and rolled back. They are files of your Ivy application.
 - **Start from your process data**: generate a ready-to-edit `.dmn` file from selected fields
   and only fill in the rules.
-- **One generic container image**: models are loaded at runtime, you never build an image, and the container
-  keeps no data.
+- **The DMN engine as Apache KIE publishes it**: you never build an image, and the container keeps no data.
+  Every evaluation carries the DMN file of the version.
+- **Edit rules in the browser**: the DMN editor of Apache KIE in a dialog, project `rule-engine-editor`, for the
+  Portal and any process.
 
 ## Demo
 
@@ -35,55 +37,45 @@ Try this on the page:
    activate, then **Apply rules** again: the page shows the new version and its table, without a deployment. Roll back
    and it is as before.
 
-Edit the `.dmn` files in the browser with the DMN editor of the decision runtime, `http://localhost:8090/editor/`
-(see [Edit rules in the browser](#edit-rules-in-the-browser)), or in VS Code with the
+Change a rule in the browser with the DMN editor dialog of `rule-engine-editor` (see
+[Edit rules in the browser](#edit-rules-in-the-browser)). Edit the `.dmn` files of a project in VS Code with the
 [Apache KIE DMN editor for VS Code](https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle).
 
 ## Setup
 
-### 1. Start the decision runtime
+### 1. Start the DMN engine
 
-The runtime is a container that holds the rule engine. It keeps no data: the versions of the models are files of
-your Ivy application, which loads them into the runtime when it needs them, also after a restart.
+The DMN engine is the JIT runner of Apache KIE, a container that keeps no data: the versions of the models are files
+of your Ivy application, which sends the file of a version with every evaluation.
 
 ```bash
-docker run -d --name axonivy-rule-engine -p 8090:8080 \
-       --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> axonivy/rule-engine-runtime:dev
+docker run -d --name axonivy-rule-engine -p 127.0.0.1:8090:8080 \
+       --restart unless-stopped apache/incubator-kie-kogito-jit-runner:10.2.0
 ```
 
 | Part | What it does |
 | --- | --- |
-| `-p 8090:8080` | The runtime on port 8090 of the host. |
-| `-e RULE_ENGINE_API_KEY=<secret>` | Protects the API. Leave it out for local development only: without a key the API is open. |
+| `-p 127.0.0.1:8090:8080` | The engine on port 8090 of the host, reachable from the host only. |
+| `--restart unless-stopped` | Starts it again with Docker, unless you stopped it. |
+
+The engine has no authentication. Run it where only the Axon Ivy Engine reaches it: on the same host, or in a private
+network of the containers.
 
 `docker stop axonivy-rule-engine` stops it, `docker start axonivy-rule-engine` starts it again. For a new image,
 remove the container with `docker rm -f axonivy-rule-engine` and run it again: nothing is lost.
 
-Check it: `http://localhost:8090/q/health/ready`. The API is described at `http://localhost:8090/q/swagger-ui`,
-the DMN editor is at `http://localhost:8090/editor/`.
+Check it: `http://localhost:8090/q/health/ready`. Its API is described at `http://localhost:8090/q/swagger-ui`.
 
 ### 2. Configure the connector
 
-Set the URL of the runtime in the variables of your application. For production set an API key on both sides:
-`RULE_ENGINE_API_KEY` of the container and `RuleEngine.ApiKey` of the engine.
+Set the URL of the DMN engine in the variables of your application.
 
 ```yaml
 @variables.yaml@
 ```
 
-TLS: terminate it at a reverse proxy in front of the runtime, or give the runtime a certificate. The runtime then
-serves HTTPS on port 8443 and no plain HTTP:
-
-```bash
-docker run -d --name axonivy-rule-engine -p 8443:8443 -v "$PWD/certs:/certs:ro" \
-       --restart unless-stopped -e RULE_ENGINE_API_KEY=<secret> \
-       -e QUARKUS_HTTP_SSL_CERTIFICATE_FILES=/certs/tls.crt \
-       -e QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES=/certs/tls.key \
-       -e QUARKUS_HTTP_INSECURE_REQUESTS=disabled \
-       axonivy/rule-engine-runtime:dev
-```
-
-Trust settings of the engine side belong to the REST client `ruleEngine` in `rest-clients.yaml`.
+TLS: terminate it at a reverse proxy in front of the DMN engine. Trust settings of the engine side belong to the
+REST client `ruleEngine` in `rest-clients.yaml`.
 
 ### 3. Use the Business Rule Task
 
@@ -121,9 +113,9 @@ catches all of them.
 
 | BPMN error | Raised when |
 | --- | --- |
-| `rule:engine:unreachable` | The runtime cannot be reached. |
-| `rule:engine:timeout` | The runtime did not answer within `RuleEngine.TimeoutSeconds`. |
-| `rule:engine:dmn` | Unknown model, no active version, unknown decision, invalid DMN file, failed evaluation, wrong API key. The error attribute `ruleEngineCode` holds the code, e.g. `NO_ACTIVE_VERSION`. |
+| `rule:engine:unreachable` | The DMN engine cannot be reached. |
+| `rule:engine:timeout` | The DMN engine did not answer within `RuleEngine.TimeoutSeconds`. |
+| `rule:engine:dmn` | Unknown model, no active version, unknown decision, invalid DMN file, failed evaluation. The error attribute `ruleEngineCode` holds the code, e.g. `NO_ACTIVE_VERSION`. |
 | `rule:engine:mapping` | No decision selected, an input has no field, or a result does not fit its field. |
 
 ### 4. Create a DMN from your process data
@@ -144,17 +136,24 @@ structures, lists become collections. A file that exists is never overwritten.
 
 ## Edit rules in the browser
 
-The decision runtime serves a DMN editor at `/editor/`, e.g. `http://localhost:8090/editor/`. It is the DMN
-editor of Apache KIE, the one of the KIE extension for VS Code, and needs nothing but a browser. The inscription
-mask of the Business Rule Task shows its address, taken from `RuleEngine.Url`.
+The project `rule-engine-editor` has a dialog for one rule, `com.axonivy.utils.rule.engine.editor.RuleEditor`, with
+the DMN editor of Apache KIE, the one of the KIE extension for VS Code. It is a project of its own beside the
+connector, which it requires, because the KIE editor is big (11 MB): the Market installs it with the demo; deploy it
+with your application wherever rules are changed in the browser, also for the Portal.
 
-Open the `.dmn` file of a project with **Open .dmn file…**, select the decision in the diagram and click **Edit**
-to change its table. **Check** lets the DMN engine of the runtime look at it, **Save file** writes it back (Chrome and
-Edge write the file, other browsers download it). The Business Rule Task stores the changed file as a version with
-its next evaluation. If the runtime has an API key, the page asks for it once per browser tab.
+It opens the active version of a model, or a version you name,
+or the `.dmn` file of its project if the model is not stored yet. Select the decision in the diagram and click
+**Edit** to change its table. **Check** lets the DMN engine look at it; **Save as draft** and **Save and activate**
+store a new version, which the DMN engine checks first.
 
-The page edits files only. The versions are kept by the Ivy application: change, activate or roll them back in the
-Portal, see below.
+| Open it from | How |
+| --- | --- |
+| A process of a project that requires `rule-engine-editor` | A Dialog Call of `RuleEditor`, `start(String model, Integer version)`; version null opens the active one |
+| A link, or a project without the dependency | The process start `RuleEditor/editRule.ivp` of `rule-engine-editor`, with the parameters `model` and `version` (optional) |
+| The Axon Ivy Portal | **Edit** in Rule Management, see below: it shows the dialog in an iframe |
+
+For now anybody may open the process start; a permission comes later. The cases it creates carry the custom field
+`HIDE`, so the Portal lists neither them nor their tasks.
 
 ## Rule Management in the Axon Ivy Portal
 
@@ -164,16 +163,17 @@ not there and the Portal works as before.
 
 - The table lists the stored models with their active version, and the `.dmn` files of the projects that are not
   stored yet.
-- **Edit** opens the active version in the DMN editor of Apache KIE, inside the Portal. **Check** lets the DMN
+- **Edit** opens the active version in the editor dialog of `rule-engine-editor`, inside the tab; without that
+  project in the application, the tab says so. **Check** lets the DMN
   engine check the model, **Save as draft** and **Save and activate** store a new version with the source
-  *portal* and the Portal user as author. A project deployment never replaces it.
+  *portal* and the user as author. A project deployment never replaces it. **Close** brings the list back.
 - **Show versions** lists all versions: open any of them in the editor, activate it, or roll back.
 
 A rule owner may add inputs to a model in the Portal. The Business Rule Task sends what the active version needs:
 an input is read from the process data field of the same name. The process does not change.
 
-The browser talks only to the Axon Ivy Engine: the engine loads the editor from the runtime (`/editor/`) and
-makes every call with the API key. So the runtime does not have to be reachable from the browsers of the users.
+The browser talks only to the Axon Ivy Engine: the editor is a dialog on the engine, and the engine makes every
+call to the DMN engine. So the DMN engine does not have to be reachable from the browsers of the users.
 
 ## Rule versions
 
@@ -192,7 +192,7 @@ with the data of the engine. In a cluster, the data directory has to be on share
 
 **Source of truth.** The Ivy project provides the initial version, the application holds the live versions.
 
-- When a project starts and whenever a `.dmn` file has changed, the runtime checks the file and it is stored as a
+- When a project starts and whenever a `.dmn` file has changed, the DMN engine checks the file and it is stored as a
   version with the source *project*. Content that is already stored does not create another version.
 - A version from the project becomes active if no version is active yet, or if the active version also
   came from a project. So during development a saved file is live with the next evaluation.

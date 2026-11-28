@@ -16,7 +16,7 @@ import com.axonivy.utils.rule.engine.test.Address;
 import com.axonivy.utils.rule.engine.test.Customer;
 import com.axonivy.utils.rule.engine.test.Segment;
 import com.axonivy.utils.rule.engine.test.TestData;
-import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
+import com.axonivy.utils.rule.engine.test.mock.MockDmnEngine;
 import com.axonivy.utils.rule.engine.test.mock.TestStore;
 import com.axonivy.utils.rule.engine.version.VersionStore;
 
@@ -32,8 +32,8 @@ import ch.ivyteam.ivy.scripting.objects.Time;
 import tools.jackson.databind.JsonNode;
 
 /**
- * The Business Rule Task in a process. The versions are stored in the file area of the test application, the decision
- * runtime is replaced by {@link MockRuntime}.
+ * The Business Rule Task in a process. The versions are stored in the file area of the test application, the DMN
+ * engine is replaced by {@link MockDmnEngine}.
  */
 @IvyProcessTest(enableWebServer = true)
 class TestBusinessRuleTask {
@@ -42,19 +42,17 @@ class TestBusinessRuleTask {
 
   @BeforeEach
   public void setup(AppFixture fixture) {
-    MockRuntime.reset();
+    MockDmnEngine.reset();
     TestStore.clear();
-    fixture.var(Var.URL, MockRuntime.url());
-    fixture.var(Var.API_KEY, "test-key");
+    fixture.var(Var.URL, MockDmnEngine.url());
     fixture.var(Var.AUTO_DEPLOY, "true");
     fixture.var(Var.TIMEOUT_SECONDS, "10");
-    fixture.var(Var.MODEL_PREFIX, "");
   }
 
   @Test
   void inputsAndResultsAreMappedByName(BpmClient client) {
     TestStore.store("mock-discount", "discount", "amount", "segment", "city", "vip");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":12.5}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":12.5}"));
 
     var execution = execute(client, "byName", sampleData());
     TestData result = execution.subResult().param("data", TestData.class);
@@ -63,12 +61,10 @@ class TestBusinessRuleTask {
     assertThat(result.getDiscount()).as("result 'discount' is written to in.discount").isEqualTo(12.5);
     assertThat(decidedBy(execution, "mock-discount")).as("the model version is stored on the case").isEqualTo(1);
 
-    var call = MockRuntime.calls("evaluate").get(0);
-    assertThat(call.model()).isEqualTo("mock-discount");
-    assertThat(call.body().get("version").asInt()).as("the active version").isEqualTo(1);
-    assertThat(call.apiKey()).isEqualTo("test-key");
-    assertThat(call.body().get("decision").asString()).isEqualTo("discount");
-    JsonNode input = call.body().get("input");
+    var call = MockDmnEngine.calls("evaluate").get(0);
+    assertThat(call.dmn()).as("the file of the active version")
+        .isEqualTo(VersionStore.current().content("mock-discount", 1));
+    JsonNode input = call.input();
     assertThat(input.get("amount").asInt()).as("in.amount").isEqualTo(1500);
     assertThat(input.get("segment").asString()).as("in.customer.segment").isEqualTo("GOLD");
     assertThat(input.get("city").asString()).as("in.customer.address.city").isEqualTo("Zug");
@@ -78,14 +74,14 @@ class TestBusinessRuleTask {
   @Test
   void fieldsThatAreNotSet_areSentAsNull(BpmClient client) {
     TestStore.store("mock-discount", "discount", "amount", "segment", "city");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":null}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":null}"));
     var data = new TestData();
     data.setDiscount(99);
 
     TestData result = run(client, "byName", data);
 
     assertThat(result.getErrorMessage()).isNull();
-    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    JsonNode input = MockDmnEngine.calls("evaluate").get(0).input();
     assertThat(input.propertyNames()).containsExactlyInAnyOrder("amount", "segment", "city");
     assertThat(input.get("amount").isNull()).isTrue();
     assertThat(input.get("segment").isNull()).isTrue();
@@ -97,12 +93,12 @@ class TestBusinessRuleTask {
   void inputAndOutputFields_areNotUsedForAnExistingDecision(BpmClient client) {
     // the element says "total = in.amount, in.customer.name, in.customer.address.city" and "in.points"
     TestStore.store("mock-explicit", "score", "amount", "name", "city");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"score\":42}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"score\":42}"));
 
     TestData result = run(client, "fieldsOfAnExistingDecision", sampleData());
 
     assertThat(result.getErrorMessage()).isNull();
-    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    JsonNode input = MockDmnEngine.calls("evaluate").get(0).input();
     assertThat(input.propertyNames()).as("the inputs of the decision, found by name")
         .containsExactlyInAnyOrder("amount", "name", "city");
     assertThat(input.get("amount").asInt()).isEqualTo(1500);
@@ -112,7 +108,7 @@ class TestBusinessRuleTask {
   @Test
   void wholeModel_everyResultIsMappedToItsField(BpmClient client) {
     TestStore.store("mock-all", "any", "amount");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(3, """
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("""
         {"approved":true,"nextStep":"Route to CFO","dueDate":"2026-12-15","deliveredAt":"2026-12-01T10:30:00",
          "upgrade":"SILVER","recommendation":{"product":"Sofa","score":0.75,"validUntil":"2027-01-31"},
          "labels":["urgent","b2b"],"points":3,"discount":10,"unknown":"ignored"}
@@ -121,7 +117,6 @@ class TestBusinessRuleTask {
     TestData result = run(client, "wholeModel", sampleData());
 
     assertThat(result.getErrorMessage()).isNull();
-    assertThat(MockRuntime.calls("evaluate").get(0).body().has("decision")).isFalse();
     assertThat(result.getApproved()).isTrue();
     assertThat(result.getNextStep()).isEqualTo("Route to CFO");
     assertThat(result.getDueDate()).as("date").isEqualTo(new Date(2026, 12, 15));
@@ -138,7 +133,7 @@ class TestBusinessRuleTask {
   @Test
   void structuredResult_fillsADataClass(BpmClient client) {
     TestStore.store("mock-recommend", "offer", "amount");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"offer\":{\"product\":\"Lamp\",\"score\":0.5}}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"offer\":{\"product\":\"Lamp\",\"score\":0.5}}"));
 
     TestData result = run(client, "structuredResult", sampleData());
 
@@ -151,7 +146,7 @@ class TestBusinessRuleTask {
   void allSupportedTypes_areSentAsJson(BpmClient client) {
     TestStore.store("mock-types", "check", "customer", "amount", "quantity", "orderDate", "orderedAt",
         "openingTime", "deliveryTime", "positions");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"check\":true}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"check\":true}"));
     var data = sampleData();
     data.setAmount(99.95);
     data.setQuantity(3);
@@ -167,7 +162,7 @@ class TestBusinessRuleTask {
     TestData result = run(client, "types", data);
 
     assertThat(result.getErrorMessage()).isNull();
-    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    JsonNode input = MockDmnEngine.calls("evaluate").get(0).input();
     assertThat(input.get("amount").asDouble()).as("number").isEqualTo(99.95);
     assertThat(input.get("quantity").asInt()).isEqualTo(3);
     assertThat(input.get("orderDate").asString()).as("date").isEqualTo("2026-11-15");
@@ -189,8 +184,7 @@ class TestBusinessRuleTask {
   @Test
   void dmnError_raisesBpmnError(BpmClient client) {
     TestStore.store("mock-discount", "discount", "amount");
-    MockRuntime.onEvaluate(call -> MockRuntime.error(422, "EVALUATION_FAILED",
-        "Evaluation of model 'mock-discount' version 1 failed: the value is not allowed"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.failed("discount", "the value is not allowed"));
 
     TestData result = run(client, "byName", sampleData());
 
@@ -205,11 +199,11 @@ class TestBusinessRuleTask {
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.DMN);
     assertThat(result.getErrorMessage()).contains("mock-discount");
-    assertThat(MockRuntime.calls()).as("nothing to evaluate").isEmpty();
+    assertThat(MockDmnEngine.calls()).as("nothing to evaluate").isEmpty();
   }
 
   @Test
-  void runtimeNotReachable_raisesBpmnError(BpmClient client, AppFixture fixture) {
+  void dmnEngineNotReachable_raisesBpmnError(BpmClient client, AppFixture fixture) {
     TestStore.store("mock-discount", "discount", "amount");
     fixture.var(Var.URL, "http://localhost:9");
     fixture.var(Var.CONNECT_TIMEOUT_SECONDS, "2");
@@ -224,9 +218,9 @@ class TestBusinessRuleTask {
   void timeout_raisesBpmnError(BpmClient client, AppFixture fixture) {
     fixture.var(Var.TIMEOUT_SECONDS, "1");
     TestStore.store("mock-slow", "slow");
-    MockRuntime.onEvaluate(call -> {
+    MockDmnEngine.onEvaluate(call -> {
       sleep(4000);
-      return MockRuntime.results(1, "{\"slow\":1}");
+      return MockDmnEngine.results("{\"slow\":1}");
     });
 
     long start = System.currentTimeMillis();
@@ -245,13 +239,13 @@ class TestBusinessRuleTask {
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.MAPPING);
     assertThat(result.getErrorMessage()).contains("[creditScore]").contains("in.creditScore, set before the Business Rule Task");
-    assertThat(MockRuntime.calls("evaluate")).isEmpty();
+    assertThat(MockDmnEngine.calls("evaluate")).isEmpty();
   }
 
   @Test
   void resultThatDoesNotFitTheField_raisesMappingError(BpmClient client) {
     TestStore.store("mock-discount", "discount", "amount");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":\"a lot\"}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":\"a lot\"}"));
 
     TestData result = run(client, "byName", sampleData());
 
@@ -269,7 +263,7 @@ class TestBusinessRuleTask {
 
   @Test
   void dmnFileOfTheProject_isStoredAsVersion_once(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":15}"));
     var data = sampleData();
     data.setType("Gold");
 
@@ -285,12 +279,11 @@ class TestBusinessRuleTask {
     assertThat(versions.get(0).author()).as("the application and its version").matches(".+ v\\d+");
     assertThat(versions.get(0).description()).startsWith("Deployed with project rule-engine-test");
     assertThat(versions.get(0).status()).as("the first version goes live").isEqualTo(VersionStatus.ACTIVE);
-    assertThat(MockRuntime.calls("validate")).as("the runtime checks the file before it is stored").hasSize(1);
-    var loads = MockRuntime.calls("load");
-    assertThat(loads).as("loaded into the runtime once").hasSize(1);
-    assertThat(loads.get(0).model()).isEqualTo("discount");
-    assertThat(loads.get(0).body().get("content").asString()).contains("<definitions").contains("discount");
-    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    assertThat(MockDmnEngine.calls("validate")).as("the DMN engine checks the file before it is stored").hasSize(1);
+    var evaluations = MockDmnEngine.calls("evaluate");
+    assertThat(evaluations).as("every evaluation sends the file").hasSize(2);
+    assertThat(evaluations.get(0).dmn()).isEqualTo(VersionStore.current().content("discount", 1));
+    JsonNode input = evaluations.get(0).input();
     assertThat(input.propertyNames()).as("the inputs of dmn/discount.dmn")
         .containsExactlyInAnyOrder("purchaseAmount", "type", "country");
     assertThat(input.get("type").asString()).isEqualTo("Gold");
@@ -298,8 +291,7 @@ class TestBusinessRuleTask {
 
   @Test
   void dmnFileWithErrors_isNotStored(BpmClient client) {
-    MockRuntime.onValidate(call -> MockRuntime.json(200,
-        "{\"valid\":false,\"messages\":[{\"severity\":\"ERROR\",\"message\":\"no such column\"}]}"));
+    MockDmnEngine.onValidate(call -> MockDmnEngine.findings("no such column"));
 
     TestData result = run(client, "demoDiscount", sampleData());
 
@@ -311,7 +303,7 @@ class TestBusinessRuleTask {
   /** A rule owner added a column in the Portal: the file does not know it, the version that answers needs it. */
   @Test
   void versionFromThePortal_answers_withTheInputsItNeeds(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(call.body().get("version").asInt(), "{\"discount\":20}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":20}"));
     run(client, "demoDiscount", sampleData()); // stores the file as version 1
     TestStore.store("discount", TestStore.dmn("discount", "discount", "purchaseAmount", "type", "country", "segment"),
         VersionSource.PORTAL, true);
@@ -322,11 +314,11 @@ class TestBusinessRuleTask {
     assertThat(result.getErrorMessage()).isNull();
     assertThat(result.getDiscount().intValue()).isEqualTo(20);
     assertThat(decidedBy(execution, "discount")).isEqualTo(2);
-    var evaluation = MockRuntime.calls("evaluate").get(1);
-    assertThat(evaluation.body().get("version").asInt()).isEqualTo(2);
-    assertThat(evaluation.body().get("input").propertyNames()).as("the inputs of the version from the Portal")
+    var evaluation = MockDmnEngine.calls("evaluate").get(1);
+    assertThat(evaluation.dmn()).isEqualTo(VersionStore.current().content("discount", 2));
+    assertThat(evaluation.input().propertyNames()).as("the inputs of the version from the Portal")
         .containsExactlyInAnyOrder("purchaseAmount", "type", "country", "segment");
-    assertThat(evaluation.body().get("input").get("segment").asString()).as("found in the process data by its name")
+    assertThat(evaluation.input().get("segment").asString()).as("found in the process data by its name")
         .isEqualTo("GOLD");
     assertThat(VersionStore.current().versions("discount")).as("the unchanged file is not stored again").hasSize(2);
   }
@@ -336,54 +328,28 @@ class TestBusinessRuleTask {
   void versionFromTheProject_isReplacedByTheFile(BpmClient client) {
     TestStore.store("discount", TestStore.dmn("discount", "discount", "purchaseAmount", "type", "country", "segment"),
         VersionSource.PROJECT, null);
-    MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"discount\":15}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":15}"));
 
     run(client, "demoDiscount", sampleData());
 
-    var evaluation = MockRuntime.calls("evaluate").get(0);
-    assertThat(evaluation.body().get("version").asInt()).as("the file, stored as version 2").isEqualTo(2);
-    assertThat(evaluation.body().get("input").propertyNames()).containsExactlyInAnyOrder("purchaseAmount", "type", "country");
+    var evaluation = MockDmnEngine.calls("evaluate").get(0);
+    assertThat(evaluation.dmn()).as("the file, stored as version 2")
+        .isEqualTo(VersionStore.current().content("discount", 2));
+    assertThat(evaluation.input().propertyNames()).containsExactlyInAnyOrder("purchaseAmount", "type", "country");
     assertThat(VersionStore.current().version("discount", 1).status()).isEqualTo(VersionStatus.RETIRED);
-  }
-
-  @Test
-  void modelPrefix_namesTheModelOnTheRuntime(BpmClient client, AppFixture fixture) {
-    fixture.var(Var.MODEL_PREFIX, "sales-");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
-
-    run(client, "demoDiscount", sampleData());
-
-    assertThat(MockRuntime.calls("load").get(0).model()).isEqualTo("sales-discount");
-    assertThat(MockRuntime.calls("evaluate").get(0).model()).isEqualTo("sales-discount");
-    assertThat(VersionStore.current().exists("discount")).as("stored by the name of the file").isTrue();
-  }
-
-  @Test
-  void runtimeThatRestarted_getsTheVersionAgain(BpmClient client) {
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
-
-    run(client, "demoDiscount", sampleData());
-    MockRuntime.restart();
-    TestData afterRestart = run(client, "demoDiscount", sampleData());
-
-    assertThat(afterRestart.getErrorMessage()).isNull();
-    assertThat(afterRestart.getDiscount().intValue()).isEqualTo(15);
-    assertThat(MockRuntime.calls("load")).as("loaded again after MODEL_NOT_FOUND").hasSize(2);
-    assertThat(MockRuntime.calls("evaluate")).as("the one that was refused, and again").hasSize(3);
-    assertThat(VersionStore.current().versions("discount")).as("still one version").hasSize(1);
   }
 
   @Test
   void autoDeployOff_evaluatesTheStoredVersion(BpmClient client, AppFixture fixture) {
     fixture.var(Var.AUTO_DEPLOY, "false");
     TestStore.store("discount", "discount", "purchaseAmount");
-    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":15}"));
 
     TestData result = run(client, "demoDiscount", sampleData());
 
     assertThat(result.getErrorMessage()).isNull();
-    assertThat(MockRuntime.calls("validate")).as("the file of the project is not stored").isEmpty();
-    assertThat(MockRuntime.calls("evaluate").get(0).body().get("input").propertyNames()).containsExactly("purchaseAmount");
+    assertThat(MockDmnEngine.calls("validate")).as("the file of the project is not stored").isEmpty();
+    assertThat(MockDmnEngine.calls("evaluate").get(0).input().propertyNames()).containsExactly("purchaseAmount");
   }
 
   static TestData run(BpmClient client, String signature, TestData data) {

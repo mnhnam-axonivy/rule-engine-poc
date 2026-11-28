@@ -13,7 +13,7 @@ import jakarta.ws.rs.client.ClientResponseContext;
 import jakarta.ws.rs.client.ClientResponseFilter;
 
 /**
- * Logs each call and its answer, without headers: the API key is never logged.
+ * Logs each call and its answer, without headers.
  */
 public class RequestLogFilter implements ClientRequestFilter, ClientResponseFilter {
 

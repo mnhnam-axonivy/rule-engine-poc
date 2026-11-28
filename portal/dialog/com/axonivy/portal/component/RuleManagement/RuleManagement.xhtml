@@ -11,7 +11,8 @@
   The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine.
   ruleManagementBean: com.axonivy.portal.bean.RuleManagementBean. It reaches the rule engine through
   com.axonivy.portal.rule.RuleEngineBridge, the Portal has no dependency on it.
-  The DMN editor of Apache KIE runs in the browser: rule-management.js loads it from the rule engine project.
+  The DMN editor is the dialog RuleEditor of the rule engine project, shown in an iframe. It says when it closes
+  (rule-management.js), then the list of rules comes back.
 -->
 <cc:interface componentType="IvyComponent">
 </cc:interface>
@@ -22,12 +23,7 @@
 
   <p:messages id="rule-management-messages" globalOnly="true" closable="true" styleClass="rule-management-messages" />
 
-  <h:panelGroup id="rule-management" layout="block" styleClass="rule-management"
-    pt:data-editor-script="#{ruleManagementBean.editorScript}"
-    pt:data-model="#{ruleManagementBean.editModel}"
-    pt:data-text-load-failed="#{ivy.cms.co(cmsPath.concat('Messages/EditorNotLoaded'))}"
-    pt:data-text-cannot-open="#{ivy.cms.co(cmsPath.concat('Messages/EditorCannotOpen'))}"
-    pt:data-text-leave="#{ivy.cms.co(cmsPath.concat('LeaveWithUnsavedChanges'))}">
+  <h:panelGroup id="rule-management" layout="block" styleClass="rule-management">
 
     <!-- THE RULES -->
     <h:form id="rule-list-form" rendered="#{!ruleManagementBean.editing}">
@@ -96,8 +92,7 @@
             ariaLabel="#{ivy.cms.co(cmsPath.concat('Edit'))}" disabled="#{!ruleManagementBean.reachable}"
             styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
             action="#{ruleManagementBean.edit(model)}" process="@this"
-            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
-            oncomplete="if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages" />
           <p:commandButton id="show-versions" icon="ti ti-history" title="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}"
             ariaLabel="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}" disabled="#{!model.stored}"
             styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
@@ -108,51 +103,14 @@
       </p:dataTable>
     </h:form>
 
-    <!-- THE DMN EDITOR -->
-    <h:panelGroup id="rule-editor" layout="block" styleClass="rule-editor" rendered="#{ruleManagementBean.editing}">
+    <!-- THE DMN EDITOR: the dialog RuleEditor of the rule engine project -->
+    <h:panelGroup id="rule-editor" layout="block" rendered="#{ruleManagementBean.editing}">
+      <iframe class="rule-editor-frame block w-full border-none" src="#{ruleManagementBean.editorUrl}"
+        title="#{ivy.cms.co(cmsPath.concat('Edit'))}" />
       <h:form id="rule-editor-form">
-        <div class="rule-editor-bar flex flex-wrap align-items-center gap-3">
-          <p:commandLink id="back-to-rules" styleClass="portal-link rule-editor-back" process="@this"
-            onclick="if (!RuleManagement.leave()) { return false; }"
-            actionListener="#{ruleManagementBean.closeEditor}"
-            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages">
-            <i class="ti ti-arrow-left" aria-hidden="true" />
-            <h:outputText value="#{ivy.cms.co(cmsPath.concat('BackToRules'))}" />
-          </p:commandLink>
-          <div class="rule-editor-title flex flex-wrap align-items-baseline gap-2">
-            <span class="rule-editor-name">#{ruleManagementBean.editModel}</span>
-            <h:outputText id="rule-editor-state" styleClass="rule-editor-state" value="#{ruleManagementBean.editorState}" />
-            <span class="rule-editor-dirty" hidden="hidden">#{ivy.cms.co(cmsPath.concat('UnsavedChanges'))}</span>
-            <span class="rule-editor-loading">#{ivy.cms.co(cmsPath.concat('EditorLoading'))}</span>
-          </div>
-          <span class="flex-grow-1" />
-          <p:inputText id="rule-description" value="#{ruleManagementBean.description}" styleClass="rule-editor-description"
-            placeholder="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}"
-            pt:aria-label="#{ivy.cms.co(cmsPath.concat('DescriptionPlaceholder'))}" />
-          <p:commandButton id="check-rule" type="button" icon="ti ti-checks" styleClass="ui-button-outlined rule-editor-action"
-            value="#{ivy.cms.co(cmsPath.concat('Check'))}" title="#{ivy.cms.co(cmsPath.concat('CheckHint'))}"
-            onclick="RuleManagement.validate()" />
-          <p:commandButton id="save-draft" type="button" icon="ti ti-file-pencil" styleClass="ui-button-outlined rule-editor-action"
-            value="#{ivy.cms.co(cmsPath.concat('SaveAsDraft'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAsDraftHint'))}"
-            onclick="RuleManagement.save(false)" />
-          <p:commandButton id="save-activate" type="button" icon="ti ti-device-floppy" styleClass="rule-editor-action"
-            value="#{ivy.cms.co(cmsPath.concat('SaveAndActivate'))}" title="#{ivy.cms.co(cmsPath.concat('SaveAndActivateHint'))}"
-            onclick="RuleManagement.save(true)" />
-        </div>
-
-        <!-- the model as DMN XML: filled when a rule is opened, and by rule-management.js before a save -->
-        <h:inputTextarea id="rule-dmn" value="#{ruleManagementBean.dmn}" styleClass="rule-editor-dmn" style="display:none" />
-        <p:remoteCommand name="ruleManagementSave" actionListener="#{ruleManagementBean.save}"
-          process="@this rule-dmn rule-description"
-          update="rule-editor-state rule-description :#{cc.clientId}:rule-management-messages"
-          oncomplete="RuleManagement.done(xhr, status, args)" />
-        <p:remoteCommand name="ruleManagementValidate" actionListener="#{ruleManagementBean.validate}"
-          process="@this rule-dmn"
-          update=":#{cc.clientId}:rule-management-messages"
-          oncomplete="RuleManagement.done(xhr, status, args)" />
+        <p:remoteCommand name="ruleManagementEditorClosed" actionListener="#{ruleManagementBean.closeEditor}" process="@this"
+          update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages" />
       </h:form>
-      <!-- the KIE editor puts its frame here; no ajax update touches it -->
-      <div class="rule-editor-container" />
     </h:panelGroup>
   </h:panelGroup>
 
@@ -197,7 +155,7 @@
             styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
             action="#{ruleManagementBean.editVersion(version)}" process="@this"
             update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
-            oncomplete="PF('ruleVersionsDialog').hide(); if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+            oncomplete="PF('ruleVersionsDialog').hide()" />
           <p:commandButton id="activate-version" icon="ti ti-player-play" title="#{ivy.cms.co(cmsPath.concat('Activate'))}"
             ariaLabel="#{ivy.cms.co(cmsPath.concat('Activate'))}" rendered="#{version.status ne 'ACTIVE'}"
             styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"

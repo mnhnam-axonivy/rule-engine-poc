@@ -11,6 +11,7 @@
   <artifactId>rule-engine</artifactId>
   <version>14.0.1-SNAPSHOT</version>
   <packaging>iar</packaging>
+
   <dependencies>
     <dependency>
       <groupId>com.axonivy.ivy.api</groupId>

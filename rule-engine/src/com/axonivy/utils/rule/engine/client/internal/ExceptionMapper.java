@@ -8,7 +8,6 @@ import java.net.http.HttpTimeoutException;
 import java.nio.channels.UnresolvedAddressException;
 import java.util.concurrent.TimeoutException;
 
-import com.axonivy.utils.rule.engine.api.ErrorResponse;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
@@ -16,10 +15,16 @@ import com.axonivy.utils.rule.engine.client.exception.RuleEngineUnreachableExcep
 
 import jakarta.ws.rs.core.Response;
 
-/**
- * Turns the failures of a call of the runtime into the exceptions of the rule engine client.
- */
 public final class ExceptionMapper {
+
+  private static final String TIMEOUT = "The DMN engine at %s did not answer in time: %s";
+  private static final String ABORTED = "The call to the DMN engine at %s was aborted.";
+  private static final String FAILED = "The call to the DMN engine at %s failed: %s";
+  private static final String UNREACHABLE =
+      "The DMN engine is not reachable at %s. Check the variable RuleEngine.Url and that its container is running.";
+  private static final String UNREADABLE_MODEL = "The DMN engine cannot read the model: %s";
+  private static final String ANSWER = "The DMN engine answered with HTTP %d%s";
+  private static final int BAD_REQUEST = 400;
 
   private ExceptionMapper() {}
 
@@ -37,8 +42,7 @@ public final class ExceptionMapper {
         if (String.valueOf(cause.getMessage()).toLowerCase().contains("connect")) {
           return unreachable(baseUrl, ex);
         }
-        return new RuleEngineTimeoutException("The rule engine at " + baseUrl
-            + " did not answer in time: " + cause.getMessage(), ex);
+        return new RuleEngineTimeoutException(TIMEOUT.formatted(baseUrl, cause.getMessage()), ex);
       }
       if (cause instanceof ConnectException || cause instanceof UnknownHostException
           || cause instanceof NoRouteToHostException || cause instanceof UnresolvedAddressException) {
@@ -46,10 +50,10 @@ public final class ExceptionMapper {
       }
       if (cause instanceof InterruptedException) {
         Thread.currentThread().interrupt();
-        return new RuleEngineTimeoutException("The call to the rule engine at " + baseUrl + " was aborted.", ex);
+        return new RuleEngineTimeoutException(ABORTED.formatted(baseUrl), ex);
       }
     }
-    return new RuleEngineException("The call to the rule engine at " + baseUrl + " failed: " + ex.getMessage(), ex);
+    return new RuleEngineException(FAILED.formatted(baseUrl, ex.getMessage()), ex);
   }
 
   /** @param response the error answer that JAX-RS hands over with its WebApplicationException */
@@ -58,29 +62,22 @@ public final class ExceptionMapper {
     return answer(response.getStatus(), body);
   }
 
-  /**
-   * @param status a client (4XX) or server (5XX) error
-   * @param body the answer, an {@link ErrorResponse} if it comes from the runtime
-   */
+  /** The JIT runner answers 400 with the message of the DMN engine when it cannot read the model. */
   public static RuleEngineApiException answer(int status, String body) {
-    try {
-      ErrorResponse error = JsonConverter.fromJson(body, ErrorResponse.class);
-      if (error != null && (error.code() != null || error.message() != null)) {
-        return new RuleEngineApiException(status, error.code(), error.message(), error.details(), null);
-      }
-    } catch (RuntimeException notJson) {
-      // an answer that does not come from the runtime, e.g. from a proxy in between
+    String text = body == null ? "" : body.strip();
+    if (status == BAD_REQUEST) {
+      return new RuleEngineApiException(status, RuleEngineApiException.INVALID_MODEL,
+          UNREADABLE_MODEL.formatted(text), null, null);
     }
     String code = status == 401 || status == 403
         ? RuleEngineApiException.UNAUTHORIZED
         : RuleEngineApiException.UNKNOWN;
-    return new RuleEngineApiException(status, code,
-        "The rule engine answered with HTTP " + status + (body == null || body.isEmpty() ? "" : ": " + body), null, null);
+    return new RuleEngineApiException(status, code, ANSWER.formatted(status, text.isEmpty() ? "" : ": " + text),
+        null, null);
   }
 
   private static RuleEngineUnreachableException unreachable(String baseUrl, Exception ex) {
-    return new RuleEngineUnreachableException("The rule engine is not reachable at " + baseUrl
-        + ". Check the variable RuleEngine.Url and that the runtime container is running.", ex);
+    return new RuleEngineUnreachableException(UNREACHABLE.formatted(baseUrl), ex);
   }
 
   private static Throwable next(Throwable cause) {

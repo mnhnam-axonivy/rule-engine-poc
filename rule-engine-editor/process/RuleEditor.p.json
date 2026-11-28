@@ -1,0 +1,83 @@
+{
+  "$schema" : "https://json-schema.axonivy.com/14.0/project/process.json",
+  "id" : "023F72FE11C582F1",
+  "config" : {
+    "data" : "com.axonivy.utils.rule.engine.editor.RuleEditorStartData"
+  },
+  "elements" : [ {
+      "id" : "f0",
+      "type" : "RequestStart",
+      "name" : "editRule.ivp",
+      "config" : {
+        "signature" : "editRule",
+        "input" : {
+          "params" : [
+            { "name" : "model", "type" : "String", "desc" : "Name of the model: the name of its .dmn file" },
+            { "name" : "version", "type" : "Number", "desc" : "The version to open; empty opens the active one, or the .dmn file of the project" }
+          ],
+          "code" : [
+            "out.model = param.model;",
+            "out.version = param.version == null ? null : param.version.intValue();"
+          ]
+        },
+        "request" : {
+          "name" : "Edit a rule",
+          "description" : "The DMN editor for one rule: check it, save it as a new version, live or as draft.",
+          "isVisibleOnStartList" : false
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 96, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f4", "to" : "f3" }
+      ]
+    }, {
+      "id" : "f3",
+      "type" : "Script",
+      "name" : [
+        "hidden in the",
+        "lists of the Portal"
+      ],
+      "config" : {
+        "output" : {
+          "code" : [
+            "// every start makes a case; the Portal leaves out cases and tasks with the custom field HIDE",
+            "ivy.case.customFields().stringField(\"HIDE\").set(\"HIDE\");",
+            "ivy.task.customFields().stringField(\"HIDE\").set(\"HIDE\");"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 256, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f5", "to" : "f1" }
+      ]
+    }, {
+      "id" : "f1",
+      "type" : "DialogCall",
+      "name" : "RuleEditor",
+      "config" : {
+        "dialog" : "com.axonivy.utils.rule.engine.editor.RuleEditor:start(String,Integer)",
+        "call" : {
+          "map" : {
+            "param.model" : "in.model",
+            "param.version" : "in.version"
+          }
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 416, "y" : 64 }
+      },
+      "connect" : [
+        { "id" : "f6", "to" : "f2" }
+      ]
+    }, {
+      "id" : "f2",
+      "type" : "TaskEnd",
+      "visual" : {
+        "at" : { "x" : 576, "y" : 64 }
+      }
+    } ]
+}

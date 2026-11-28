@@ -16,10 +16,8 @@ export * from './invoice.js';
 /** The settings of the connector, as the tutorial sets them up (rule-engine/config/variables.yaml). */
 export const VARIABLES = `Variables:
   RuleEngine:
-    # URL of the decision runtime, the container
+    # URL of the DMN engine, the container
     Url: http://localhost:8090
-    # Shared secret of the runtime, empty for local development
-    ApiKey: ""
     # Seconds to wait for a decision
     TimeoutSeconds: "10"
     # Store the .dmn files of the project as versions
@@ -54,5 +52,5 @@ export const ABOUT_RULES = [
   'It evaluates decision tables with the hit policies FIRST, UNIQUE and COLLECT, FEEL literal expressions and contexts, and the functions (business knowledge models) of a model, as the DMN engine does.',
   'It checks the inputs against their types: a value outside the allowed values, or null where they do not allow it, is refused.',
   'It listens on http://localhost:8090. Stopped, slow, or with another URL in variables.yaml, the Business Rule Task throws the same BPMN errors as with the real container.',
-  'The API key and effective dates are not simulated.'
+  'Effective dates are not simulated.'
 ].join('|');

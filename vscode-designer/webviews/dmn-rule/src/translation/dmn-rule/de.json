@@ -1,0 +1,15 @@
+{
+  "addMore": "Weitere hinzufügen",
+  "create": "Entscheidungstabelle erstellen",
+  "inputs": "Eingaben",
+  "inputsHelp": "Die Felder, die die Entscheidung liest. Jedes wird zu einer Eingabe mit dem Namen des Felds.",
+  "intro": "Wählen Sie Felder Ihrer Datenklassen. Der Business Rule Task findet Eingaben und Ergebnisse über ihren Namen in den Prozessdaten.",
+  "noDataClasses": "In den Axon Ivy-Projekten des Workspace wurde keine Datenklasse gefunden. Überspringen Sie diesen Schritt und benennen Sie die Eingabe und die Entscheidung im DMN-Editor wie Felder der Prozessdaten.",
+  "noFieldFound": "Kein Feld gefunden",
+  "outputs": "Ausgaben",
+  "outputsHelp": "Die Felder, die die Entscheidung füllt. Jedes wird zu einer Ausgabe mit dem Namen des Felds.",
+  "remove": "Entfernen",
+  "searchPlaceholder": "Feld einer Datenklasse suchen, z. B. Customer segment",
+  "skip": "Überspringen, leere Tabelle behalten",
+  "title": "Eingaben und Ausgaben von {{model}}"
+}

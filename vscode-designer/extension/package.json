@@ -501,6 +501,11 @@
         "category": "%category.axonIvy%"
       },
       {
+        "command": "ivyProjects.addNewDmnRule",
+        "title": "%command.newDmnRule%",
+        "category": "%category.axonIvy%"
+      },
+      {
         "command": "ivyProjects.addDependency",
         "title": "%command.addProjectDependency%",
         "category": "%category.axonIvy%",
@@ -1321,6 +1326,11 @@
           "command": "ivyProjects.addNewCaseMap",
           "when": "ivy:hasIvyProjects",
           "group": "3@1"
+        },
+        {
+          "command": "ivyProjects.addNewDmnRule",
+          "when": "ivy:hasIvyProjects",
+          "group": "3@2"
         }
       ],
       "explorer.ivy.new.process": [

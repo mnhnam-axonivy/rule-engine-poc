@@ -62,6 +62,7 @@
   "command.newDataClass": "新しいデータクラス",
   "command.newEntityClass": "新しいエンティティクラス",
   "command.newCaseMap": "新しいケースマップ",
+  "command.newDmnRule": "新しい DMN ルール",
   "command.addProjectDependency": "プロジェクトの依存関係を追加",
   "command.downloadDependencySources": "依存関係のソースをダウンロード",
   "command.addDevContainer": "Dev Container を追加",

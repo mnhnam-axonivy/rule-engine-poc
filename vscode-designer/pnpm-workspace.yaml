@@ -7,6 +7,7 @@ minimumReleaseAgeExclude:
 overrides:
   dompurify: '>=3.4.11'
 patchedDependencies:
+  '@axonivy/process-editor-inscription-view@14.0.2-next.2504.e51f3910': patches/@axonivy__process-editor-inscription-view@14.0.2-next.2504.e51f3910.patch
   monaco-editor: patches/monaco-editor.patch
 preferWorkspacePackages: true
 publicHoistPattern:

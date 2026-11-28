@@ -1,0 +1,147 @@
+diff --git a/lib/inscription-view.css b/lib/inscription-view.css
+index 35659c1e3ffc089a21e406643c27795d277f2687..1c35a9e273eb888f03216e4ca12e2ab1e29b5982 100644
+--- a/lib/inscription-view.css
++++ b/lib/inscription-view.css
+@@ -1,2 +1,2 @@
+ .editor-root{height:100%}.editor{color:var(--body);height:100%;position:relative}.editor a{color:var(--P300)}.content{flex:1;overflow:hidden}.tags{gap:var(--size-1);flex-wrap:wrap;font-size:12px;display:flex}.tag,.added-tag{justify-content:center;align-items:center;gap:var(--size-1);background:var(--background);border:var(--basic-border);border-radius:1rem;padding:3px 6px;display:flex}.tag-add{background:var(--P50);border:1px solid var(--P300)}.tag-remove{all:unset;flex:1;display:flex}.tag-remove-button{border:var(--basic-border)}.tag-add .ivy{transition:transform .2s cubic-bezier(.87,0,.13,1);transform:rotate(-45deg)}.tag-remove-button .ivy{transition:transform .2s cubic-bezier(.87,0,.13,1);transform:rotate(0)}.tag-remove-button .ivy,.tag-add .ivy{color:var(--P300)}.tag-remove .ivy{color:var(--N500)}.tag-remove-button .ivy,.tag-remove .ivy,.tag-add .ivy{text-align:center;font-size:18px;line-height:12px}.tag-remove:hover,.tag-add:hover{cursor:pointer}.tag-remove:focus-visible,.tag-add:focus-visible{box-shadow:var(--focus-shadow)}.tag-add .new-tag-input,.tag-remove-button .new-tag-input{box-shadow:none;color:var(--P300);field-sizing:content;background:0 0;border:0;outline:0;min-width:10px;font-size:12px}@supports not (field-sizing:content){.tag-add .new-tag-input,.tag-remove-button .new-tag-input{width:100px}}.tags .combobox-menu{margin-top:var(--size-1)}.error-fallback{flex-direction:column;display:flex;overflow-x:auto}.error-fallback :where(h3,h5){margin-block:var(--size-1);align-items:center;gap:.3rem;display:flex}.ui-table-cell .row-expand{--tree-gap:calc((20px + var(--size-1)))}.ui-table-cell:has(.row-expand-button){padding:var(--size-1)}.ui-table-cell .row-expand-button .ivy-chevron{transform:rotate(90deg)}.ui-table-cell .row-expand-button[data-state=collapsed] .ivy-chevron{transform:rotate(0)}.ui-table-cell .row-expand-label-info{color:var(--N500);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.tabs-root{flex-direction:column;display:flex;overflow:auto}.tabs-list{width:100%;padding-bottom:var(--size-2);flex-wrap:wrap;display:flex}.tabs-trigger{all:unset;padding:var(--size-2) var(--size-4) var(--size-2) var(--size-4);height:var(--size-3);white-space:nowrap;color:var(--N500);-webkit-user-select:none;user-select:none;cursor:pointer;border-bottom:1.5px solid var(--N500);justify-content:center;align-items:center;gap:var(--size-1);flex:1;font-family:inherit;font-size:12px;line-height:1;display:flex}.tabs-trigger:focus-visible{border:1.5px solid var(--body)}.tabs-trigger:hover,.tabs-trigger[data-state=active]{border-bottom:1.5px solid var(--body);color:var(--body)}.tabs-trigger:focus-visible{box-shadow:var(--focus-shadow);position:relative}.tabs-trigger[data-message=error]{color:var(--error-color)}.tabs-trigger[data-message=warning]{color:var(--warning-color)}.tabs-content{gap:var(--size-3);flex-direction:column;display:flex;overflow:auto}.tabs-trigger i{font-size:16px}.browser-dialog{--browser-padding:20px;background-color:var(--background);color:var(--body);box-shadow:var(--editor-shadow);padding:var(--browser-padding);z-index:3;width:100%;animation:.2s cubic-bezier(.27,0,.33,1) forwards contentShow;position:absolute;top:0;bottom:0;right:0}.browser-content{justify-content:space-between;gap:var(--size-2);flex-direction:column;height:100%;display:flex}.browser-content-exit{animation:.2s cubic-bezier(.73,0,.67,0) forwards contentExit}.browser-content .ui-table-root{max-height:unset}.browser-content .browser-helptext{background-color:var(--background);border:var(--basic-border);padding:var(--input-padding);gap:var(--size-1);border-radius:var(--border-r2);flex-direction:column;max-height:80px;margin:0;font-size:12px;display:flex;overflow:auto}.browser-title{color:var(--body);gap:var(--size-4);align-items:center;margin:0;font-size:16px;font-weight:500;display:flex}.browser-title .tabs-list{padding-bottom:var(--browser-padding)}.browser-title .tabs-list .tabs-trigger{font-size:14px}.browser-table-header{justify-content:space-between;align-items:center;display:flex}.loader-message{text-align:center;font-size:14px}.loader-message p{opacity:0;animation:1.5s infinite load-fade;display:inline-block}@keyframes load-fade{0%,to{opacity:0}50%{opacity:1}}@keyframes contentShow{0%{opacity:1;right:-100%}to{opacity:1;right:0}}@keyframes contentExit{0%{opacity:1;right:0}to{opacity:1;right:-100%}}@media (prefers-reduced-motion){.browser-dialog,.browser-content-exit{animation:none!important}}.code-editor{background:var(--N25);position:relative}.code-editor .loading{padding:var(--input-padding)}.code-editor .code-input{border-radius:var(--border-r1);border:var(--input-border);color:var(--body);text-align:start;padding:var(--input-padding);font-size:12px;line-height:12px}.code-editor .code-input:focus-within{border:var(--activ-border)}.code-editor .monaco-placeholder{white-space:nowrap;text-overflow:ellipsis;width:calc(100% - 60px);color:var(--N500);pointer-events:none;-webkit-user-select:none;user-select:none;font-size:12px;font-style:italic;display:none;position:absolute;top:12px;left:11px;overflow:hidden}.code-editor .monaco-placeholder.with-lineNumbers{left:35px}.code-editor .header .type{height:100%}.maximized-code-editor{width:100%;position:relative}.maximized-code-editor .code-input{height:calc(100vh - 150px)}.maximized-script-area{gap:var(--size-1);display:flex;position:relative}.maximized-script-area .ui-button{margin:var(--size-2);background-color:var(--background);position:absolute;top:0;right:0}.maximized-script-area .ui-button:hover{background-color:var(--N200)}.maximized-script-area:has(.monaco-editor .scrollbar.visible) .ui-button{z-index:20}.maximized-script-area .code-editor{border-radius:var(--border-r1)}.ui-table-cell .monaco-editor-background{background-color:unset}.ui-table-cell:has(.script-input){padding:0}.ui-table-cell .script-input .ui-input{background-color:#0000;border:none}.ui-table-cell .script-input .ui-input::placeholder{color:var(--N500);font-style:italic}.ui-select-row[data-state=selected] .ui-table-cell .script-input .ui-input{color:var(--background)}.ui-select-row[data-state=selected] .ui-table-cell .script-input .ui-input::placeholder{color:var(--N300)}.ui-table-cell .script-input .code-editor{border-radius:0}.ui-table-cell .script-input .code-editor .code-input{padding-right:55px}.ui-table-cell .script-input .ui-button{color:var(--body)}.ui-table-cell .code-editor .code-input{border-radius:0}.ui-table-cell .script-input .maximize-code-button{background-color:var(--N25);margin-right:30px}.ui-table-root{max-height:35vh}.ui-outline .ui-table-root{max-height:unset}.ui-table-root .ui-dnd-row-handle{margin-inline-end:var(--size-2)}.script-input{gap:var(--size-1);align-items:center;display:flex;position:relative}.script-input .code-editor{flex:1;position:relative}.script-input .ui-button{margin:var(--size-2);position:absolute;top:0;right:0}.ui-table-row.row-error{border:1px solid var(--error-color)}.ui-table-row.row-warning{border:1px solid var(--warning-color)}.ui-table-row:has(+.ui-table-row.row-error){border-bottom:1px solid var(--error-color)}.ui-table-row:has(+.ui-table-row.row-warning){border-bottom:1px solid var(--warning-color)}.resizable-code-editor{width:100%;position:relative}.resizable-code-editor .resize-line{cursor:ns-resize;background-color:#0000;border:none;width:100%;height:2px;margin:0;position:absolute}.resizable-code-editor .resize-line:where(:hover,[data-resize-active=true]){background-color:var(--body)}.script-area{gap:var(--size-1);display:flex;position:relative}.script-area .resizable-code-editor{flex:1;position:relative}.script-area .ui-button{margin:var(--size-2);background-color:var(--background);position:absolute;top:0;right:0}.script-area .ui-button:hover{background-color:var(--N200)}.script-area:has(.monaco-editor .scrollbar.visible) .ui-button{z-index:20}.script-area .code-editor{border-radius:var(--border-r1)}.combobox-input{gap:var(--size-1);align-items:center;display:flex}.combobox-input .ui-input,.combobox-input .code-editor{flex:auto}.combobox-input .ivy-chevron{transition:transform .3s cubic-bezier(.87,0,.13,1);transform:rotate(90deg)}.combobox-input [aria-expanded=true] .ivy-chevron{transform:rotate(-90deg)}.combobox-menu{text-align:start;background-color:var(--background);max-height:20rem;margin:var(--size-1) 0 0 0;z-index:10;box-shadow:var(--editor-shadow);left:var(--size-2);width:calc(100% - var(--size-4));border-radius:var(--border-r2);padding:0;font-size:12px;list-style:none;position:absolute;overflow:auto}.combobox-menu-entry{gap:var(--size-2);cursor:pointer;--basic-border:1px solid var(--N200);border-bottom:var(--basic-border);flex-direction:row;padding:.5rem;display:flex;overflow:hidden}.combobox-menu-entry:last-child{border-bottom:none}.combobox-menu-entry.hover{background:var(--P50)}.combobox-menu-entry.selected{background:var(--P300);color:var(--background)}.combobox-menu-entry-additional{color:var(--N500)}.combobox-menu-entry>div{align-items:center;gap:var(--size-1);white-space:nowrap;text-overflow:ellipsis;display:flex}.combobox-menu-entry .ivy{font-size:1rem}.info-text p{white-space:pre;margin:0}.rest-method-input>:first-child:has(~*){flex:0 0 8rem}.rest-method-input>*{width:100%}.rest-target-url .path-param,.rest-target-url .query-value{color:#0891b2}.rest-target-url .query-name{color:#a16207}.role-select>button{border:var(--basic-border);color:var(--N500);border-radius:1rem;padding:12px;font-size:18px;line-height:12px}.priority-select>:first-child:has(~*){flex:0 0 8rem}.priority-select>*{width:100%}
+-/*$vite$:1*/
+\ No newline at end of file
++/*$vite$:1*/.configuration-mapping-row{display:grid;grid-template-columns:minmax(6rem,35%) minmax(0,1fr);align-items:center;gap:var(--size-2)}.configuration-mapping-name{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}.configuration-mapping-type{color:var(--N500);font-size:11px}.configuration-mapping-value{display:flex;flex-direction:column;gap:var(--size-1);min-width:0}.configuration-group-label{display:inline-flex;align-items:center;gap:var(--size-2)}.configuration-group-label .ivy{font-size:16px}.info-text p{white-space:pre-wrap}
+\ No newline at end of file
+diff --git a/lib/inscription-view.js b/lib/inscription-view.js
+index 4ad96e18988e47aea16b4958c9acbf4eb063ef62..25a2949db091921578c017bcf7be925a5c3507c0 100644
+--- a/lib/inscription-view.js
++++ b/lib/inscription-view.js
+@@ -3949,6 +3949,69 @@ function oo() {
+ 		icon: w.Configuration
+ 	};
+ }
++// A widget can belong to a choice of a multi-select of the same mask: its configKey is <selectKey>[<value>].<name>,
++// e.g. decision[invoice-discount#discount].output.discountPercent. It is shown only while the first value chosen in
++// the multi-select <selectKey> is <value>.
++var rulesConditionalKey = /^([^[\]]+)\[(.*)\]\.(.+)$/;
++var rulesConditionOf = (widget) => {
++	let match = typeof widget.configKey === "string" ? rulesConditionalKey.exec(widget.configKey) : null;
++	return match ? { selectKey: match[1], value: match[2], name: match[3] } : void 0;
++};
++var rulesIsShown = (widget, userConfig) => {
++	let condition = rulesConditionOf(widget);
++	if (!condition) return true;
++	let chosen = userConfig[condition.selectKey];
++	return typeof chosen === "string" && chosen.split(",")[0].trim() === condition.value;
++};
++// The group of the multi-select that the other fields belong to shows the icon of a rule, a group of input or of
++// output fields the icon of their direction. Other groups keep their plain name.
++var rulesGroupIcon = (group, groups) => {
++	let conditions = groups.flatMap((other) => other.widgets).map(rulesConditionOf).filter(Boolean);
++	if (group.widgets.some((widget) => conditions.some((condition) => condition.selectKey === widget.configKey))) return w.Rule;
++	let names = group.widgets.map(rulesConditionOf).filter(Boolean).map((condition) => condition.name);
++	if (names.length > 0 && names.every((name) => name.startsWith("input."))) return w.Download;
++	if (names.length > 0 && names.every((name) => name.startsWith("output."))) return w.Upload;
++	return void 0;
++};
++var rulesGroupLabel = (group) => group.icon ? j("span", {
++	className: "configuration-group-label",
++	children: [A(jn, { icon: group.icon }), group.name]
++}) : group.name;
++// The process data a mapping field names, e.g. in.invoice.total, against the Ivy type its DMN type requires: a value
++// of another kind is marked below the field. Calculations and types of other kinds are not judged.
++var rulesKinds = {
++	number: ["Number", "Integer", "Long", "Double", "Float", "Short", "Byte", "BigDecimal", "BigInteger", "int", "long", "double", "float", "short", "byte"],
++	text: ["String", "Character", "char"],
++	boolean: ["Boolean", "boolean"],
++	date: ["Date", "DateTime", "LocalDate", "LocalDateTime", "OffsetDateTime", "ZonedDateTime", "Calendar", "Instant"],
++	time: ["Time", "LocalTime", "OffsetTime"],
++	duration: ["Duration", "Period"]
++};
++var rulesSimpleName = (type) => String(type ?? "").replace(/<.*$/, "").split(".").pop();
++var rulesKindOf = (type) => Object.keys(rulesKinds).find((kind) => rulesKinds[kind].includes(rulesSimpleName(type)));
++var rulesFieldPath = /^\s*in((?:\.[A-Za-z_$][\w$]*)+)\s*$/;
++var rulesFieldType = (expression, info) => {
++	let match = rulesFieldPath.exec(expression ?? "");
++	let type = match ? info.variables.find((variable) => variable.attribute === "in")?.type : void 0;
++	for (let name of match ? match[1].slice(1).split(".") : []) {
++		type = (info.types[type] ?? []).find((field) => field.attribute === name)?.type;
++	}
++	return type;
++};
++var rulesTypeProblem = (widget, expression, info) => {
++	let required = rulesKindOf(widget.requiredType);
++	let actual = required ? rulesFieldType(expression, info) : void 0;
++	let kind = rulesKindOf(actual);
++	if (!kind || kind === required) return void 0;
++	let field = expression.trim(), dmn = rulesSimpleName(widget.requiredType), found = rulesSimpleName(actual);
++	return widget.configKey.includes("].output.")
++		? "Type mismatch: the result is " + dmn + ", " + field + " is " + found + "."
++		: "Type mismatch: " + field + " is " + found + ", the input needs " + dmn + ".";
++};
++var rulesUseIn = () => {
++	let { elementContext: e } = I();
++	return z("meta/scripting/in", { context: e, location: "userConfig" }, { variables: [], types: {} }).data;
++};
+ var so = () => {
+ 	let { t: e } = O(), { config: t } = ao(), { context: n } = I(), r = z("meta/program/editor", {
+ 		context: n,
+@@ -3962,17 +4025,23 @@ var so = () => {
+ 			message: "No configuration needed",
+ 			variant: "info"
+ 		})
+-	}) : r.map((e, t) => /* @__PURE__ */ A(W, {
+-		label: e.name,
+-		defaultOpen: t === 0,
++	}) : r.map((e) => ({
++		...e,
++		icon: rulesGroupIcon(e, r),
++		conditional: e.widgets.some((n) => rulesConditionOf(n)),
++		widgets: e.widgets.filter((n) => rulesIsShown(n, t.userConfig))
++	})).filter((e) => e.widgets.length > 0).map((e, t) => /* @__PURE__ */ A(W, {
++		label: rulesGroupLabel(e),
++		defaultOpen: t === 0 || e.conditional,
+ 		path: "userConfig",
+ 		children: e.widgets.map((e, t) => /* @__PURE__ */ A(h, {
+ 			className: "configuration-widget",
+ 			children: /* @__PURE__ */ A(co, { widget: e })
+-		}, t))
++		}, e.configKey ?? t))
+ 	}, e.name)) });
+ }, co = ({ widget: e }) => {
+ 	let { config: t, updateUserConfig: n } = ao();
++	let rulesIn = rulesUseIn();
+ 	if (lo(e)) {
+ 		let t = e.text;
+ 		if (e.multiline) {
+@@ -3989,6 +4058,34 @@ var so = () => {
+ 	}
+ 	if (uo(e)) {
+ 		let r = e.requiredType || F.STRING;
++		let rulesProblem = rulesConditionOf(e) ? rulesTypeProblem(e, t.userConfig[e.configKey], rulesIn) : void 0;
++		if (rulesConditionOf(e)) return /* @__PURE__ */ j("div", {
++			className: "configuration-mapping-row",
++			children: [/* @__PURE__ */ j("div", {
++				className: "configuration-mapping-name",
++				children: [/* @__PURE__ */ A(re, { children: e.label }), e.help && /* @__PURE__ */ A("span", {
++					className: "configuration-mapping-type",
++					children: e.help
++				})]
++			}), /* @__PURE__ */ j("div", {
++				className: "configuration-mapping-value",
++				children: [/* @__PURE__ */ A(Z, {
++					type: r,
++					value: t.userConfig[e.configKey] ?? "",
++					"aria-label": e.configKey,
++					onChange: (t) => n(e.configKey, t),
++					browsers: [
++						"attr",
++						"func",
++						"type",
++						"cms"
++					]
++				}), rulesProblem && /* @__PURE__ */ A(y, {
++					message: rulesProblem,
++					variant: "error"
++				})]
++			})]
++		});
+ 		return /* @__PURE__ */ j(k, { children: [
+ 			e.label && /* @__PURE__ */ A(re, { children: e.label }),
+ 			/* @__PURE__ */ A(Z, {

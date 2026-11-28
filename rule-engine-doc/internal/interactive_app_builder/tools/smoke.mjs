@@ -474,7 +474,7 @@ console.log('Tutorial: the path and the pages');
   await inApp(page, '[data-tab="arch"]');
   await settle(page, 400);
   let view = await arch();
-  check(view.blocks === 'browser,callable,connector,container,demo,editor,engine,files,http,ivy,portal,ui', 'the diagram has the engine with the Portal, two projects, the files of the application and the editor dialog, the container with the DMN engine, and the browser');
+  check(view.blocks === 'browser,callable,connector,container,demo,editor,engine,files,http,ivy,portal,ui', 'the diagram has the engine with the Portal, its projects and the files of the application, the container with the DMN engine, and the browser');
   check(view.links === 'callable,http,ui', 'and the three links between them');
   check(view.files === 'no model yet' && view.state === 'running' && /invoice-discount\.dmn/.test(view.demo),
     'it starts without a version: ' + view.files);

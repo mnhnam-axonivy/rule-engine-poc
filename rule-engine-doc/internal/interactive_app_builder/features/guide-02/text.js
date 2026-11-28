@@ -8,7 +8,7 @@ export const strings = {
   en: {
     'lang': 'en',
     'tour.intro.title': 'How the parts fit together',
-    'tour.intro.text': 'See the Rules Engine block by block: the Axon Ivy Engine with its two projects, the container with what is in its image, and the way one decision takes between them. Afterwards the diagram stays in the tab Architecture.',
+    'tour.intro.text': 'See the Rules Engine block by block: the Axon Ivy Engine with its projects, the container with what is in its image, and the way one decision takes between them. Afterwards the diagram stays in the tab Architecture.',
     'tour.intro.duration': 'about 3 min',
     'tour.chapter.parts': 'How the parts fit together',
     'tour.chapter.projects': 'The Ivy projects',
@@ -37,8 +37,8 @@ export const strings = {
     'tour.image.text': 'The container runs the image `apache/incubator-kie-kogito-jit-runner` of Apache KIE, as it is published. There is no Axon Ivy in it, and none of your rules. There is nothing to build: `docker run` starts it.',
     'tour.engine.title': 'DMN engine',
     'tour.engine.text': 'Apache KIE, the engine of Drools and Kogito. It answers HTTP itself, at `/jitdmn`: check a `.dmn` file, or evaluate its decisions with inputs. Every call brings the file: it compiles it, evaluates its decision tables, formulas and functions, and forgets it again. Port 8090 of your computer leads to it.',
-    'tour.editor.title': 'DMN editor dialog',
-    'tour.editor.text': 'The connector also has a dialog with the DMN editor of Apache KIE. Any process opens it for a rule, and the Portal shows it in an iframe. The DMN engine checks a change, and it is saved as a new version.',
+    'tour.editor.title': 'The editor project',
+    'tour.editor.text': '`rule-engine-editor` is a project of its own, because the DMN editor of Apache KIE is big. Its dialog opens a rule for any process, and the Portal shows it in an iframe. The DMN engine checks a change, and it is saved as a new version.',
 
     'tour.flowProcess.title': 'The process asks',
     'tour.flowProcess.text': 'The page of the demo called the process with an invoice. A Script summed its lines, and the process reaches its Business Rule Task. This is in `in.invoice`:',

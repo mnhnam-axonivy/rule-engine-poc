@@ -25,7 +25,7 @@ async function parts(d) {
   d.arch(null);
 }
 
-/** 2 — the two Ivy projects and what each is for, and the Portal beside them. */
+/** 2 — the Ivy projects and what each is for, and the Portal beside them. */
 async function projects(d) {
   await d.tab('arch');
   d.arch({ lit: ['demo'] });

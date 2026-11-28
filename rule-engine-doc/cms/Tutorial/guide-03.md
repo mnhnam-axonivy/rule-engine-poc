@@ -122,7 +122,7 @@ jq -n --rawfile model rule-engine-demo/dmn/invoice-discount.dmn       '{model: $
 
 The engine evaluates every decision of the model and answers each with its status and result. The whole API is documented at `http://localhost:8090/q/swagger-ui`.
 
-Or look at the rules in the browser, with the DMN editor dialog of the connector: its process start `RuleEditor/editRule.ivp` with the name of the model. In the Designer that is `http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/pro/rule-engine/023F72FE11C582F1/editRule.ivp?model=invoice-discount`, with the name of your workspace. It shows version 1 as diagram and decision table; **Close** leaves it without a change.
+Or look at the rules in the browser, with the DMN editor dialog of the project `rule-engine-editor`: its process start `RuleEditor/editRule.ivp` with the name of the model. In the Designer that is `http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/pro/rule-engine-editor/023F72FE11C582F1/editRule.ivp?model=invoice-discount`, with the name of your workspace. It shows version 1 as diagram and decision table; **Close** leaves it without a change.
 
 ---
 

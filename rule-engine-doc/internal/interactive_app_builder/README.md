@@ -125,7 +125,7 @@ Every chapter starts from the project as the tutorial ships it, so a learner can
 
 | Blocks | Ids |
 | --- | --- |
-| Axon Ivy Engine, its projects, the files of the application and the editor dialog | `ivy`, `portal`, `demo`, `connector`, `files`, `editor` |
+| Axon Ivy Engine, its projects (also the editor project) and the files of the application | `ivy`, `portal`, `demo`, `connector`, `files`, `editor` |
 | Docker container and the DMN engine in its image | `container`, `engine` |
 | Above the engine | `browser` |
 | Links | `http` (connector and DMN engine, both ways: `http>`, `http<`), `ui` (browser to editor dialog), `callable` (the Portal calls `Portal/RuleManagement` of the connector: `callable>`) |

@@ -39,11 +39,11 @@ The table lists the stored models with their active version, and the `.dmn` file
 
 | Action | What it does |
 | --- | --- |
-| **Edit** | Opens the active version in the editor dialog of the connector, inside the tab. A file that is not stored yet is opened from its project. **Close** brings the list back. |
+| **Edit** | Opens the active version in the editor dialog of `rule-engine-editor`, inside the tab; the project must be in the application. A file that is not stored yet is opened from its project. **Close** brings the list back. |
 | **Show versions** | Lists every version with status, source, author and what changed. Open, activate, roll back. |
 | **Refresh** | Reads the versions again. |
 
-The editor is a dialog of the connector, `RuleEditor`, with the DMN editor of Apache KIE, the one of VS Code. The Portal shows it in an iframe. The browser of the rule owner only talks to the Axon Ivy Engine, never to the DMN engine.
+The editor is the dialog `RuleEditor` of the project `rule-engine-editor`, with the DMN editor of Apache KIE, the one of VS Code. The Portal shows it in an iframe. The browser of the rule owner only talks to the Axon Ivy Engine, never to the DMN engine.
 
 ---
 
@@ -127,14 +127,14 @@ Set the variable `RuleEngine.AutoDeploy` to `false` if a project should never st
 
 ## Without the Portal
 
-The editor dialog is part of the connector, so any process can open it, with or without the Portal:
+The editor dialog is a project of its own, `rule-engine-editor`, so any process can open it, with or without the Portal:
 
 | From | How |
 | --- | --- |
-| A process of a project that requires `rule-engine` | A Dialog Call of `com.axonivy.utils.rule.engine.editor.RuleEditor`, `start(String model, Integer version)`. Version null opens the active one. |
-| A link | The process start `RuleEditor/editRule.ivp` of `rule-engine`, with the parameters `model` and `version` (optional). |
+| A process of a project that requires `rule-engine-editor` | A Dialog Call of `com.axonivy.utils.rule.engine.editor.RuleEditor`, `start(String model, Integer version)`. Version null opens the active one. |
+| A link | The process start `RuleEditor/editRule.ivp` of `rule-engine-editor`, with the parameters `model` and `version` (optional). |
 
-1. Open `RuleEditor/editRule.ivp?model=invoice-discount`. In the Designer: `http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/pro/rule-engine/023F72FE11C582F1/editRule.ivp?model=invoice-discount`.
+1. Open `RuleEditor/editRule.ivp?model=invoice-discount`. In the Designer: `http://localhost:8080/~Developer-<workspace>/Developer-<workspace>/pro/rule-engine-editor/023F72FE11C582F1/editRule.ivp?model=invoice-discount`.
 2. Select the decision in the diagram, `discount`, and click **Edit** below it: the decision table opens.
 3. Click a cell, for example the result of rule 6, "Silver customer", type the new value and press Enter.
 4. **Check** lets the DMN engine look at the model. **Save as draft** or **Save and activate** stores a new version, as in the Portal.
@@ -148,8 +148,8 @@ For now anybody may open the process start; a permission comes later. Without a 
 ```text
  Browser ──► Portal (Admin Settings) ──► rule-engine: Portal/RuleManagement ──► versions: files of the application
     │                                    (callable sub process)
-    └──► iframe: rule-engine: RuleEditor/editRule.ivp ──► dialog RuleEditor ──► versions
-                                                                       └──► DMN engine: checks a model
+    └──► iframe: rule-engine-editor: RuleEditor/editRule.ivp ──► dialog RuleEditor ──► rule-engine ──► versions
+                                                                                                   └──► DMN engine: checks a model
 ```
 
 - The Portal finds the callable sub process `Portal/RuleManagement` of the connector by its signatures in the security context, the way it finds Smart Workflow. Without it, there is no tab and nothing else changes.

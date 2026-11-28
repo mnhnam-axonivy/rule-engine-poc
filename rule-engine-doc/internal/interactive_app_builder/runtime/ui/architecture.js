@@ -9,7 +9,7 @@
  *     rule-engine-demo   (your project)
  *     rule-engine        (connector)  ⇄ HTTP  DMN engine (/jitdmn)
  *     Files of the application
- *     DMN editor dialog
+ *     rule-engine-editor (DMN editor dialog)
  *
  * The diagram is live: it shows the state of the container, the stored versions, the files of the project and
  * the last call. A walkthrough lights blocks and lets a link flow

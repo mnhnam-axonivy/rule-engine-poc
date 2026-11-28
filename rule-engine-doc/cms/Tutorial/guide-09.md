@@ -13,7 +13,7 @@ The DMN engine, the JIT runner of Apache KIE, has no authentication: anybody who
 - in a private network of the containers, without a published port, or
 - on the host of the engine, with the port bound to `127.0.0.1`, as on [Set up and run your first decision].
 
-Keep it away from the browsers of your users. The Portal and the connector call it from the engine, so only the engine needs to reach it. The editor dialog of the connector also checks and saves through the engine. For now anybody who reaches the engine may open its process start `RuleEditor/editRule.ivp`; a permission comes later. In production rule owners use it in the Portal, as on [Edit rules in the Portal].
+Keep it away from the browsers of your users. The Portal and the connector call it from the engine, so only the engine needs to reach it. The editor dialog, project `rule-engine-editor`, also checks and saves through the engine. Deploy it only where rules are changed in the browser: an application that only evaluates rules does not need it. For now anybody who reaches the engine may open its process start `RuleEditor/editRule.ivp`; a permission comes later. In production rule owners use it in the Portal, as on [Edit rules in the Portal].
 
 For HTTPS, terminate TLS at a reverse proxy in front of the DMN engine. Trust settings on the engine side belong to the REST client `ruleEngine` of the connector.
 

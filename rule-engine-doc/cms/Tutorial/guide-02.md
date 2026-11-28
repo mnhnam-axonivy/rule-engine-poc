@@ -45,9 +45,10 @@ Rules change more often than processes. That is why they live apart from them: a
 | Project | Role | What is in it |
 | --- | --- | --- |
 | `rule-engine-demo` | Stands for your own project. | The page of the invoice, the process with a Business Rule Task that decides its discount, the process data, and the rules: one `.dmn` file per model, in the folder `dmn`, here `dmn/invoice-discount.dmn`. |
-| `rule-engine` | The connector. Your project requires it. | The element **Business Rule Task**, the versions of the models and their life cycle, the mapping between process data and decisions, the client of the DMN engine, the generator that creates a `.dmn` file from a data class, the DMN editor of Apache KIE, and the variables `RuleEngine.*`. |
+| `rule-engine` | The connector. Your project requires it. | The element **Business Rule Task**, the versions of the models and their life cycle, the mapping between process data and decisions, the client of the DMN engine, the generator that creates a `.dmn` file from a data class, and the variables `RuleEngine.*`. |
+| `rule-engine-editor` | The DMN editor. It requires the connector. | The dialog `RuleEditor` with the DMN editor of Apache KIE, for the Portal and any process: check a rule, save it as a new version. A project of its own because the KIE editor is big. |
 
-In your own project you add one dependency, `rule-engine`.
+In your own project you add one dependency, `rule-engine`. Where rules are changed in the browser, deploy `rule-engine-editor` beside it.
 
 The container has no project: it runs the image of Apache KIE as it is published.
 

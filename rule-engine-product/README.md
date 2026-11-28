@@ -14,6 +14,8 @@ The Axon Ivy Rules Engine is based on Kogito and Drools from the open source pro
   and only fill in the rules.
 - **The DMN engine as Apache KIE publishes it**: you never build an image, and the container keeps no data.
   Every evaluation carries the DMN file of the version.
+- **Edit rules in the browser**: the DMN editor of Apache KIE in a dialog, project `rule-engine-editor`, for the
+  Portal and any process.
 
 ## Demo
 
@@ -35,7 +37,7 @@ Try this on the page:
    activate, then **Apply rules** again: the page shows the new version and its table, without a deployment. Roll back
    and it is as before.
 
-Change a rule in the browser with the DMN editor dialog of the connector (see
+Change a rule in the browser with the DMN editor dialog of `rule-engine-editor` (see
 [Edit rules in the browser](#edit-rules-in-the-browser)). Edit the `.dmn` files of a project in VS Code with the
 [Apache KIE DMN editor for VS Code](https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle).
 
@@ -134,16 +136,20 @@ structures, lists become collections. A file that exists is never overwritten.
 
 ## Edit rules in the browser
 
-The connector has a dialog for one rule, `com.axonivy.utils.rule.engine.editor.RuleEditor`, with the DMN editor of
-Apache KIE, the one of the KIE extension for VS Code. It opens the active version of a model, or a version you name,
+The project `rule-engine-editor` has a dialog for one rule, `com.axonivy.utils.rule.engine.editor.RuleEditor`, with
+the DMN editor of Apache KIE, the one of the KIE extension for VS Code. It is a project of its own beside the
+connector, which it requires, because the KIE editor is big (11 MB): the Market installs it with the demo; deploy it
+with your application wherever rules are changed in the browser, also for the Portal.
+
+It opens the active version of a model, or a version you name,
 or the `.dmn` file of its project if the model is not stored yet. Select the decision in the diagram and click
 **Edit** to change its table. **Check** lets the DMN engine look at it; **Save as draft** and **Save and activate**
 store a new version, which the DMN engine checks first.
 
 | Open it from | How |
 | --- | --- |
-| A process of a project that requires `rule-engine` | A Dialog Call of `RuleEditor`, `start(String model, Integer version)`; version null opens the active one |
-| A link, or a project without the dependency | The process start `RuleEditor/editRule.ivp` of `rule-engine`, with the parameters `model` and `version` (optional) |
+| A process of a project that requires `rule-engine-editor` | A Dialog Call of `RuleEditor`, `start(String model, Integer version)`; version null opens the active one |
+| A link, or a project without the dependency | The process start `RuleEditor/editRule.ivp` of `rule-engine-editor`, with the parameters `model` and `version` (optional) |
 | The Axon Ivy Portal | **Edit** in Rule Management, see below: it shows the dialog in an iframe |
 
 For now anybody may open the process start; a permission comes later. The cases it creates carry the custom field
@@ -157,7 +163,8 @@ not there and the Portal works as before.
 
 - The table lists the stored models with their active version, and the `.dmn` files of the projects that are not
   stored yet.
-- **Edit** opens the active version in the editor dialog of the connector, inside the tab. **Check** lets the DMN
+- **Edit** opens the active version in the editor dialog of `rule-engine-editor`, inside the tab; without that
+  project in the application, the tab says so. **Check** lets the DMN
   engine check the model, **Save as draft** and **Save and activate** store a new version with the source
   *portal* and the user as author. A project deployment never replaces it. **Close** brings the list back.
 - **Show versions** lists all versions: open any of them in the editor, activate it, or roll back.
@@ -165,7 +172,7 @@ not there and the Portal works as before.
 A rule owner may add inputs to a model in the Portal. The Business Rule Task sends what the active version needs:
 an input is read from the process data field of the same name. The process does not change.
 
-The browser talks only to the Axon Ivy Engine: the editor is a dialog of the connector, and the engine makes every
+The browser talks only to the Axon Ivy Engine: the editor is a dialog on the engine, and the engine makes every
 call to the DMN engine. So the DMN engine does not have to be reachable from the browsers of the users.
 
 ## Rule versions

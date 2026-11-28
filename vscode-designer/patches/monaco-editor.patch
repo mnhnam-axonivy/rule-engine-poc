@@ -1,0 +1,40 @@
+diff --git a/esm/external/monaco-lsp-client/out/index.js b/esm/external/monaco-lsp-client/out/index.js
+index 6f98ad23..3f473435 100644
+--- a/esm/external/monaco-lsp-client/out/index.js
++++ b/esm/external/monaco-lsp-client/out/index.js
+@@ -2933,7 +2933,7 @@ var TextDocumentSynchronizer = class extends Disposable {
+   }
+   _getOrCreateManagedModel(m) {
+     if (!this._started) throw new Error("Not started");
+-    const uriStr = m.uri.toString(true).toLowerCase();
++    const uriStr = m.uri.toString(true);
+     let mm = this._managedModels.get(m);
+     if (!mm) {
+       mm = new ManagedModel(m, this._server);
+@@ -2948,7 +2948,7 @@ var TextDocumentSynchronizer = class extends Disposable {
+     return mm;
+   }
+   translateBack(textDocument, position) {
+-    const uri = textDocument.uri.toLowerCase();
++    const uri = textDocument.uri;
+     const textModel = this._managedModelsReverse.get(uri);
+     if (!textModel) throw new Error(`No text model for uri ${uri}`);
+     return {
+@@ -2957,7 +2957,7 @@ var TextDocumentSynchronizer = class extends Disposable {
+     };
+   }
+   translateBackRange(textDocument, range) {
+-    const uri = textDocument.uri.toLowerCase();
++    const uri = textDocument.uri;
+     const textModel = this._managedModelsReverse.get(uri);
+     if (!textModel) throw new Error(`No text model for uri ${uri}`);
+     return {
+@@ -2992,7 +2992,7 @@ var ManagedModel = class extends Disposable {
+     super();
+     this._textModel = _textModel;
+     this._api = _api;
+-    const uri = _textModel.uri.toString(true).toLowerCase();
++    const uri = _textModel.uri.toString(true);
+     this._api.textDocumentDidOpen({ textDocument: {
+       languageId: _textModel.getLanguageId(),
+       uri,

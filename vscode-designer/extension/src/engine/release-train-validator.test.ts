@@ -1,0 +1,126 @@
+import path from 'path';
+import { expect, test, vi } from 'vitest';
+import { MIN_PATCH_VERSION, ReleaseTrainValidator } from './release-train-validator';
+
+vi.mock('vscode', () => ({
+  l10n: {
+    t: (message: string, ...args: unknown[]) =>
+      args.reduce<string>((result, arg, index) => result.replace(`{${index}}`, String(arg)), message)
+  }
+}));
+
+const extensionVersion = { major: 13, minor: 2, patch: 999, rawVersion: '13.2.999', isPreview: true, isMilestone: true, milestone: 999 };
+const validator = new ReleaseTrainValidator(extensionVersion);
+
+const testDir = (engineDir: string) => path.join(__dirname, 'release-train-validator-test', engineDir);
+
+test('valid sample', async () => {
+  expect(await validator.validate(testDir('engine'))).toEqual({ valid: true, isDirectory: true, engineVersion: '13.2.10.123' });
+});
+
+test('wrong major', async () => {
+  const customValidator = new ReleaseTrainValidator({ ...extensionVersion, major: 14 });
+  expect(await customValidator.validate(testDir('engine'))).toEqual({
+    valid: false,
+    isDirectory: true,
+    reason: `Engine major version '13.2.10.123' does not match expected major version '14.2.${MIN_PATCH_VERSION}'.`,
+    engineVersion: '13.2.10.123'
+  });
+});
+
+test('wrong minor', async () => {
+  const customValidator = new ReleaseTrainValidator({ ...extensionVersion, minor: 3 });
+  expect(await customValidator.validate(testDir('engine'))).toEqual({
+    valid: false,
+    isDirectory: true,
+    reason: `Engine minor version '13.2.10.123' does not match expected minor version '13.3.${MIN_PATCH_VERSION}'.`,
+    engineVersion: '13.2.10.123'
+  });
+});
+
+test('wrong patch', async () => {
+  const customValidator = new ReleaseTrainValidator(extensionVersion);
+  customValidator.setMinPatchVersion(999);
+  expect(await customValidator.validate(testDir('engine'))).toEqual({
+    valid: false,
+    isDirectory: true,
+    reason: "Engine patch version '13.2.10.123' is older than expected version '13.2.999'.",
+    engineVersion: '13.2.10.123'
+  });
+});
+
+test('invalid when engine directory is does not exist', async () => {
+  expect(await validator.validate('path/to/nowhere')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory 'path/to/nowhere'"
+  });
+});
+
+test('invalid when util lib is missing', async () => {
+  const result = await validator.validate(testDir('no-util-lib'));
+  expect(result.valid).toBeFalsy();
+});
+
+test('preview train', async () => {
+  expect(await validator.validate('nightly-14')).toEqual({
+    valid: false,
+    reason:
+      'Release train setting mismatch. Extension Version is a milestone release, but there is a Workspace or User VS Code setting "axonivy.engine.releaseTrain": "nightly-14". Switch the releaseTrain to \'milestone\' or install a non-milestone version of the extension.'
+  });
+  expect((await validator.validate('milestone')).valid).toBeTruthy();
+
+  expect(await validator.validate('Dev')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory 'Dev'"
+  });
+  expect((await validator.validate('13')).valid).toBeFalsy();
+  expect((await validator.validate('13.2')).valid).toBeFalsy();
+  expect((await validator.validate('13.2.0')).valid).toBeFalsy();
+});
+
+test('non-milestone preview train', async () => {
+  const validatorNotMilestone = new ReleaseTrainValidator({ ...extensionVersion, isMilestone: false, milestone: 0 });
+  expect((await validatorNotMilestone.validate('nightly-14')).valid).toBeTruthy();
+  expect(await validatorNotMilestone.validate('dev')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory 'dev'"
+  });
+  expect(await validatorNotMilestone.validate('nightly')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory 'nightly'"
+  });
+  expect(await validatorNotMilestone.validate('milestone')).toEqual({
+    valid: false,
+    reason:
+      'Release train setting mismatch. Extension Version is not a milestone release, but there is a Workspace or User VS Code setting "axonivy.engine.releaseTrain": "milestone". Switch the releaseTrain to \'nightly\' or \'dev\', or install a milestone version of the extension.'
+  });
+  expect(await validatorNotMilestone.validate('path/to/nowhere')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory 'path/to/nowhere'"
+  });
+});
+
+test('lts train', async () => {
+  const customValidator = new ReleaseTrainValidator({ ...extensionVersion, major: 14, minor: 0, patch: 10, isPreview: false });
+  expect((await customValidator.validate('nightly-14')).valid).toBeTruthy();
+  expect((await customValidator.validate('14')).valid).toBeTruthy();
+  expect((await customValidator.validate(`14.0.${MIN_PATCH_VERSION}`)).valid).toBeTruthy();
+  expect((await customValidator.validate('14.0.999')).valid).toBeTruthy();
+
+  expect(await customValidator.validate('14.b')).toEqual({
+    valid: false,
+    reason: "Invalid release train tag or engine directory '14.b'"
+  });
+  expect((await customValidator.validate('14.0')).valid).toBeFalsy();
+  expect((await customValidator.validate(`14.0.${MIN_PATCH_VERSION - 1}`)).valid).toBeFalsy();
+  expect((await customValidator.validate('14.0.0.')).valid).toBeFalsy();
+  expect((await customValidator.validate('14.1')).valid).toBeFalsy();
+  expect((await customValidator.validate('14.')).valid).toBeFalsy();
+  expect((await customValidator.validate('nightly-14.0')).valid).toBeFalsy();
+  expect((await customValidator.validate('dev')).valid).toBeFalsy();
+  expect((await customValidator.validate('nightly')).valid).toBeFalsy();
+  expect((await customValidator.validate('milestone')).valid).toBeFalsy();
+  expect((await customValidator.validate('Dev')).valid).toBeFalsy();
+  expect((await customValidator.validate('13')).valid).toBeFalsy();
+  expect((await customValidator.validate('13.2')).valid).toBeFalsy();
+});

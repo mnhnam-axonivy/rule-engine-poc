@@ -1,0 +1,35 @@
+import { window } from 'vscode';
+import { extensionLogOutputChannel } from './extension-output-channel';
+
+export const logErrorMessage = (message: string, ...items: Array<string>) => {
+  extensionLogOutputChannel.error(message, ...items);
+  return window.showErrorMessage(message, ...items);
+};
+
+export const logErrorMessageWithActions = async (message: string, actions: Record<string, () => void>) => {
+  extensionLogOutputChannel.error(message);
+  const selected = await window.showErrorMessage(message, ...Object.keys(actions));
+
+  if (selected) {
+    actions[selected]?.();
+  }
+};
+
+export const logWarningMessage = (message: string, ...items: Array<string>) => {
+  extensionLogOutputChannel.warn(message, ...items);
+  return window.showWarningMessage(message, ...items);
+};
+
+export const logInformationMessage = (message: string, ...items: Array<string>) => {
+  extensionLogOutputChannel.info(message, ...items);
+  return window.showInformationMessage(message, ...items);
+};
+
+export const logInformationMessageWithActions = async (message: string, actions: Record<string, () => void>) => {
+  extensionLogOutputChannel.info(message);
+  const selected = await window.showInformationMessage(message, ...Object.keys(actions));
+
+  if (selected) {
+    actions[selected]?.();
+  }
+};

@@ -1,0 +1,37 @@
+import { ThemeProvider, Toaster } from '@axonivy/ui-components';
+import '@axonivy/vscode-webview-common/css/colors.css';
+import * as React from 'react';
+import { createRoot } from 'react-dom/client';
+import type { NotificationType } from 'vscode-messenger-common';
+import { UsersnapProvider } from './components/feedback/UsersnapProvider';
+import { WelcomePage } from './components/WelcomePage';
+import { initTranslation } from './i18n';
+import './index.css';
+import { VersionStore } from './util/VersionStore';
+import { getMessenger, VscodeMessengerProvider } from './util/VscodeApiProvider';
+const versionType: NotificationType<string> = { method: 'versionDelivered' };
+
+export async function start() {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+  const messenger = getMessenger();
+  messenger.onNotification(versionType, VersionStore.setVersion);
+
+  initTranslation();
+  createRoot(rootElement).render(
+    <React.StrictMode>
+      <ThemeProvider disabled={true}>
+        <VscodeMessengerProvider messenger={messenger}>
+          <UsersnapProvider>
+            <WelcomePage />
+            <Toaster closeButton={true} />
+          </UsersnapProvider>
+        </VscodeMessengerProvider>
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+}
+
+start();

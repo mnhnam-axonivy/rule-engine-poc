@@ -1,0 +1,45 @@
+import path from 'path';
+import type { ExtensionContext, WebviewPanel } from 'vscode';
+import { ViewColumn, window } from 'vscode';
+import { messenger } from '../..';
+import { registerCommand } from '../../base/commands';
+import { type TreeSelection } from '../../project-explorer/tree-selection';
+import { getEditorCmdProjectPath } from '../command-helper';
+import { createWebViewContent } from '../webview-helper';
+import { CmsEditorRegistry } from './cms-editor-registry';
+import { setupCommunication } from './webview-communication';
+
+export const registerOpenCmsEditorCmd = (context: ExtensionContext, websocketUrl: URL) => {
+  const command = 'ivyEditor.openCmsEditor';
+  registerCommand(command, context, async (selection: TreeSelection) => {
+    const projectPath = await getEditorCmdProjectPath(command, selection);
+    if (!projectPath) {
+      return;
+    }
+    if (revealExistingPanel(projectPath)) {
+      return;
+    }
+    const webviewPanel = window.createWebviewPanel('cms-editor', `CMS`, ViewColumn.One);
+    setupWebviewPanel(context, websocketUrl, projectPath, webviewPanel);
+  });
+};
+
+export const revealExistingPanel = (projectPath: string) => {
+  const existingPanel = CmsEditorRegistry.find(projectPath);
+  if (!existingPanel) {
+    return false;
+  }
+  existingPanel.reveal();
+  return true;
+};
+
+export const setupWebviewPanel = (context: ExtensionContext, websocketUrl: URL, projectPath: string, webviewPanel: WebviewPanel) => {
+  CmsEditorRegistry.register(projectPath, webviewPanel);
+
+  const projectName = projectPath.split(path.sep).pop();
+  webviewPanel.title = `CMS - ${projectName}`;
+
+  setupCommunication(websocketUrl, messenger, webviewPanel, projectPath);
+  webviewPanel.webview.options = { enableScripts: true };
+  webviewPanel.webview.html = createWebViewContent(context, webviewPanel.webview, 'cms-editor');
+};

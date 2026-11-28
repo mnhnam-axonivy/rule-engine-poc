@@ -1,0 +1,25 @@
+{
+  "name": "@axonivy/vscode-webview-webservice-editor",
+  "version": "14.0.3",
+  "private": true,
+  "dependencies": {
+    "@axonivy/ui-components": "next-14.0.2",
+    "@axonivy/vscode-webview-common": "workspace:~",
+    "@axonivy/webservice-editor": "next-14.0.2",
+    "@tanstack/react-query": "^5.101.4",
+    "i18next": "26.7.2",
+    "vscode-messenger-webview": "0.4.5"
+  },
+  "devDependencies": {
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "vite build --mode development --emptyOutDir",
+    "build:production": "vite build --emptyOutDir",
+    "clean": "rimraf dist lib",
+    "type": "tsc --noEmit",
+    "watch": "vite build --mode development --watch --emptyOutDir"
+  }
+}

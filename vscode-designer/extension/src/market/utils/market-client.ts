@@ -1,0 +1,45 @@
+import {
+  findBestMatchProductDetailsByVersion,
+  findProductJsonContent,
+  findProducts,
+  findProductVersionsById,
+  type BestMatchVersion,
+  type MavenArtifactVersionModel
+} from '../generated/market-client';
+
+export type Product = {
+  id: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+};
+
+export async function searchMarketProduct(): Promise<Product[]> {
+  const response = await findProducts({ type: 'all', language: 'en' });
+  if (response.status !== 200) {
+    throw new Error(response.data.message ?? `Failed to search Market products (HTTP ${response.status})`);
+  }
+  return response.data.map(product => ({
+    id: product.id || '',
+    name: product.names?.en || 'Unnamed Product',
+    description: product.shortDescriptions?.en || '',
+    logoUrl: product.logoUrl || ''
+  }));
+}
+
+export async function getAvailableVersions(productId: string, engineVersion: string) {
+  const response = await findProductVersionsById(productId, { designerVersion: engineVersion, isShowDevVersion: true });
+  const data = response.data as unknown as MavenArtifactVersionModel[];
+  return (data || []).map(v => v.version).filter((version): version is string => typeof version === 'string' && version.length > 0);
+}
+
+export const getBestVersion = async (productId: string, designerVersion: string) => {
+  const response = await findBestMatchProductDetailsByVersion(productId, designerVersion, { isShowDevVersion: false });
+  const data = response.data as BestMatchVersion;
+  return data.version || '';
+};
+
+export async function fetchInstaller(productId: string, productVersion: string) {
+  const response = await findProductJsonContent(productId, { productVersion });
+  return JSON.stringify(response.data);
+}

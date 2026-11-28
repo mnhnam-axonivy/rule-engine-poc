@@ -1,0 +1,23 @@
+{
+  "name": "@axonivy/vscode-webview-common",
+  "private": true,
+  "version": "14.0.3",
+  "description": "VSCode extension common code for webviews",
+  "license": "(EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0)",
+  "dependencies": {
+    "@axonivy/ui-components": "next-14.0.2",
+    "@axonivy/ui-icons": "next-14.0.2",
+    "vscode-jsonrpc": "9.0.3",
+    "vscode-messenger-common": "0.4.5",
+    "vscode-messenger-webview": "0.4.5"
+  },
+  "type": "module",
+  "module": "lib/index",
+  "types": "lib/index",
+  "scripts": {
+    "build": "tsc",
+    "build:production": "pnpm run build",
+    "clean": "rimraf lib *.tsbuildinfo",
+    "type": "tsc --noEmit"
+  }
+}

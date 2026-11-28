@@ -1,0 +1,87 @@
+import path from 'path';
+import { l10n, type TextDocument } from 'vscode';
+import { logErrorMessage } from '../../../base/logging-util';
+import { IvyEngineManager } from '../../../engine/engine-manager';
+import { IvyProjectManager } from '../../../project-explorer/ivy-project-manager';
+import { treeUriToProjectPath } from '../../../project-explorer/tree-selection';
+import { resolveNamespaceFromPath } from '../../../project-explorer/utils/util';
+import { stripTrailingSeparator } from '../../../utils/path-utils';
+import { getActiveDialogPreviewDocument } from './active-dialog-preview-document';
+import { buildDialogPreviewUrl } from './dialog-preview-url-builder';
+
+const supportedDialogFileExtensions = ['.xhtml', '.f.json'] as const;
+
+export const dialogPreviewUrl = async (devContextPath: string) => {
+  const document = await getActiveDialogPreviewDocument();
+  const dialogName = document ? getDialogName(document.fileName) : undefined;
+  if (!document || document.uri.scheme !== 'file' || !dialogName) {
+    logErrorMessage(l10n.t('No dialog preview url available. Please open a .xhtml or .f.json editor.'));
+    return undefined;
+  }
+  if (isComponentDialog(document)) {
+    logErrorMessage(l10n.t('Dialog preview is not supported for Components.'));
+    return undefined;
+  }
+
+  const projectPath = await treeUriToProjectPath(document.uri, IvyProjectManager.instance.getIvyProjects());
+  if (!projectPath) {
+    logErrorMessage(l10n.t('Failed to find Ivy project associated with the active dialog file.'));
+    return undefined;
+  }
+
+  const sourceDirectory = path.join(projectPath, 'dialog');
+  if (!isWithinDirectory(document.uri.fsPath, sourceDirectory)) {
+    logErrorMessage(l10n.t('Dialog preview is only available for .xhtml or .f.json files located in dialog.'));
+    return undefined;
+  }
+
+  const namespace = await resolveNamespaceFromPath(document.uri, projectPath, 'dialog');
+  if (!namespace || !dialogName) {
+    logErrorMessage(l10n.t('Failed to derive preview information from the active dialog file.'));
+    return undefined;
+  }
+
+  const currentProject = await IvyEngineManager.instance
+    .projects()
+    .then(projects => projects?.find(project => stripTrailingSeparator(project.projectDirectory) === stripTrailingSeparator(projectPath)));
+  if (!currentProject) {
+    logErrorMessage(l10n.t('Failed to find the current Ivy project in the running engine.'));
+    return undefined;
+  }
+
+  const previewDialogId = `${namespace}.${dialogName}`;
+  return buildDialogPreviewUrl(devContextPath, currentProject.id.id, previewDialogId);
+};
+
+export const isDialogPreviewSupported = async () => {
+  const document = await getActiveDialogPreviewDocument();
+  if (!document || document.uri.scheme !== 'file') {
+    return false;
+  }
+
+  const dialogName = getDialogName(document.fileName);
+  if (!dialogName || isComponentDialog(document)) {
+    return false;
+  }
+
+  const projectPath = await treeUriToProjectPath(document.uri, IvyProjectManager.instance.getIvyProjects());
+  if (!projectPath) {
+    return false;
+  }
+
+  const sourceDirectory = path.join(projectPath, 'dialog');
+  return isWithinDirectory(document.uri.fsPath, sourceDirectory);
+};
+
+const isWithinDirectory = (filePath: string, directoryPath: string) => {
+  const relativePath = path.relative(stripTrailingSeparator(directoryPath), stripTrailingSeparator(filePath));
+  return relativePath !== '' && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+};
+
+const getDialogName = (fileName: string) => {
+  const matchedExtension = supportedDialogFileExtensions.find(extension => fileName.endsWith(extension));
+  return matchedExtension ? path.basename(fileName, matchedExtension) : undefined;
+};
+
+const isComponentDialog = (document: TextDocument) =>
+  document.fileName.endsWith('.xhtml') && /<cc:interface(?:\s|>)/.test(document.getText());

@@ -1,0 +1,296 @@
+import fs from 'fs';
+import path from 'path';
+import { l10n, Uri, type QuickPickItem } from 'vscode';
+import { localizeDialogLayout, localizeDialogType } from '../base/localized-labels';
+import { logErrorMessage } from '../base/logging-util';
+import type { CreateUserDialogParams } from '../engine/api/engine-api';
+import { IvyEngineManager } from '../engine/engine-manager';
+import { type AddCommandSelectionContext } from './ivy-project-explorer';
+import {
+  MultiStepCancelledError,
+  MultiStepInput,
+  MultiStepInvalidStateError,
+  overrideProjectDefaultNamespaceIfAllowed,
+  resolveAddCommandSelectionContext,
+  type InputStep,
+  type MSStateBase,
+  type ProjectSelection
+} from './utils/multi-step-input';
+import { validateDotSeparatedName, validateProjectArtifactName, type ResourceDirectoryTarget } from './utils/util';
+
+export const dialogTypes = ['JSF', 'Form', 'JSFOffline'] as const;
+export type DialogType = (typeof dialogTypes)[number];
+
+const fileExtensions = ['.xhtml', '.f.json'];
+
+const dialogDataClassSuffix = 'Data';
+
+const layouts = [
+  'Page Responsive Grid 2 Columns',
+  'Page Responsive Grid 4 Columns',
+  'Page Responsive Top Labels',
+  'Page Panel Grid',
+  'Component',
+  'Page'
+] as const;
+export type Layout = (typeof layouts)[number];
+interface LayoutPick extends QuickPickItem {
+  label: Layout;
+  localizedLabel?: string;
+}
+
+const templates = ['frame-10', 'frame-10-right', 'frame-10-full-width', 'basic-10'] as const;
+export type Template = (typeof templates)[number];
+interface TemplatePick extends QuickPickItem {
+  label: Template;
+  localizedLabel?: string;
+}
+
+interface NewUserDialogState extends MSStateBase {
+  project?: ProjectSelection | undefined;
+  name?: string | undefined;
+  namespace?: string | undefined;
+  layout?: LayoutPick | undefined;
+  template?: TemplatePick | undefined;
+  projectFromSelection?: ProjectSelection | undefined;
+}
+
+const prepareAndValidateFinalState: (
+  type: DialogType,
+  state: NewUserDialogState
+) => asserts state is NewUserDialogState & {
+  project: ProjectSelection;
+  name: string;
+  namespace: string;
+  layout: LayoutPick | undefined;
+  template: TemplatePick | undefined;
+} = (type, state) => {
+  const ERROR_PREFIX = 'Invalid final input. Cannot create Dialog: ';
+
+  if (state.project === undefined) {
+    throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Project selection cannot be null.');
+  }
+  if (state.name === undefined) {
+    throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Dialog name cannot be null.');
+  }
+  if (state.namespace === undefined) {
+    throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Namespace cannot be null.');
+  }
+
+  switch (type) {
+    case 'JSF':
+      if (state.layout === undefined) {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Layout is required for JSF dialogs.');
+      }
+      if (state.layout.label === 'Page') {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + '"Page" layout is only valid in Offline Dialog.');
+      }
+      if (state.template === undefined && state.layout.label !== 'Component') {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Template is required for JSF dialogs with non-Component layouts.');
+      }
+      break;
+    case 'Form':
+      if (state.layout !== undefined) {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Layout should not be set for Form dialogs.');
+      }
+      if (state.template !== undefined) {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Template should not be set for Form dialogs.');
+      }
+      break;
+    case 'JSFOffline':
+      state.layout = { label: 'Page' };
+      if (state.template !== undefined) {
+        throw new MultiStepInvalidStateError(ERROR_PREFIX + 'Template should not be set for JSF Offline dialogs.');
+      }
+      break;
+    default:
+      throw new Error('Unsupported dialog type: ' + type);
+  }
+};
+
+export const addNewUserDialog = async (selectionContext: AddCommandSelectionContext, type: DialogType, pid?: string) => {
+  const validateFinal = async (typedDialogNamespace: string): Promise<string | undefined> => {
+    return validateDotSeparatedName(typedDialogNamespace) ?? (await validateNotExisting(typedDialogNamespace));
+  };
+
+  const validateNotExisting = async (typedDialogNamespace: string): Promise<string | undefined> => {
+    const projectPath = newUserDialogData.project?.path ?? '';
+    const name = newUserDialogData.name ?? '';
+    const typedNamespacePath = typedDialogNamespace.replace(/\./g, path.sep);
+    for (const ext of fileExtensions) {
+      const absPathDialogFile = Uri.file(path.join(projectPath, resourceDirectoryTarget, typedNamespacePath, name, `${name}${ext}`)).fsPath;
+      if (fs.existsSync(absPathDialogFile)) {
+        return l10n.t('A dialog with this name and namespace already exists in this project.');
+      }
+    }
+    // Also make sure that no dataclass exists that clashes with the dialogs new dataclass
+    const dataClassFQN = `${typedDialogNamespace}.${name}.${name}${dialogDataClassSuffix}`;
+    const dataClassPath = dataClassFQN.replace(/\./g, path.sep) + '.d.json';
+    const absPathDataClassFile = Uri.file(path.join(projectPath, resourceDirectoryDataclassTarget, dataClassPath)).fsPath;
+    if (fs.existsSync(absPathDataClassFile)) {
+      return l10n.t(
+        `This dialogs dataclass '{0}' that would be created already exists in the project in the '/{1}' directory.`,
+        dataClassPath,
+        resourceDirectoryDataclassTarget
+      );
+    }
+  };
+
+  const resourceDirectoryTarget: ResourceDirectoryTarget = 'dialog';
+  const resourceDirectoryDataclassTarget: ResourceDirectoryTarget = 'dataclass';
+  const existingProjects = selectionContext.existingIvyProjects;
+  const { projectFromSelection, namespaceFromSelection } = await resolveAddCommandSelectionContext(
+    selectionContext,
+    resourceDirectoryTarget
+  );
+
+  const stepProject: InputStep<NewUserDialogState> = async (input: MultiStepInput<NewUserDialogState>, state: NewUserDialogState) => {
+    if (state.projectFromSelection && state.project === undefined) {
+      state.project = state.projectFromSelection;
+      state.projectFromSelection = undefined;
+    } else {
+      const previousProject = state.project;
+      state.project = await input.showQuickPick<ProjectSelection>({
+        title: state.dialogTitle,
+        titleSuffix: l10n.t('Choose project'),
+        placeholder: l10n.t('Select one of the available projects'),
+        currentStep: state.currentStep,
+        totalSteps: state.totalSteps,
+        value: state.project ? state.project.label : '',
+        items: existingProjects.map(project => {
+          return {
+            label: project.substring(project.lastIndexOf(path.sep) + 1),
+            description: project,
+            path: project
+          };
+        })
+      });
+      await overrideProjectDefaultNamespaceIfAllowed(state, previousProject, resourceDirectoryTarget, validateDotSeparatedName);
+    }
+  };
+
+  const stepName: InputStep<NewUserDialogState> = async (input: MultiStepInput<NewUserDialogState>, state: NewUserDialogState) => {
+    state.name = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose name'),
+      placeholder: l10n.t('Enter a name. Must start with a letter or underscore. Allowed characters: a-z, A-Z, 0-9, _'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.name,
+      validationFunction: validateProjectArtifactName,
+      onBack: (typedValue: string) => {
+        state.name = typedValue;
+      }
+    });
+  };
+
+  const stepNamespace: InputStep<NewUserDialogState> = async (input: MultiStepInput<NewUserDialogState>, state: NewUserDialogState) => {
+    state.namespace = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose namespace'),
+      placeholder: l10n.t('Enter Namespace separated by ".". Allowed characters: a-z, A-Z, 0-9, _, .'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.namespace,
+      validationFunction: validateFinal,
+      onBack: (typedValue: string) => {
+        state.namespace = typedValue;
+      }
+    });
+  };
+
+  const stepLayout: InputStep<NewUserDialogState> = async (input: MultiStepInput<NewUserDialogState>, state: NewUserDialogState) => {
+    state.layout = await input.showQuickPick<LayoutPick>({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose layout'),
+      placeholder: l10n.t('Select one of the available layouts'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.layout ? state.layout.label : '',
+      items: layouts
+        .filter(layout => layout !== 'Page')
+        .map(layout => {
+          return {
+            label: layout,
+            localizedLabel: localizeDialogLayout(layout)
+          };
+        }),
+      onBack: (typedValue: string) => {
+        state.layout = { label: typedValue as Layout };
+      }
+    });
+  };
+
+  const stepTemplate: InputStep<NewUserDialogState> = async (input: MultiStepInput<NewUserDialogState>, state: NewUserDialogState) => {
+    if (state.layout !== undefined && state.layout.label === 'Component') {
+      return;
+    } else {
+      state.template = await input.showQuickPick<TemplatePick>({
+        title: state.dialogTitle,
+        titleSuffix: l10n.t('Choose template'),
+        placeholder: l10n.t('Select one of the available templates'),
+        currentStep: state.currentStep,
+        totalSteps: state.totalSteps,
+        value: state.template ? state.template.label : '',
+        items: templates.map(template => {
+          return {
+            label: template,
+            localizedLabel: template
+          };
+        }),
+        onBack: (typedValue: string) => {
+          state.template = { label: typedValue as Template };
+        }
+      });
+    }
+  };
+
+  let steps: InputStep<NewUserDialogState>[];
+  switch (type) {
+    case 'Form':
+      steps = [stepProject, stepName, stepNamespace];
+      break;
+    case 'JSFOffline':
+      steps = [stepProject, stepName, stepNamespace];
+      break;
+    case 'JSF':
+      steps = [stepProject, stepName, stepNamespace, stepLayout, stepTemplate];
+      break;
+    default:
+      throw new Error('Unsupported dialog type: ' + type);
+  }
+
+  const newUserDialogData: NewUserDialogState = {
+    dialogTitle: l10n.t('Add New {0}', localizeDialogType(type)),
+    currentStep: 1,
+    totalSteps: steps.length,
+    namespace: namespaceFromSelection,
+    projectFromSelection: projectFromSelection
+  };
+
+  try {
+    await new MultiStepInput<NewUserDialogState>().stepThrough(steps, newUserDialogData);
+  } catch (err) {
+    if (err instanceof MultiStepCancelledError) {
+      if (err.message.trim()) {
+        logErrorMessage(err.message);
+      }
+      return;
+    } else {
+      throw err;
+    }
+  }
+
+  // Let potential errors propagate without catching
+  prepareAndValidateFinalState(type, newUserDialogData);
+  const createDialogInput: CreateUserDialogParams = {
+    type,
+    name: newUserDialogData.name,
+    namespace: newUserDialogData.namespace,
+    projectDir: newUserDialogData.project.path,
+    pid,
+    layout: newUserDialogData.layout?.label,
+    template: newUserDialogData.template?.label
+  };
+  await IvyEngineManager.instance.createUserDialog(createDialogInput);
+};

@@ -1,0 +1,145 @@
+import fs from 'fs';
+import path from 'path';
+import { l10n, Uri } from 'vscode';
+import { localizeProcessKind } from '../base/localized-labels';
+import { logErrorMessage } from '../base/logging-util';
+import type { CreateProcessParams } from '../engine/api/engine-api';
+import { IvyEngineManager } from '../engine/engine-manager';
+import { type AddCommandSelectionContext } from './ivy-project-explorer';
+import {
+  MultiStepCancelledError,
+  MultiStepInput,
+  MultiStepInvalidStateError,
+  overrideProjectDefaultNamespaceIfAllowed,
+  resolveAddCommandSelectionContext,
+  type InputStep,
+  type MSStateBase,
+  type ProjectSelection
+} from './utils/multi-step-input';
+import { validateNamespace, validateProjectArtifactName, type ResourceDirectoryTarget } from './utils/util';
+
+export type ProcessKind = 'Business Process' | 'Callable Sub Process' | 'Web Service Process' | '';
+
+interface NewProcessState extends MSStateBase {
+  project?: ProjectSelection | undefined;
+  name?: string | undefined;
+  namespace?: string | undefined;
+  projectFromSelection?: ProjectSelection | undefined;
+}
+
+export const addNewProcess = async (selectionContext: AddCommandSelectionContext, kind: ProcessKind = 'Business Process', pid?: string) => {
+  const validateFinal = async (typedProcessNamespace: string): Promise<string | undefined> => {
+    return validateNamespace(typedProcessNamespace) ?? (await validateNotExisting(typedProcessNamespace));
+  };
+
+  const validateNotExisting = async (typedProcessNamespace: string): Promise<string | undefined> => {
+    const projectPath = newProcessData.project?.path ?? '';
+    const name = newProcessData.name ?? '';
+    const absPathProcessFile = Uri.file(path.join(projectPath, resourceDirectoryTarget, typedProcessNamespace, `${name}.p.json`)).fsPath;
+    if (fs.existsSync(absPathProcessFile)) {
+      return l10n.t('A process with this name and namespace already exists in this project.');
+    }
+  };
+
+  const resourceDirectoryTarget: ResourceDirectoryTarget = 'process';
+  const existingProjects = selectionContext.existingIvyProjects;
+  const { projectFromSelection, namespaceFromSelection } = await resolveAddCommandSelectionContext(
+    selectionContext,
+    resourceDirectoryTarget
+  );
+
+  const stepProject: InputStep<NewProcessState> = async (input: MultiStepInput<NewProcessState>, state: NewProcessState) => {
+    if (state.projectFromSelection && state.project === undefined) {
+      state.project = state.projectFromSelection;
+      state.projectFromSelection = undefined;
+    } else {
+      const previousProject = state.project;
+      state.project = await input.showQuickPick<ProjectSelection>({
+        title: state.dialogTitle,
+        titleSuffix: l10n.t('Choose project'),
+        placeholder: l10n.t('Select one of the available projects'),
+        currentStep: state.currentStep,
+        totalSteps: state.totalSteps,
+        value: state.project ? state.project.label : '',
+        items: existingProjects.map(project => {
+          return {
+            label: project.substring(project.lastIndexOf(path.sep) + 1),
+            description: project,
+            path: project
+          };
+        })
+      });
+      await overrideProjectDefaultNamespaceIfAllowed(state, previousProject, resourceDirectoryTarget, validateNamespace);
+    }
+  };
+
+  const stepName: InputStep<NewProcessState> = async (input: MultiStepInput<NewProcessState>, state: NewProcessState) => {
+    state.name = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose name'),
+      placeholder: l10n.t('Enter a name. Must start with a letter or underscore. Allowed characters: a-z, A-Z, 0-9, _'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.name,
+      validationFunction: validateProjectArtifactName,
+      onBack: (typedValue: string) => {
+        state.name = typedValue;
+      }
+    });
+  };
+
+  const stepNamespace: InputStep<NewProcessState> = async (input: MultiStepInput<NewProcessState>, state: NewProcessState) => {
+    state.namespace = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose namespace'),
+      placeholder: l10n.t('Enter Namespace separated by "/". Allowed characters: a-z, A-Z, 0-9, _, /'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.namespace,
+      validationFunction: validateFinal,
+      onBack: (typedValue: string) => {
+        state.namespace = typedValue;
+      }
+    });
+  };
+
+  // Define step order
+  const steps: InputStep<NewProcessState>[] = [stepProject, stepName, stepNamespace];
+
+  const newProcessData: NewProcessState = {
+    dialogTitle: l10n.t('Add New {0}', localizeProcessKind(kind)),
+    currentStep: 1,
+    totalSteps: steps.length,
+    namespace: namespaceFromSelection,
+    projectFromSelection: projectFromSelection
+  };
+
+  try {
+    await new MultiStepInput<NewProcessState>().stepThrough(steps, newProcessData);
+  } catch (err) {
+    if (err instanceof MultiStepCancelledError) {
+      if (err.message.trim()) {
+        logErrorMessage(err.message);
+      }
+      return;
+    } else {
+      throw err;
+    }
+  }
+
+  if (newProcessData.project != undefined && newProcessData.name !== undefined && newProcessData.namespace !== undefined) {
+    const createProcessInput: CreateProcessParams = {
+      name: newProcessData.name,
+      namespace: newProcessData.namespace,
+      path: newProcessData.project.path,
+      kind,
+      pid
+    };
+
+    await IvyEngineManager.instance.createProcess(createProcessInput);
+  } else {
+    throw new MultiStepInvalidStateError(
+      'Process creation failed due to corrupted input state. Current input state: ' + JSON.stringify(newProcessData)
+    );
+  }
+};

@@ -1,0 +1,34 @@
+import { expect, test } from '~/fixtures/baseTest';
+import { ProcessEditor } from '~/page-objects/process-editor';
+import { VsCodeBrowser } from '~/page-objects/vscode-browser';
+import { screenshotProject } from '~/workspaces/workspace';
+import { FormEditor } from '../page-objects/form-editor';
+import { screenshot } from './screenshot-util';
+
+test.use({ workspace: screenshotProject });
+
+test('process editor', async ({ wsPage }) => {
+  const editor = new ProcessEditor(wsPage, 'quickstart.p.json');
+  await editor.open();
+  await expect(editor.graph).toBeVisible();
+  await screenshot(wsPage.page, 'editor-process');
+});
+
+test('form editor preview', async ({ wsPage, electronApp }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+
+  await expect(editor.main.locator('.selected')).toHaveCount(0);
+  const timeout = { timeout: 3_000 };
+  await wsPage.executeCommand('Axon Ivy: Deploy All Projects');
+  await wsPage.statusMessageContains('Axon Ivy: Success - Deploying project');
+  const vscodeBrowser = await VsCodeBrowser.openBrowser(() => editor.toolbar.getByRole('button', { name: 'Open Dialog Preview' }).click(), { electronApp });
+  await expect(vscodeBrowser.browserPage.locator('#iFrameForm\\:frameTaskName')).toHaveText('Preview', timeout);
+  await expect(async () => {
+    await vscodeBrowser.reload();
+    await expect(vscodeBrowser.browserPage.frameLocator('iframe').getByRole('textbox')).toBeVisible(timeout);
+  }).toPass();
+
+  await new Promise(resolve => setTimeout(resolve, 1000)); // wait for the preview to be fully rendered
+  await screenshot(wsPage.page, 'editor-form-preview');
+});

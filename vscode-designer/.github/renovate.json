@@ -1,0 +1,62 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>axonivy/renovate-config:npm",
+    "group:allNonMajor",
+    "security:minimumReleaseAgeNpm"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/__fixtures__/**"
+  ],
+  "postUpdateOptions": ["pnpmDedupe"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^build\\/Dockerfile\\.playwright$/"],
+      "matchStrings": ["ARG CODE_SERVER_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "coder/code-server",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^playwright\\/tests\\/utils\\/download-vscode\\.ts$/",
+        "/^aitest\\/mcp\\.sh$/"
+      ],
+      "matchStrings": ["VSCODE_VERSION\\s*=\\s*['\"](?<currentValue>\\d+\\.\\d+\\.\\d+)['\"]"],
+      "depNameTemplate": "microsoft/vscode",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["@axonivy/*", "@types/vscode", "vscode-messenger*", "@codingame/*"],
+      "enabled": false
+    },
+    {
+      "description": "ignore vscode engine",
+      "matchPackageNames": ["vscode"],
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    },
+    {
+      "description": "ignore private openapi maven artifact",
+      "matchManagers": ["maven"],
+      "matchPackageNames": ["ch.ivyteam.openapi:openapi"],
+      "enabled": false
+    }
+  ]
+}

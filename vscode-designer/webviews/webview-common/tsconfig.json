@@ -1,0 +1,9 @@
+{
+  "extends": "@axonivy/ts-config/package",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib",
+    "types": ["node", "reflect-metadata", "vite/client"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,24 @@
+packages:
+  - webviews/*
+  - playwright
+  - extension
+minimumReleaseAgeExclude:
+  - '@axonivy/*'
+overrides:
+  dompurify: '>=3.4.11'
+patchedDependencies:
+  monaco-editor: patches/monaco-editor.patch
+preferWorkspacePackages: true
+publicHoistPattern:
+  - eslint
+registries:
+  '@axonivy': 'https://npmjs-registry.ivyteam.ch/'
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200 # minutes (30 days)
+allowBuilds:
+  '@swc/core': false
+  '@vscode/vsce-sign': false
+  esbuild: false
+  keytar: false
+verifyDepsBeforeRun: warn
+autoDedupe: true

@@ -1,0 +1,100 @@
+name: AI-build
+on:
+  schedule:
+    - cron: '0 1 * * 0' # 1 AM on Sunday
+  push:
+    branches:
+      - ai.*
+  workflow_dispatch:
+    inputs:
+      test_unit:
+        description: Test class name without .java, e.g. MarketTest, ConfigurationTest, or UiTest. Leave empty to run all.
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  copilot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Setup Java JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: temurin
+      - name: Setup Maven
+        uses: stCarolas/setup-maven@v5.1
+        with:
+          maven-version: 3.10.1
+      - name: Verify GH skill installable
+        shell: bash
+        run: |
+          gh --version
+          install_dir="$RUNNER_TEMP/gh-skills"
+          bash aitest/skill-install.sh "$install_dir"
+      - name: Build VSC
+        env:
+          SKIP_IVY_SCHEMAS: '1'
+        run: |
+          corepack enable
+          pnpm install
+          pnpm run build:production
+          pnpm run package
+      - name: Build with Maven
+        run: |
+          export HOST_UID="$(id -u)"
+          export HOST_GID="$(id -g)"
+          maven_args=(-f aitest/pom.xml -ntp -fail-at-end)
+          if [[ -n "$TEST_UNIT" ]]; then
+            maven_args+=("-Dtest=$TEST_UNIT" "-Dsurefire.failIfNoSpecifiedTests=false")
+          fi
+          mvn clean verify "${maven_args[@]}"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_TOKEN }}
+          TESTCONTAINERS_REUSE_ENABLE: 'false'
+          TEST_UNIT: ${{ inputs.test_unit }}
+      - name: Print AI test report
+        if: always()
+        run: |
+          shopt -s nullglob
+          reports=(aitest/ai-dev-tests/target/ai-test-report-*.md)
+          if ((${#reports[@]})); then
+            for report in "${reports[@]}"; do
+              cat "$report" | tee -a "$GITHUB_STEP_SUMMARY"
+              printf '\n' | tee -a "$GITHUB_STEP_SUMMARY"
+            done
+          else
+            echo 'No AI test metrics were recorded.' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Archive test reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-reports
+          retention-days: 5
+          path: |
+            ci-user-data/logs/**/*
+            ci-user-data/code.log
+            ci-user-data/xvfb-errors.log
+            ci-user-data/process*.log
+            **/*.log
+            aitest/ai-dev-tests/target/ai-test-report-*.md
+            aitest/ai-dev-tests/target/surefire-reports/*.xml
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            aitest/*/target/*-reports/*.xml
+            !aitest/*/target/*-reports/failsafe-summary.xml
+          action_fail: true

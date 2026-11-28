@@ -1,0 +1,102 @@
+import 'reflect-metadata';
+import { l10n, type ExtensionContext } from 'vscode';
+import { Messenger, type MessengerDiagnostic } from 'vscode-messenger';
+import { LocalMcpServer } from './ai/tools/local-mcp';
+import { registerTools } from './ai/tools/tools';
+import { checkSettings } from './base/check-settings';
+import { executeCommand, registerCommand } from './base/commands';
+import { config } from './base/configurations';
+import { showExtensionLog } from './base/extension-output-channel';
+import { ensureJavaExtensionInstalled } from './base/java-extension-api';
+import { validateAndSyncJavaVersion } from './base/java-version-validation';
+import { logWarningMessage } from './base/logging-util';
+import { validateMavenExecutable } from './base/maven-version-validation';
+import { newMarkdownString, StatusBar, type QuickPickOptionId } from './base/status-bar';
+import { addDevContainer } from './dev-container/command';
+import { conditionalWelcomePage, showWelcomePage } from './editors/welcome-page/welcome-page';
+import { IvyDiagnostics } from './engine/diagnostics';
+import { IvyEngineManager } from './engine/engine-manager';
+import { showEngineLog } from './engine/engine-output-channel';
+import { openMarket } from './market/market-webview';
+import { registerAddDependencyHandler } from './maven/add-dependency';
+import { registerDownloadSourcesHandler } from './maven/download-sources';
+import { IvyProjectExplorer } from './project-explorer/ivy-project-explorer';
+import { IvyProjectManager } from './project-explorer/ivy-project-manager';
+import { resolveExtensionVersion } from './version/extension-version';
+import { showRuntimeLog } from './views/runtimelog-view';
+
+let ivyEngineManager: IvyEngineManager;
+let localMcpServer: LocalMcpServer;
+let localMcpStartup: Promise<void> | undefined;
+export const messenger = new Messenger({ ignoreHiddenViews: false });
+
+export async function activate(context: ExtensionContext): Promise<MessengerDiagnostic> {
+  StatusBar.init(context);
+  StatusBar.overrideStatusBar({
+    text: l10n.t('Activating...'),
+    tooltip: newMarkdownString(l10n.t('Activating Axon Ivy Extension ...')),
+    icon: '$(loading~spin)',
+    isClickable: false
+  });
+  try {
+    registerCommand('ivy.addDevContainer', context, () => addDevContainer(context.extensionUri));
+    registerCommand('ivy.openSettings', context, () => executeCommand('workbench.action.openSettings', `@ext:${context.extension.id}`));
+    await validateAndSyncJavaVersion();
+    await validateMavenExecutable();
+    checkSettings();
+    ensureJavaExtensionInstalled();
+    resolveExtensionVersion(context);
+    ivyEngineManager = IvyEngineManager.init(context);
+    registerCommand('engine.deployProjects', context, () => ivyEngineManager.deployProjects());
+    registerCommand('ivyProjects.migrateProgramConfigs', context, () => ivyEngineManager.migrateProgramConfigs());
+    registerCommand('engine.switchEngineReleaseTrain', context, () => ivyEngineManager.switchEngineReleaseTrain());
+    registerCommand('engine.activateAnimation', context, async () => await config.setProcessAnimationAnimate(true));
+    registerCommand('engine.deactivateAnimation', context, async () => await config.setProcessAnimationAnimate(false));
+    registerCommand('ivyPanelView.openRuntimeLog', context, () => showRuntimeLog());
+    registerCommand('ivyPanelView.openExtensionLog', context, () => showExtensionLog());
+    registerCommand('ivyPanelView.openEngineLog', context, () => showEngineLog());
+    registerCommand('ivyPanelView.openWelcomePage', context, () => showWelcomePage(context));
+    registerCommand('ivyPanelView.openMarket', context, () => openMarket());
+    registerCommand('ivy.showStatusBarQuickPick', context, (visibleOptions?: QuickPickOptionId[]) =>
+      StatusBar.showStatusBarQuickPick(visibleOptions)
+    );
+
+    registerTools(context);
+    startLocalMcpServer();
+
+    IvyDiagnostics.init(context);
+    conditionalWelcomePage(context);
+
+    IvyProjectManager.init(context);
+    IvyProjectExplorer.init(context);
+    registerAddDependencyHandler(context);
+    registerDownloadSourcesHandler(context);
+    StatusBar.refreshStatusBar();
+    return messenger.diagnosticApi();
+  } catch (error) {
+    StatusBar.overrideStatusBar({
+      text: l10n.t('Activation failed'),
+      tooltip: newMarkdownString(
+        `${l10n.t('Activation of Axon Ivy Extension failed.')}\n${l10n.t('Check the error logs for more details.')}`
+      ),
+      icon: '$(error)',
+      isError: true,
+      visibleOptions: ['openRuntimeLog', 'openExtensionLog', 'openEngineLog', 'openSettings']
+    });
+    throw error;
+  }
+}
+
+export async function deactivate() {
+  await localMcpStartup;
+  await localMcpServer?.stop();
+  await ivyEngineManager?.stop();
+}
+
+const startLocalMcpServer = () => {
+  localMcpServer = new LocalMcpServer();
+  localMcpStartup = localMcpServer.start(config.localMcp()).catch(error => {
+    const reason = error instanceof Error ? error.message : String(error);
+    logWarningMessage(l10n.t('Local MCP server failed to start: {0}', reason));
+  });
+};

@@ -1,0 +1,476 @@
+import type { TypeSearchRequest } from '@axonivy/process-editor-inscription-protocol';
+import { DisposableCollection } from '@eclipse-glsp/vscode-integration';
+import type { ColorTheme, CustomDocument, WebviewPanel } from 'vscode';
+import {
+  ColorThemeKind,
+  commands,
+  SnippetString,
+  CompletionItem as VSCodeCompletionItem,
+  CompletionItemKind as VSCodeCompletionItemKind,
+  Position as VSCodePosition,
+  Range as VSCodeRange,
+  window
+} from 'vscode';
+import {
+  CompletionItem,
+  CompletionItemKind,
+  CompletionItemTag,
+  type CompletionList,
+  type CompletionParams,
+  CompletionRequest,
+  DidChangeTextDocumentNotification,
+  type DidChangeTextDocumentParams,
+  DidOpenTextDocumentNotification,
+  type DidOpenTextDocumentParams,
+  Position,
+  Range,
+  TextEdit
+} from 'vscode-languageclient';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Messenger } from 'vscode-messenger';
+import type { MessageParticipant, NotificationType, RequestType } from 'vscode-messenger-common';
+import { IvyBrowserViewProvider } from '../../views/browser/ivy-browser-view-provider';
+import { JavaProvider } from '../ivy-script/java-provider';
+import { isAllTypesSearchRequest, isSearchResult } from '../notification-helper';
+import { WebSocketForwarder } from '../websocket-forwarder';
+import { handleActionLocal, type SendInscriptionNotification } from './inscription-view/action-handlers';
+import { registerDefinitionNavigation } from '../ivy-script/definition-navigation';
+import { addJavaCompletionDocumentation, javaCompletionDocumentation } from '../ivy-script/java-completion-documentation';
+
+const ColorThemeChangedNotification: NotificationType<'dark' | 'light'> = { method: 'colorThemeChanged' };
+const WebviewConnectionReadyNotification: NotificationType<void> = { method: 'connectionReady' };
+const InitializeConnectionRequest: RequestType<void, void> = { method: 'initializeConnection' };
+const StartProcessRequest: RequestType<string, Promise<void>> = { method: 'startProcess' };
+
+// Save document notification - allow webview to trigger save when Monaco captures Cmd+S
+const SaveDocumentNotification: NotificationType<void> = { method: 'document/save' };
+const DownloadDependencySourcesNotification: NotificationType<void> = { method: 'java/downloadDependencySources' };
+
+const InscriptionWebSocketMessage: NotificationType<unknown> = { method: 'inscriptionWebSocketMessage' };
+const IvyScriptWebSocketMessage: NotificationType<unknown> = { method: 'ivyScriptWebSocketMessage' };
+
+export const setupCommunication = (
+  websocketUrl: URL,
+  messenger: Messenger,
+  webviewPanel: WebviewPanel,
+  document: CustomDocument,
+  messageParticipant?: MessageParticipant
+) => {
+  if (messageParticipant === undefined) {
+    return;
+  }
+  const toDispose = new DisposableCollection(
+    new InscriptionWebSocketForwarder(websocketUrl, messenger, messageParticipant, document),
+    new IvyScriptWebSocketForwarder(websocketUrl, messenger, messageParticipant, document),
+    messenger.onNotification(WebviewConnectionReadyNotification, () => handleWebviewReadyNotification(messenger, messageParticipant), {
+      sender: messageParticipant
+    }),
+    registerDefinitionNavigation(messenger, messageParticipant, document.uri),
+    messenger.onRequest(StartProcessRequest, startUri => IvyBrowserViewProvider.instance.openEngineRelativeUrl(startUri), {
+      sender: messageParticipant
+    }),
+    // Resolve the project from this webview's document, never from a path supplied by the link
+    // or an unrelated active editor. This notification cannot execute arbitrary commands.
+    messenger.onNotification(
+      DownloadDependencySourcesNotification,
+      async () => {
+        await commands.executeCommand('ivyProjects.downloadDependencySources', document.uri);
+      },
+      { sender: messageParticipant }
+    ),
+    // Save document handler - triggered when Monaco captures Cmd+S in webview
+    messenger.onNotification(
+      SaveDocumentNotification,
+      () => {
+        commands.executeCommand('workbench.action.files.save');
+      },
+      { sender: messageParticipant }
+    ),
+    window.onDidChangeActiveColorTheme(theme =>
+      messenger.sendNotification(ColorThemeChangedNotification, messageParticipant, vsCodeThemeToMonacoTheme(theme))
+    )
+  );
+  webviewPanel.onDidDispose(() => toDispose.dispose());
+};
+
+const handleWebviewReadyNotification = async (messenger: Messenger, messageParticipant: MessageParticipant) => {
+  await messenger.sendRequest(InitializeConnectionRequest, messageParticipant);
+  messenger.sendNotification(ColorThemeChangedNotification, messageParticipant, vsCodeThemeToMonacoTheme(window.activeColorTheme));
+};
+
+const vsCodeThemeToMonacoTheme = (theme: ColorTheme) => {
+  return theme.kind === ColorThemeKind.Dark || theme.kind === ColorThemeKind.HighContrast ? 'dark' : 'light';
+};
+
+class InscriptionWebSocketForwarder extends WebSocketForwarder {
+  private readonly sendInscriptionNotification: SendInscriptionNotification;
+
+  currentTypeSearch: { type: string; id: number } | undefined;
+
+  readonly javaCompletion: JavaProvider;
+
+  constructor(websocketUrl: URL, messenger: Messenger, messageParticipant: MessageParticipant, document: CustomDocument) {
+    super(websocketUrl, 'ivy-inscription-lsp', messenger, messageParticipant, InscriptionWebSocketMessage);
+    this.sendInscriptionNotification = (type: string) =>
+      this.messenger.sendNotification(this.notificationType, this.messageParticipant, JSON.stringify({ method: type }));
+    this.javaCompletion = new JavaProvider(document.uri);
+  }
+
+  protected override handleClientMessage(message: unknown) {
+    const handled = handleActionLocal(message, this.sendInscriptionNotification);
+    if (handled) {
+      return;
+    }
+    if (isAllTypesSearchRequest<TypeSearchRequest>(message)) {
+      this.currentTypeSearch = { type: message.params.type, id: message.id };
+    }
+    super.handleClientMessage(message);
+  }
+
+  protected override async handleServerMessage(message: string) {
+    const obj = JSON.parse(message);
+    if (this.currentTypeSearch?.type && isSearchResult(obj, this.currentTypeSearch.id)) {
+      const javaTypes = await this.javaCompletion.javaTypes(this.currentTypeSearch.type);
+      obj.result.push(...javaTypes);
+      message = JSON.stringify(obj);
+    }
+    super.handleServerMessage(message);
+  }
+}
+
+class IvyScriptWebSocketForwarder extends WebSocketForwarder {
+  private readonly documents = new Map<string, TextDocument>();
+
+  private currentCompletion:
+    | {
+        id: number;
+        completionItems: Promise<VSCodeCompletionItem[]>;
+        contextualJavaCompletionItems: Promise<VSCodeCompletionItem[]>;
+        document: TextDocument;
+        position: Position;
+        completionStartCharacter: number;
+      }
+    | undefined;
+  private currentHover: { id: number; documentation: Promise<string | undefined> } | undefined;
+  readonly javaCompletion: JavaProvider;
+
+  constructor(websocketUrl: URL, messenger: Messenger, messageParticipant: MessageParticipant, document: CustomDocument) {
+    super(websocketUrl, 'ivy-script-lsp', messenger, messageParticipant, IvyScriptWebSocketMessage);
+    this.javaCompletion = new JavaProvider(document.uri);
+  }
+
+  protected override handleClientMessage(message: unknown) {
+    if (this.hasMethodAndParams(message)) {
+      switch (message.method) {
+        case DidOpenTextDocumentNotification.method:
+          this.handleDidOpen(message.params as DidOpenTextDocumentParams);
+          break;
+        case DidChangeTextDocumentNotification.method:
+          this.handleDidChange(message.params as DidChangeTextDocumentParams);
+          break;
+        case CompletionRequest.method:
+          this.handleCompletionRequest(message.params as CompletionParams, message.id);
+          break;
+        case 'textDocument/hover':
+          this.handleHoverRequest(message.params as { textDocument: { uri: string }; position: Position }, message.id);
+      }
+    }
+    super.handleClientMessage(message);
+  }
+
+  protected override async handleServerMessage(message: string) {
+    if (this.currentHover) {
+      const { id, documentation } = this.currentHover;
+      const obj = JSON.parse(message);
+      if (this.isHoverResult(obj, id)) {
+        const javaDocumentation = await documentation;
+        if (javaDocumentation) {
+          const existingDocumentation = this.toMarkdown(obj.result?.contents);
+          obj.result = {
+            ...(obj.result ?? {}),
+            contents: {
+              kind: 'markdown',
+              value: [existingDocumentation, javaDocumentation].filter(Boolean).join('\n\n')
+            }
+          };
+          message = JSON.stringify(obj);
+        }
+        this.currentHover = undefined;
+      }
+    }
+    if (this.currentCompletion) {
+      const { id, completionItems, contextualJavaCompletionItems, document, position, completionStartCharacter } = this.currentCompletion;
+      const obj = JSON.parse(message);
+      if (this.isCompletionResult(obj, id)) {
+        const [javaTypeItems, contextualJavaItems] = await Promise.all([completionItems, contextualJavaCompletionItems]);
+        const lspCompletionItems = javaTypeItems.map(item =>
+          this.toLspCompletItem(item, document, { line: position.line, completionStartCharacter })
+        );
+        addJavaCompletionDocumentation(obj.result.items, contextualJavaItems);
+        obj.result.items.push(...lspCompletionItems);
+        message = JSON.stringify(obj);
+        this.currentCompletion = undefined;
+      }
+    }
+    super.handleServerMessage(message);
+  }
+
+  handleDidOpen = (params: DidOpenTextDocumentParams) => {
+    const textDocument = params.textDocument;
+    const doc = TextDocument.create(textDocument.uri, textDocument.languageId, textDocument.version, textDocument.text);
+    this.documents.set(textDocument.uri, doc);
+  };
+
+  handleDidChange = (params: DidChangeTextDocumentParams) => {
+    const textDocument = params.textDocument;
+    const currentDoc = this.documents.get(textDocument.uri);
+    if (!currentDoc) {
+      return;
+    }
+    const newDoc = TextDocument.update(currentDoc, params.contentChanges, textDocument.version);
+    this.documents.set(textDocument.uri, newDoc);
+  };
+
+  handleHoverRequest = (params: { textDocument: { uri: string }; position: Position }, id?: number) => {
+    if (id === undefined) {
+      return;
+    }
+    const document = this.documents.get(params.textDocument.uri);
+    if (!document) {
+      return;
+    }
+    const lines = document.getText().split(/\r\n|\n|\r/);
+    const line = lines[params.position.line] ?? '';
+    const imports = lines.filter(sourceLine => /^\s*import\s+(?:static\s+)?[\w.$*]+\s*;\s*$/.test(sourceLine));
+    const javaPosition = new VSCodePosition(0, Math.min(params.position.character, line.length));
+    this.currentHover = {
+      id,
+      documentation: this.javaCompletion.hover(line, javaPosition, imports)
+    };
+  };
+
+  handleCompletionRequest = (params: CompletionParams, id?: number) => {
+    if (id === undefined) {
+      return;
+    }
+    const document = this.documents.get(params.textDocument.uri);
+    if (!document) {
+      return;
+    }
+    const currentTextLine = document.getText(Range.create(Position.create(params.position.line, 0), params.position));
+    const completionStartingIndex = Math.max(
+      currentTextLine.lastIndexOf(';'),
+      currentTextLine.lastIndexOf(' '),
+      currentTextLine.lastIndexOf('='),
+      currentTextLine.lastIndexOf('('),
+      currentTextLine.lastIndexOf('.')
+    );
+    const completionStartCharacter = Math.max(completionStartingIndex + 1, 0);
+    const toBeCompleted = currentTextLine.substring(completionStartCharacter);
+    const lines = document.getText().split(/\r\n|\n|\r/);
+    const currentLine = lines[params.position.line] ?? '';
+    const imports = lines.filter(sourceLine => /^\s*import\s+(?:static\s+)?[\w.$*]+\s*;\s*$/.test(sourceLine));
+    const cursorCharacter = Math.min(params.position.character, currentLine.length);
+    const javaPosition = new VSCodePosition(0, cursorCharacter);
+    const isMemberCompletion = /\.\s*[\w$]*$/.test(currentLine.slice(0, cursorCharacter));
+    this.currentCompletion = {
+      id,
+      completionItems: this.javaCompletion.completionItems(toBeCompleted, 50),
+      // Empty/short member prefixes can have many candidates; resolve all JDT candidates so their docs aren't lost by ranking.
+      contextualJavaCompletionItems: isMemberCompletion
+        ? this.javaCompletion.contextualCompletionItems(currentLine, javaPosition, imports, 1000)
+        : Promise.resolve([]),
+      document,
+      position: params.position,
+      completionStartCharacter
+    };
+  };
+
+  hasMethodAndParams = (message: unknown): message is { method: string; params: object; id?: number } => {
+    return (
+      typeof message === 'object' &&
+      message !== null &&
+      'method' in message &&
+      typeof message.method === 'string' &&
+      'params' in message &&
+      typeof message.params === 'object' &&
+      message.params !== null
+    );
+  };
+
+  isHoverResult = (obj: unknown, id: number): obj is { result: { contents?: unknown; [key: string]: unknown } | null } => {
+    return typeof obj === 'object' && obj !== null && 'id' in obj && obj.id === id && 'result' in obj;
+  };
+
+  toMarkdown = (contents: unknown): string => {
+    if (typeof contents === 'string') {
+      return contents;
+    }
+    if (Array.isArray(contents)) {
+      return contents
+        .map(content => this.toMarkdown(content))
+        .filter(Boolean)
+        .join('\n\n');
+    }
+    if (typeof contents === 'object' && contents !== null) {
+      if ('value' in contents && typeof contents.value === 'string') {
+        if ('kind' in contents) {
+          return contents.value;
+        }
+        if ('language' in contents && typeof contents.language === 'string') {
+          return `\`\`\`${contents.language}\n${contents.value}\n\`\`\``;
+        }
+      }
+    }
+    return '';
+  };
+
+  isCompletionResult = (obj: unknown, id: number): obj is { result: CompletionList } => {
+    return (
+      typeof obj === 'object' &&
+      obj !== null &&
+      'id' in obj &&
+      obj.id === id &&
+      'result' in obj &&
+      typeof obj.result === 'object' &&
+      obj.result !== null &&
+      'items' in obj.result &&
+      Array.isArray(obj.result.items)
+    );
+  };
+
+  toLspCompletItem = (
+    item: VSCodeCompletionItem,
+    document: TextDocument,
+    completionContext: { line: number; completionStartCharacter: number }
+  ): CompletionItem => {
+    const label = this.toLabel(item);
+    const lspItem = CompletionItem.create(label.label);
+    const insertText = this.resolveInsertText(item, document, label.label);
+    lspItem.kind = this.toKind(item.kind);
+    lspItem.detail = item.detail;
+    lspItem.sortText = item.sortText;
+    lspItem.filterText = item.filterText;
+    lspItem.tags = item.tags?.map(() => CompletionItemTag.Deprecated);
+    lspItem.labelDetails = label;
+    lspItem.documentation = javaCompletionDocumentation(item.documentation);
+    const textEdit = this.toTextEdit(item, insertText, completionContext);
+    if (textEdit) {
+      lspItem.textEdit = textEdit;
+    }
+    if (STANDARD_TYPES.includes(item.detail ?? '')) {
+      return lspItem;
+    }
+    if (document.uri.endsWith('.code/') && item.detail && item.detail.length > 0) {
+      const importStatement = `import ${item.detail};`;
+      if (!document.getText().includes(importStatement)) {
+        lspItem.additionalTextEdits = [TextEdit.insert(Position.create(0, 0), `${importStatement}\n`)];
+      }
+    } else if (!textEdit && item.detail && item.detail.length > 0) {
+      // full qualified name as insert text
+      lspItem.insertText = item.detail;
+    } else if (!textEdit && insertText && insertText.length > 0) {
+      lspItem.insertText = insertText;
+    }
+    return lspItem;
+  };
+
+  resolveInsertText = (item: VSCodeCompletionItem, document: TextDocument, defaultText: string): string => {
+    if (!document.uri.endsWith('.code/') && item.detail && item.detail.length > 0 && !STANDARD_TYPES.includes(item.detail)) {
+      return item.detail;
+    }
+    if (typeof item.insertText === 'string') {
+      return item.insertText;
+    }
+    if (item.insertText instanceof SnippetString) {
+      return item.insertText.value;
+    }
+    return defaultText;
+  };
+
+  toTextEdit = (
+    item: VSCodeCompletionItem,
+    newText: string,
+    completionContext: { line: number; completionStartCharacter: number }
+  ): CompletionItem['textEdit'] => {
+    if (!item.range) {
+      return undefined;
+    }
+    if ('inserting' in item.range && 'replacing' in item.range) {
+      return {
+        newText,
+        insert: this.toDocumentRange(item.range.inserting, completionContext),
+        replace: this.toDocumentRange(item.range.replacing, completionContext)
+      };
+    }
+    return TextEdit.replace(this.toDocumentRange(item.range, completionContext), newText);
+  };
+
+  toDocumentRange = (range: VSCodeRange, completionContext: { line: number; completionStartCharacter: number }): Range => {
+    return Range.create(this.toDocumentPosition(range.start, completionContext), this.toDocumentPosition(range.end, completionContext));
+  };
+
+  toDocumentPosition = (position: VSCodePosition, completionContext: { line: number; completionStartCharacter: number }): Position => {
+    const line = completionContext.line + position.line;
+    const shiftedCharacter = position.line === 0 ? Math.max(position.character - JavaProvider.DUMMY_CONTENT.length, 0) : position.character;
+    const character = position.line === 0 ? completionContext.completionStartCharacter + shiftedCharacter : shiftedCharacter;
+    return Position.create(line, character);
+  };
+
+  toLabel = (item: VSCodeCompletionItem) => {
+    if (typeof item.label === 'string') {
+      return { label: item.label };
+    }
+    return item.label;
+  };
+
+  toKind(kind?: VSCodeCompletionItemKind) {
+    switch (kind) {
+      case VSCodeCompletionItemKind.Class:
+        return CompletionItemKind.Class;
+      case VSCodeCompletionItemKind.Interface:
+        return CompletionItemKind.Interface;
+      case VSCodeCompletionItemKind.Enum:
+        return CompletionItemKind.Enum;
+      default:
+        return undefined;
+    }
+  }
+}
+
+// copy paste from ch.ivyteam.ivy.scripting.objects.util.StandardScriptingTypes;
+const STANDARD_TYPES = [
+  'ch.ivyteam.ivy.scripting.objects.Time',
+  'java.lang.String',
+  'java.lang.Math',
+  'ch.ivyteam.ivy.scripting.objects.DateTime',
+  'java.lang.System',
+  'ch.ivyteam.ivy.scripting.objects.CompositeObject',
+  'java.lang.Number',
+  'ch.ivyteam.ivy.scripting.objects.Tree',
+  'ch.ivyteam.ivy.scripting.objects.Record',
+  'ch.ivyteam.ivy.scripting.objects.List',
+  'java.lang.Boolean',
+  'java.lang.Short',
+  'java.lang.Character',
+  'java.lang.Error',
+  'ch.ivyteam.ivy.scripting.objects.Duration',
+  'java.lang.Double',
+  'ch.ivyteam.ivy.scripting.objects.Date',
+  'java.math.BigDecimal',
+  'java.lang.Exception',
+  'java.lang.Integer',
+  'java.lang.Float',
+  'ch.ivyteam.ivy.scripting.objects.Xml',
+  'java.lang.Byte',
+  'java.lang.Long',
+  'java.math.BigInteger',
+  'java.lang.Throwable',
+  'java.lang.Object',
+  'java.lang.Class',
+  'ch.ivyteam.ivy.scripting.objects.Recordset',
+  'ch.ivyteam.ivy.scripting.objects.Binary',
+  'ch.ivyteam.ivy.scripting.objects.File',
+  'ch.ivyteam.ivy.scripting.objects.Tuple',
+  'ch.ivyteam.ivy.scripting.objects.BusinessDuration'
+];

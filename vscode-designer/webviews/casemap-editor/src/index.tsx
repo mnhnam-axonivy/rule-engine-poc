@@ -1,0 +1,48 @@
+import { CaseMapClientJsonRpc, CaseMapEditor, ClientContextProvider, initQueryClient } from '@axonivy/case-map-editor';
+import '@axonivy/case-map-editor/lib/editor.css';
+import { HotkeysProvider, ReadonlyProvider, ThemeProvider, Toaster } from '@axonivy/ui-components';
+import { type InitializeConnection, initMessenger, toConnection } from '@axonivy/vscode-webview-common';
+import '@axonivy/vscode-webview-common/css/colors.css';
+import { QueryClientProvider } from '@tanstack/react-query';
+import * as React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Messenger, type VsCodeApi } from 'vscode-messenger-webview';
+import { initTranslation } from './i18n';
+
+declare function acquireVsCodeApi(): VsCodeApi;
+const messenger = new Messenger(acquireVsCodeApi());
+
+export async function start({ app = '', project = '', file, readOnly = false }: InitializeConnection) {
+  const connection = toConnection(messenger, 'caseMapWebSocketMessage');
+  const client = await CaseMapClientJsonRpc.startClient(connection);
+  const queryClient = initQueryClient();
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+  initTranslation();
+  const normalized = file.replace(/\\/g, '/');
+  const processPathIndex = normalized.indexOf('/process/');
+  const projectPath = processPathIndex >= 0 ? normalized.slice(0, processPathIndex) : normalized;
+  const projectName = project || projectPath.substring(projectPath.lastIndexOf('/') + 1);
+  const context = { app, project: projectName, file };
+  await client.initialize(context);
+  createRoot(rootElement).render(
+    <React.StrictMode>
+      <ThemeProvider disabled={true}>
+        <ClientContextProvider client={client}>
+          <QueryClientProvider client={queryClient}>
+            <ReadonlyProvider readonly={readOnly}>
+              <HotkeysProvider initiallyActiveScopes={['global']}>
+                <CaseMapEditor context={context} />
+                <Toaster closeButton={true} />
+              </HotkeysProvider>
+            </ReadonlyProvider>
+          </QueryClientProvider>
+        </ClientContextProvider>
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+}
+
+initMessenger(messenger, start);

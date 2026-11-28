@@ -1,0 +1,134 @@
+import { expect } from '@playwright/test';
+import { test } from '~/fixtures/baseTest';
+import { TextEditor } from '~/page-objects/editor';
+import { FormEditor } from '~/page-objects/form-editor';
+import { OutputView } from '~/page-objects/output-view';
+import { VsCodeBrowser } from '~/page-objects/vscode-browser';
+
+test('Edit input label', async ({ wsPage }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+  const text = editor.blockFor('text');
+  await expect(text).toBeVisible();
+  await expect(text).toHaveText('This is my test');
+  await editor.expectTabNotDirty();
+
+  const input = editor.blockFor('input');
+  await input.dblclick();
+  const labelProperty = editor.detail.getByLabel('Label');
+  const newLabel = 'newTestLabel';
+  await labelProperty.click();
+  await labelProperty.fill(newLabel);
+  await labelProperty.blur();
+  await expect(input).toContainText(newLabel);
+
+  await editor.save();
+  const xhtmlEditor = new TextEditor(wsPage, 'testForm.xhtml');
+  await xhtmlEditor.open();
+  await expect(xhtmlEditor.content).toContainText(`value="${newLabel}" />`);
+});
+
+test('Convert dialog form to JSF', async ({ wsPage }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+
+  await wsPage.executeCommand('Axon Ivy: Convert Dialog Form to JSF');
+
+  const quickInput = wsPage.quickInputBox.getByRole('textbox');
+  await expect(quickInput).toHaveValue(/testForm\.f\.json$/);
+  const formPath = await quickInput.inputValue();
+  await expect(quickInput).toBeFocused();
+
+  await quickInput.fill('/not-a-form.txt');
+  await quickInput.press('Enter');
+  const validationMessage = wsPage.page.locator('div.quick-input-message');
+  await expect(validationMessage).toHaveText('The file must be a .f.json file.');
+
+  await quickInput.fill(formPath);
+  await quickInput.press('Enter');
+
+  const xhtmlEditor = new TextEditor(wsPage, 'testForm.xhtml');
+  await xhtmlEditor.expectTabVisible();
+  await xhtmlEditor.expectTabActive();
+  await expect(xhtmlEditor.content).toContainText('<h:body>');
+});
+
+test('Extract component and jump', async ({ wsPage }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+  await editor.blockFor('input').click();
+  await editor.quickBar.getByRole('button', { name: /Add new Component/ }).click();
+  await editor.quickBarMenu.getByRole('textbox').fill('Layout');
+  await editor.quickBarMenu.locator('.ui-palette-item', { hasText: 'Layout' }).click();
+  await wsPage.page.keyboard.press('Escape');
+  const layout = editor.main.locator('.draggable:has(>.block-layout)');
+  await expect(layout).toBeVisible();
+
+  await layout.click();
+  await editor.quickBar.getByRole('button', { name: /Extract/ }).click();
+  const extractDialog = editor.webViewFrame.getByRole('dialog');
+  await expect(extractDialog).toBeVisible();
+  await extractDialog.getByLabel('Name', { exact: true }).fill('TestComponent');
+  await extractDialog.getByRole('button', { name: 'Extract' }).click();
+  await expect(extractDialog).toBeHidden();
+  await expect(layout).toBeHidden();
+  const composite = editor.blockFor('composite');
+  await expect(composite).toBeVisible();
+
+  await composite.click();
+  await editor.quickBar.getByRole('button', { name: /Open Component/ }).click();
+  const componentEditor = new FormEditor(wsPage, 'TestComponent.f.json', 1);
+  await componentEditor.expectTabVisible();
+  await componentEditor.expectTabActive();
+  await componentEditor.expectWebViewVisible();
+  await expect(componentEditor.main.locator('.draggable:has(>.block-layout)')).toBeVisible();
+});
+
+test('Open Help', async ({ wsPage }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+  await editor.blockFor('input').dblclick();
+  const outputView = new OutputView(wsPage);
+  await outputView.openLog('Axon Ivy Extension');
+
+  await editor.detail.getByRole('button', { name: /Help/ }).click();
+  await wsPage.page.keyboard.press('Escape');
+  await outputView.expectLogEntry('Opening URL externally');
+  await outputView.expectLogEntry(/https:\/\/developer\.axonivy\.com.*reference\/dialog\/form-editor\.html/);
+});
+
+test('Preview', async ({ wsPage, electronApp }) => {
+  const editor = new FormEditor(wsPage);
+  await editor.open();
+
+  await expect(editor.main.locator('.selected')).toHaveCount(0);
+  const timeout = { timeout: 3_000 };
+  await wsPage.executeCommand('Axon Ivy: Deploy All Projects');
+  await wsPage.statusMessageContains('Axon Ivy: Success - Deploying project');
+  const vscodeBrowser = await VsCodeBrowser.openBrowser(() => editor.toolbar.getByRole('button', { name: 'Open Dialog Preview' }).click(), {
+    electronApp,
+    page: wsPage.page
+  });
+  await expect(vscodeBrowser.browserPage.locator('#iFrameForm\\:frameTaskName')).toHaveText('Preview', timeout);
+  const frame = vscodeBrowser.browserPage.frameLocator('iframe');
+  const input = frame.getByRole('textbox');
+  await expect(async () => {
+    await vscodeBrowser.reload();
+    await expect(input).toBeVisible(timeout);
+  }).toPass();
+
+  await editor.close();
+
+  const overlay = frame.locator('#selectionOverlay');
+  await expect(overlay).toHaveCount(0);
+  await vscodeBrowser.browserPage.locator('#iFrameForm\\:previewElementPicker').click();
+  await expect(overlay).toHaveCount(1);
+  await input.click();
+  await expect(overlay).toHaveCount(1);
+  await vscodeBrowser.browserPage.locator('#iFrameForm\\:previewElementPicker').click();
+  await expect(overlay).toHaveCount(0);
+
+  editor.updateWebViewFrameLocator(0);
+  await editor.expectWebViewVisible();
+  await expect(editor.main.locator('.selected')).toHaveCount(1);
+});

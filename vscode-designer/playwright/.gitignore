@@ -1,0 +1,9 @@
+node_modules/
+/playwright-report/
+/playwright/.cache/
+/playwright-videos/
+**/target
+**/logs
+**/webcontent
+**/src_dataClasses
+**/src_wsproc

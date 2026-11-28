@@ -1,0 +1,70 @@
+import path from 'path';
+import { l10n, Uri, workspace, type ExtensionContext } from 'vscode';
+import { debouncedAction, hasDeployActionInQueue, type ActionKey } from '../base/debounce';
+import { askToRunJavaCleanWorkspace } from '../base/java-extension-api';
+import { isWorkspaceLocked } from '../base/workspace-lock';
+import { IvyEngineManager } from '../engine/engine-manager';
+import { isIvyProject, IVY_PROJECT_FILE_PATTERN, IvyProjectManager } from './ivy-project-manager';
+import { treeUriToProjectPath } from './tree-selection';
+
+export class ProjectFileWatcherManager {
+  private static _instance: ProjectFileWatcherManager;
+
+  private constructor(context: ExtensionContext) {
+    this.createFileWatchers(context);
+  }
+
+  static init(context: ExtensionContext) {
+    if (ProjectFileWatcherManager._instance) {
+      throw new Error('ProjectFileWatcherManager has already been initialized');
+    }
+    ProjectFileWatcherManager._instance = new ProjectFileWatcherManager(context);
+  }
+
+  private createFileWatchers(context: ExtensionContext) {
+    const ivyProjectFileWatcher = workspace.createFileSystemWatcher(IVY_PROJECT_FILE_PATTERN, false, true, true);
+    ivyProjectFileWatcher.onDidCreate(async projectFile => {
+      if (isWorkspaceLocked() || !isIvyProject(projectFile)) {
+        return;
+      }
+      await IvyProjectManager.instance.refresh();
+    });
+    const deleteProjectWatcher = workspace.createFileSystemWatcher('**/*', true, true, false);
+    deleteProjectWatcher.onDidDelete(async e => {
+      if (isWorkspaceLocked() || e.path.includes('/target/') || path.basename(e.fsPath).includes('.')) {
+        return;
+      }
+      await this.deleteProjectOnEngine(e.fsPath);
+    });
+    const invalidateClassLoader = (uri: Uri) => {
+      if (isWorkspaceLocked() || hasDeployActionInQueue()) {
+        return;
+      }
+      this.runEngineActionDebounced((d: string) => IvyEngineManager.instance.invalidateClassLoader(d), 'invalidate', uri);
+    };
+    const targetWatcher = workspace.createFileSystemWatcher('**/target/classes/**/*.*');
+    targetWatcher.onDidChange(invalidateClassLoader);
+    targetWatcher.onDidCreate(invalidateClassLoader);
+    targetWatcher.onDidDelete(invalidateClassLoader);
+    context.subscriptions.push(ivyProjectFileWatcher, deleteProjectWatcher, targetWatcher);
+  }
+
+  private async deleteProjectOnEngine(project: string) {
+    const allProjects = await IvyProjectManager.instance.getIvyProjects();
+    if (!allProjects.includes(project)) {
+      return;
+    }
+    await IvyEngineManager.instance.deleteProject(project);
+    await askToRunJavaCleanWorkspace(l10n.t('Project deleted'));
+    await IvyProjectManager.instance.refresh();
+  }
+
+  private async runEngineActionDebounced(action: (projectDir: string) => Promise<void>, actionKey: ActionKey, uri?: Uri) {
+    const project = await treeUriToProjectPath(uri, IvyProjectManager.instance.getIvyProjects());
+    if (!project) {
+      return;
+    }
+    const keyPrefix = actionKey === 'invalidate' ? undefined : project;
+    return debouncedAction(() => action(project), actionKey, keyPrefix)();
+  }
+}

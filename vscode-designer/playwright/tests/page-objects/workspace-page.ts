@@ -1,0 +1,132 @@
+import { type Page, expect } from '@playwright/test';
+import path from 'path';
+
+export class WorkspacePage {
+  constructor(readonly page: Page) {}
+
+  async openEditorFile(fileName: string) {
+    await expect(async () => {
+      await this.executeCommand('Refresh Explorer');
+      await this.page.keyboard.press('ControlOrMeta+KeyP');
+      await this.quickInputBox.locator('input.input').fill(fileName, { timeout: 300 });
+      await this.page.locator('span.monaco-icon-name-container').getByText(fileName).first().click({ timeout: 1_000, delay: 100 });
+    }).toPass();
+  }
+
+  async executeCommand(command: string, ...userInputs: Array<string>) {
+    await expect(async () => {
+      await this.page.keyboard.press('ControlOrMeta+KeyP');
+      await this.quickInputBox.locator('input.input').fill('>' + command, { timeout: 300 });
+      await this.quickInputList.getByRole('option', { name: command }).first().click({ timeout: 1_000, delay: 100 });
+    }).toPass();
+    for (const userInput of userInputs) {
+      await this.provideUserInput(userInput);
+    }
+  }
+
+  async provideUserInput(input?: string) {
+    if (input !== undefined) {
+      const textBox = this.quickInputBox.getByRole('textbox');
+      await expect(textBox).toBeFocused();
+      await textBox.fill(input);
+      await expect(textBox).toHaveValue(input);
+      await textBox.press('Enter', { delay: 100 });
+      return;
+    }
+    await this.quickInputBox.click({ delay: 100 });
+    await this.quickInputBox.press('Enter', { delay: 100 });
+  }
+
+  async selectItemFromQuickPick(label: string) {
+    const item = this.page.locator('div.quick-input-list').locator('div.monaco-icon-label-container', { hasText: label });
+    await item.click({ delay: 100 });
+    await expect(item).toBeHidden();
+  }
+
+  async selectFileFromQuickPick(filePath: string) {
+    expect(path.isAbsolute(filePath), 'File picker selection requires an absolute path').toBe(true);
+    const textBox = this.quickInputBox.getByRole('textbox');
+    await expect(textBox).toBeFocused();
+    // The file picker can rewrite the input while initializing or updating its directory.
+    await expect(async () => {
+      await textBox.fill(filePath, { timeout: 1_000 });
+      await expect(this.quickInputList.getByText(path.basename(filePath), { exact: true })).toBeVisible({ timeout: 1_000 });
+      await expect(textBox).toHaveValue(filePath, { timeout: 1_000 });
+    }).toPass({ timeout: 10_000 });
+    await textBox.press('Enter', { delay: 100 });
+  }
+
+  get quickInputBox() {
+    return this.page.locator('div.quick-input-box');
+  }
+
+  get quickInputTitle() {
+    return this.page.locator('div.quick-input-title');
+  }
+
+  get quickInputMessage() {
+    return this.page.locator('div.quick-input-message');
+  }
+
+  get toasts() {
+    return this.page.locator('div.notification-toast-container');
+  }
+
+  get ivyStatusBar() {
+    return this.page.locator('div.statusbar-item[id*="ivyStatusBarItem"]');
+  }
+
+  get quickInputListEntry() {
+    return this.page.locator('div.quick-input-list-entry');
+  }
+
+  get quickInputList() {
+    return this.page.locator('div.quick-input-list');
+  }
+
+  get quickInputWidget() {
+    return this.page.locator('.quick-input-widget');
+  }
+
+  get notificationsCenter() {
+    return this.page.locator('.notifications-center');
+  }
+
+  async activateExpensiveJavaStandardMode(options: { waitForReady?: boolean } = { waitForReady: true }) {
+    const javaStatusBar = this.page.locator('div.statusbar-item[id*="redhat.java"]');
+    await javaStatusBar.filter({ hasText: 'Java: Lightweight Mode' }).click();
+    if (!options.waitForReady) {
+      return;
+    }
+    await expect(javaStatusBar.filter({ hasText: 'Java: Activating...' })).toBeVisible();
+    await expect(async () => {
+      await expect(javaStatusBar.filter({ hasText: 'Java: Ready' })).toBeVisible({ timeout: 500 });
+      await this.page.waitForTimeout(1_000);
+      await expect(javaStatusBar.filter({ hasText: 'Java: Ready' })).toBeVisible({ timeout: 500 });
+      await this.page.waitForTimeout(1_000);
+      await expect(javaStatusBar.filter({ hasText: 'Java: Ready' })).toBeVisible({ timeout: 500 });
+    }).toPass();
+  }
+
+  async hasReadyStatusMessage() {
+    await this.hasStatusMessage('Axon Ivy: Connected');
+  }
+
+  async hasStatusMessage(message: string, timeout?: number) {
+    await expect(this.ivyStatusBar).toHaveText(message, { timeout });
+  }
+
+  async statusMessageContains(message: string, timeout?: number) {
+    await expect(this.ivyStatusBar).toContainText(message, { timeout });
+  }
+
+  async closeAllTabs() {
+    await this.executeCommand('View: Close All Editor Groups');
+    await expect(this.page.locator('div.tab')).toBeHidden();
+  }
+
+  async isTabWithNameVisible(name: string) {
+    const tabSelector = `div.tab:has-text("${name}")`;
+    await expect(this.page.locator(tabSelector)).toBeVisible();
+  }
+}

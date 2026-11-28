@@ -1,0 +1,29 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    permissions: ['clipboard-read'],
+    headless: true,
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure'
+  },
+  workers: process.env.RUN_IN_BROWSER ? 3 : 1,
+  retries: process.env.CI ? 1 : 0,
+  timeout: 40_000,
+  expect: { timeout: 30_000 },
+  reporter: process.env.CI ? [['junit', { outputFile: 'report.xml' }], ['list']] : 'html',
+  projects: [
+    { name: 'setup-test', testMatch: /test\.setup\.ts/, testDir: './tests' },
+    { name: 'integration-parallel', testDir: './tests/integration', grepInvert: /@serial/, dependencies: ['setup-test'] },
+    { name: 'integration-serial', testDir: './tests/integration', grep: /@serial/, workers: 1, dependencies: ['setup-test'] },
+    {
+      name: 'performance',
+      testDir: './tests/performance',
+      timeout: 130_000,
+      expect: { timeout: 120_000 },
+      dependencies: ['setup-test'],
+      retries: 0
+    },
+    { name: 'screenshots', testDir: './tests/screenshots', retries: 0, dependencies: ['setup-test'] }
+  ]
+});

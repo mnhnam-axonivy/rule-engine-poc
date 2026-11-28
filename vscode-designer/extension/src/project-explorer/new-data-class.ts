@@ -1,0 +1,153 @@
+import fs from 'fs';
+import path from 'path';
+import { l10n, Uri } from 'vscode';
+import { localizeDataClassType } from '../base/localized-labels';
+import { logErrorMessage } from '../base/logging-util';
+import type { CreateDataClassParams } from '../engine/api/engine-api';
+import { IvyEngineManager } from '../engine/engine-manager';
+import { type AddCommandSelectionContext } from './ivy-project-explorer';
+import {
+  MultiStepCancelledError,
+  MultiStepInput,
+  MultiStepInvalidStateError,
+  overrideProjectDefaultNamespaceIfAllowed,
+  resolveAddCommandSelectionContext,
+  type InputStep,
+  type MSStateBase,
+  type ProjectSelection
+} from './utils/multi-step-input';
+import { validateDotSeparatedName, validateProjectArtifactName, type ResourceDirectoryTarget } from './utils/util';
+
+export type DataClassType = 'Data Class' | 'Entity Class';
+
+interface NewDataClassState extends MSStateBase {
+  project?: ProjectSelection | undefined;
+  name?: string | undefined;
+  namespace?: string | undefined;
+  projectFromSelection?: ProjectSelection | undefined;
+}
+
+export const addNewDataClass = async (type: DataClassType, selectionContext: AddCommandSelectionContext) => {
+  const validateFinal = async (typedNamespace: string): Promise<string | undefined> => {
+    return validateDotSeparatedName(typedNamespace) ?? (await validateNotExisting(typedNamespace));
+  };
+
+  const validateNotExisting = async (typedNamespace: string): Promise<string | undefined> => {
+    const projectPath = newDataClassDialogData.project?.path ?? '';
+    const name = newDataClassDialogData.name ?? '';
+    const typedNamespacePath = typedNamespace.replace(/\./g, path.sep);
+    for (const resDir of [resourceDirectoryTarget, resourceDirectoryDialogTarget]) {
+      const absPathDataClassFile = Uri.file(path.join(projectPath, resDir, typedNamespacePath, `${name}.d.json`)).fsPath;
+      if (fs.existsSync(absPathDataClassFile)) {
+        return l10n.t("A data class with this name and namespace already exists in this project in the '/{0}' directory.", resDir);
+      }
+    }
+  };
+
+  const resourceDirectoryTarget: ResourceDirectoryTarget = 'dataclass';
+  const resourceDirectoryDialogTarget: ResourceDirectoryTarget = 'dialog';
+  const existingProjects = selectionContext.existingIvyProjects;
+  const { projectFromSelection, namespaceFromSelection } = await resolveAddCommandSelectionContext(
+    selectionContext,
+    resourceDirectoryTarget
+  );
+
+  const stepProject: InputStep<NewDataClassState> = async (input: MultiStepInput<NewDataClassState>, state: NewDataClassState) => {
+    if (state.projectFromSelection && state.project === undefined) {
+      state.project = state.projectFromSelection;
+      state.projectFromSelection = undefined;
+    } else {
+      const previousProject = state.project;
+      state.project = await input.showQuickPick<ProjectSelection>({
+        title: state.dialogTitle,
+        titleSuffix: l10n.t('Choose project'),
+        placeholder: l10n.t('Select one of the available projects'),
+        currentStep: state.currentStep,
+        totalSteps: state.totalSteps,
+        value: state.project ? state.project.label : '',
+        items: existingProjects.map(project => {
+          return {
+            label: project.substring(project.lastIndexOf(path.sep) + 1),
+            description: project,
+            path: project
+          };
+        })
+      });
+      await overrideProjectDefaultNamespaceIfAllowed(state, previousProject, resourceDirectoryTarget, validateDotSeparatedName);
+    }
+  };
+
+  const stepName: InputStep<NewDataClassState> = async (input: MultiStepInput<NewDataClassState>, state: NewDataClassState) => {
+    state.name = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose name'),
+      placeholder: l10n.t('Enter a name. Must start with a letter or underscore. Allowed characters: a-z, A-Z, 0-9, _'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.name,
+      validationFunction: validateProjectArtifactName,
+      onBack: (typedValue: string) => {
+        state.name = typedValue;
+      }
+    });
+  };
+
+  const stepNamespace: InputStep<NewDataClassState> = async (input: MultiStepInput<NewDataClassState>, state: NewDataClassState) => {
+    state.namespace = await input.showTextInput({
+      title: state.dialogTitle,
+      titleSuffix: l10n.t('Choose namespace'),
+      placeholder: l10n.t('Enter Namespace separated by ".". Allowed characters: a-z, A-Z, 0-9, _, .'),
+      currentStep: state.currentStep,
+      totalSteps: state.totalSteps,
+      value: state.namespace,
+      validationFunction: validateFinal,
+      onBack: (typedValue: string) => {
+        state.namespace = typedValue;
+      }
+    });
+  };
+
+  const steps: InputStep<NewDataClassState>[] = [stepProject, stepName, stepNamespace];
+
+  const newDataClassDialogData: NewDataClassState = {
+    dialogTitle: l10n.t('Add New {0}', localizeDataClassType(type)),
+    currentStep: 1,
+    totalSteps: steps.length,
+    namespace: namespaceFromSelection,
+    projectFromSelection: projectFromSelection
+  };
+
+  try {
+    await new MultiStepInput<NewDataClassState>().stepThrough(steps, newDataClassDialogData);
+  } catch (err) {
+    if (err instanceof MultiStepCancelledError) {
+      if (err.message.trim()) {
+        logErrorMessage(err.message);
+      }
+      return;
+    } else {
+      throw err;
+    }
+  }
+
+  if (
+    newDataClassDialogData.name !== undefined &&
+    newDataClassDialogData.namespace !== undefined &&
+    newDataClassDialogData.project !== undefined
+  ) {
+    const createDataClassInput: CreateDataClassParams = {
+      name: `${newDataClassDialogData.namespace}.${newDataClassDialogData.name}`,
+      projectDir: newDataClassDialogData.project.path
+    };
+    if (type === 'Data Class') {
+      await IvyEngineManager.instance.createDataClass(createDataClassInput);
+    } else {
+      await IvyEngineManager.instance.createEntityClass(createDataClassInput);
+    }
+  } else {
+    throw new MultiStepInvalidStateError(
+      'Data Class creation failed due to corrupted input state. name, namespace or project selection is undefined. Current input state: ' +
+        JSON.stringify(newDataClassDialogData)
+    );
+  }
+};

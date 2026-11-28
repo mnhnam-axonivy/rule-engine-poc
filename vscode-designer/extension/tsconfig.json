@@ -1,0 +1,12 @@
+{
+  "extends": "@axonivy/ts-config/base",
+  "compilerOptions": {
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": ".",
+    "outDir": "lib",
+    "resolveJsonModule": true
+  },
+  "include": ["src"],
+  "files": ["esbuild.mts"],
+  "types": ["node", "vscode"]
+}

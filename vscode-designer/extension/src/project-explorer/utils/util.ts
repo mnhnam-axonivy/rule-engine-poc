@@ -1,0 +1,144 @@
+import { XMLParser } from 'fast-xml-parser';
+import fs from 'node:fs';
+import path from 'path';
+import type { FileStat } from 'vscode';
+import { FileType, InputBoxValidationSeverity, l10n, Uri, window, workspace } from 'vscode';
+import { PROJECT_NAME_MAX_LENGTH } from './project-name-sanitizer';
+
+export type ResourceDirectoryTarget = 'process' | 'dialog' | 'dataclass';
+
+const defaultNamespaceOf = (projecDir: string) => {
+  const designerPrefs = Uri.joinPath(Uri.file(projecDir), 'pom.xml');
+  return workspace.fs.readFile(designerPrefs).then(
+    content => {
+      const pom = new XMLParser().parse(content);
+      if (pom.project && pom.project.groupId) {
+        return `${pom.project.groupId}`;
+      }
+      return '';
+    },
+    () => ''
+  );
+};
+
+export const resolveNamespaceFromPath = async (selectedUri: Uri, projectDir: string, target: ResourceDirectoryTarget) => {
+  let fileStat: FileStat;
+  try {
+    fileStat = await workspace.fs.stat(selectedUri);
+  } catch {
+    return resolveDefaultNamespace(projectDir, target);
+  }
+  const selectedPath = fileStat.type === FileType.File ? getDirectory(selectedUri.fsPath, target) : selectedUri.fsPath;
+  const targetDir = path.join(projectDir, target);
+  if (!selectedPath.includes(targetDir)) {
+    return resolveDefaultNamespace(projectDir, target);
+  }
+
+  const pattern = target === 'process' ? /(^\/*|\/*$)/g : /(^\.*|\.*$)/g;
+  return selectedPath
+    .replaceAll(targetDir, '')
+    .replaceAll(path.sep, target === 'process' ? '/' : '.')
+    .replaceAll(pattern, '');
+};
+
+const getDirectory = (filePath: string, target: ResourceDirectoryTarget) => {
+  let directory = path.dirname(filePath);
+  if (target === 'dialog') {
+    directory = path.dirname(directory);
+  }
+  return directory;
+};
+
+export const resolveDefaultNamespace = async (projectDir: string, target: ResourceDirectoryTarget) => {
+  const defaultNamespace = (await defaultNamespaceOf(projectDir)).replaceAll('-', '.');
+  return target === 'process' ? defaultNamespace.replaceAll('.', '/') : defaultNamespace;
+};
+
+export const isDirectory = async (uri?: Uri) => {
+  if (!uri) {
+    return false;
+  }
+  try {
+    return (await workspace.fs.stat(uri)).type === FileType.Directory;
+  } catch {
+    return false;
+  }
+};
+
+export const isSubdirectoryOrEqual = (parent: string, child: string) => {
+  const relative = path.relative(parent, child);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+};
+
+export const getWorkspaceFolder = async () => {
+  const workspaceFolders = workspace.workspaceFolders;
+  if (workspaceFolders?.length === 1 && workspaceFolders[0]) {
+    return workspaceFolders[0].uri;
+  }
+  return await window.showWorkspaceFolderPick().then(folder => folder?.uri);
+};
+
+export const validateProjectArtifactName = (value: string) => {
+  const pattern = /^[a-zA-Z_][\w]*$/;
+  if (pattern.test(value)) {
+    return;
+  }
+  return l10n.t(
+    'Only letters, digits, and underscores are allowed -- Each segment must start with a letter or underscore -- No spaces -- Cannot be empty'
+  );
+};
+
+export const validateProjectName = (value: string) => {
+  // First check the max length
+  if (value.length > PROJECT_NAME_MAX_LENGTH) {
+    return l10n.t('Project name cannot exceed {0} characters', PROJECT_NAME_MAX_LENGTH);
+  }
+  const pattern = /^[\w-]+$/;
+  if (pattern.test(value)) {
+    return;
+  }
+  return l10n.t(
+    'Only letters, digits, underscores, and hyphens are allowed -- No spaces -- Cannot be empty -- Max {0} characters',
+    PROJECT_NAME_MAX_LENGTH
+  );
+};
+
+export const validateDotSeparatedName = (value: string, label?: string) => {
+  const pattern = /^(?!.*(?:^|\.)_(?:\.|$))[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*$/;
+  if (pattern.test(value)) {
+    return;
+  }
+  const localizedLabel = label === 'Group ID' ? l10n.t('Group ID') : label === undefined ? l10n.t('Namespace') : label;
+  return l10n.t(
+    'Enter {0} as segments separated by "." -- Only letters, digits, and underscores are allowed -- Each segment must start with a letter or underscore -- A segment cannot consist of a single underscore -- No spaces -- Cannot be empty',
+    localizedLabel
+  );
+};
+
+export const validateNamespace = (value: string) => {
+  const pattern = /^(\w+(?: +\w+|\/\w+)*)?$/;
+  if (pattern.test(value)) {
+    return;
+  }
+  return l10n.t(
+    'Enter Namespace as segments separated by "/" -- Only letters, digits, and underscores are allowed -- Spaces allowed within segments -- Empty allowed.'
+  );
+};
+
+export const validateProjectArtifactId = (value: string) => {
+  const pattern = /^\w+([.-]\w+)*$/;
+  if (pattern.test(value)) {
+    return;
+  }
+  return l10n.t('Only letters, digits, and underscores are allowed -- Separate by single "." or "-" -- No spaces -- Cannot be empty');
+};
+
+export const validateExportPath = (fileName: string, folderPath: Uri) => {
+  const filePath = path.join(folderPath.fsPath, `${fileName}.iar`);
+  if (fs.existsSync(filePath)) {
+    return {
+      message: l10n.t('File already exists: {0}. File will be overwritten if you proceed.', filePath),
+      severity: InputBoxValidationSeverity.Warning
+    };
+  }
+};

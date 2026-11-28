@@ -1,0 +1,136 @@
+import path from 'path';
+import { expect, test } from '~/fixtures/baseTest';
+import { FileExplorer, ProjectExplorerView } from '~/page-objects/explorer-view';
+import { OutputView } from '~/page-objects/output-view';
+import { ProcessEditor } from '~/page-objects/process-editor';
+import { WelcomePage } from '~/page-objects/welcome-page';
+
+test('Install product without maven-dependency from Market website', async ({ wsPage }) => {
+  const explorer = new FileExplorer(wsPage);
+  await explorer.installProduct('connectivity-demo');
+  await wsPage.provideUserInput('14.0.0');
+  const header = wsPage.page.locator('div.quick-input-header');
+  const checkbox = header.getByRole('checkbox', { name: 'Toggle all checkboxes' });
+  await checkbox.check();
+  await wsPage.provideUserInput();
+  await wsPage.executeCommand('Refresh Explorer');
+  await explorer.selectNodeExact('connectivity-demos');
+  const processEditor = new ProcessEditor(wsPage, 'personService.p.json');
+  await processEditor.open();
+});
+
+test('Install up-to-date product with maven-dependency from Market website', async ({ wsPage, tmpWorkspace }) => {
+  const prebuiltProjectName = path.basename(tmpWorkspace!.tmpWorkspacePath);
+
+  await wsPage.activateExpensiveJavaStandardMode({ waitForReady: false });
+  const output = new OutputView(wsPage);
+  await output.openLog('Axon Ivy Extension');
+  await output.expectLogEntry('Success - Invalidating class loader');
+  await output.expectLogEntry('Success - Deploying IAR dependencies');
+  await output.clearOutput();
+
+  const explorer = new FileExplorer(wsPage);
+  await explorer.installProduct('excel-connector');
+  await wsPage.provideUserInput('14.0.0-SNAPSHOT');
+  const header = wsPage.page.locator('div.quick-input-header');
+  const checkbox = header.getByRole('checkbox', { name: 'Toggle all checkboxes' });
+  await checkbox.check();
+  await wsPage.provideUserInput();
+  await expect(wsPage.quickInputBox).toBeVisible();
+  await wsPage.provideUserInput(prebuiltProjectName);
+  await output.expectLogEntry('Success - Deploying IAR dependencies');
+  await output.expectLogEntry('Success - Invalidating class loader');
+
+  // Ask ivy-lmu
+  // Why should this be true? Installing a demo will put it into our workspace?
+  // await explorer.hasNoNodeExact('excel-connector-demo');
+
+  await explorer.hasNoNodeExact('excel-connector');
+
+  const projectExplorer = new ProjectExplorerView(wsPage);
+  await projectExplorer.openView();
+  await projectExplorer.expandNodeExact(prebuiltProjectName);
+  await projectExplorer.expandNodeExact('IAR Dependencies');
+
+  const iarProject = projectExplorer.view.getByRole('treeitem').filter({ has: wsPage.page.getByText('excel-connector', { exact: true }) });
+  await projectExplorer.expandNodeExact('excel-connector');
+  await expect(iarProject.locator('.codicon-lock')).toBeVisible();
+  await expect(iarProject).toContainText('14.0.0-SNAPSHOT');
+
+  await projectExplorer.expandNodeExact('excel-connector');
+  await projectExplorer.hasNodeExact('config');
+  await projectExplorer.expandNodeExact('config');
+});
+
+test('Install product with conflicting project folder', async ({ wsPage }) => {
+  const explorer = new FileExplorer(wsPage);
+  await explorer.installProduct('connectivity-demo');
+  await wsPage.provideUserInput('14.0.0');
+  const header = wsPage.page.locator('div.quick-input-header');
+  const checkbox = header.getByRole('checkbox', { name: 'Toggle all checkboxes' });
+  await checkbox.check();
+  await wsPage.provideUserInput();
+  await wsPage.hasReadyStatusMessage();
+  await explorer.installProduct('connectivity-demo');
+  await wsPage.provideUserInput('14.0.0');
+  const title = wsPage.page.locator('div.quick-input-title');
+  await expect(title).toHaveText(/The following projects cannot be installed because a project folder with the same name already exists/);
+});
+
+test('Install product from market integrated browser', async ({ wsPage }) => {
+  const welcomePage = new WelcomePage(wsPage);
+  await welcomePage.open();
+  await welcomePage.marketButton.click();
+  await wsPage.isTabWithNameVisible('Axon Ivy Market');
+
+  const market = wsPage.page.locator('iframe.webview.ready').last().contentFrame().locator('iframe#active-frame').contentFrame().locator('iframe#market').contentFrame();
+
+  await market.locator('a[href*="/product/msgraph/"]').click();
+  await market.getByRole('button', { name: 'Install Now' }).click();
+  await expect(wsPage.quickInputBox.getByRole('textbox')).toHaveValue('Microsoft 365');
+});
+
+test('Install local product.json', async ({ wsPage, tmpWorkspace }) => {
+  const explorer = new FileExplorer(wsPage);
+  await explorer.selectNode('resources');
+  await explorer.selectNode('product.json');
+  await explorer.installLocalProduct(path.join(tmpWorkspace!.tmpWorkspacePath, 'resources', 'product.json'));
+  await wsPage.provideUserInput();
+  await wsPage.executeCommand('Refresh Explorer');
+  await explorer.selectNode('connectivity-demos');
+  const processEditor = new ProcessEditor(wsPage, 'personService.p.json');
+  await processEditor.open();
+});
+
+test('Install local product.json with dynamic version', async ({ wsPage, tmpWorkspace }) => {
+  const explorer = new FileExplorer(wsPage);
+  await explorer.selectNode('resources');
+  await explorer.selectNode('product-dynamic.json');
+  await explorer.installLocalProduct(path.join(tmpWorkspace!.tmpWorkspacePath, 'resources', 'product-dynamic.json'));
+  await wsPage.provideUserInput('14.0.0-SNAPSHOT');
+
+  const projects = wsPage.quickInputList;
+  await expect(projects).toBeVisible();
+  const entry = projects.locator('div.quick-input-list-entry');
+  await expect(entry).toHaveCount(1);
+  await expect(entry.getByRole('checkbox')).toHaveAttribute('aria-label', '👁️ connectivity-demos (com.axonivy.demo)');
+
+  await wsPage.provideUserInput();
+  await wsPage.executeCommand('Refresh Explorer');
+  await explorer.selectNode('connectivity-demos');
+  const processEditor = new ProcessEditor(wsPage, 'personService.p.json');
+  await processEditor.open();
+});
+
+test('Install local product.json with conflicting project folder', async ({ wsPage, tmpWorkspace }) => {
+  const explorer = new FileExplorer(wsPage);
+  await explorer.selectNode('resources');
+  await explorer.selectNode('product.json');
+  await explorer.installLocalProduct(path.join(tmpWorkspace!.tmpWorkspacePath, 'resources', 'product.json'));
+  await wsPage.provideUserInput();
+  await wsPage.hasReadyStatusMessage();
+  await explorer.installLocalProduct(path.join(tmpWorkspace!.tmpWorkspacePath, 'resources', 'product.json'));
+  await wsPage.provideUserInput();
+  const title = wsPage.page.locator('div.quick-input-title');
+  await expect(title).toHaveText(/The following projects cannot be installed because a project folder with the same name already exists/);
+});

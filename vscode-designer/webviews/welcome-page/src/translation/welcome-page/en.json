@@ -1,0 +1,42 @@
+{
+  "commands": {
+    "addBusinessProcess": "Add new Business Process",
+    "addBusinessProcessDescr": "Create a new Business Process in the selected Project",
+    "addNewDataclass": "Add new Dataclass",
+    "addNewDataclassDescr": "Create a new Dataclass in the selected Project",
+    "addNewFormDialog": "Add new Form Dialog",
+    "addNewFormDialogDescr": "Create a new Form Dialog in the selected Project",
+    "addNewJsfDialog": "Add new HTML Dialog (JSF)",
+    "addNewJsfDialogDescr": "Create a new HTML Dialog (JSF) in the selected Project",
+    "importBpmnProcess": "Import a BPMN Process",
+    "importBpmnProcessDescr": "Import a BPMN Process into the selected Project",
+    "newProject": "Add a new Project",
+    "newProjectDescr": "Add a new Project into this workspace",
+    "openDevWorkflowUi": "Open Developer Workflow UI",
+    "openDevWorkflowUiDescr": "Open Developer Workflow UI in Browser",
+    "openPortal": "Open Portal",
+    "openPortalDescr": "Open Portal in Browser"
+  },
+  "feedback": "Feedback",
+  "label": {
+    "start": "Start",
+    "tutorials": "Tutorials"
+  },
+  "shortcut": {
+    "community": "Community",
+    "communityDescription": "View our comunity inputs and add yours as you want",
+    "documentation": "Documentation",
+    "documentationDescription": "Learn all about the Axon Ivy Platform",
+    "market": "Axon Ivy Market",
+    "marketDescription": "Find powerful extensions for the Axon Ivy Platform",
+    "news": "What's new",
+    "newsDescription": "Read about all the new features"
+  },
+  "shortcuts": "Shortcuts",
+  "version": "Version",
+  "welcomePage": {
+    "header": "Welcome to the Axon Ivy PRO Designer",
+    "showAll": "Show All",
+    "showWelcomePage": "Show welcome page on extension activation"
+  }
+}

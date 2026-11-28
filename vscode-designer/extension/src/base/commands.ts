@@ -1,0 +1,96 @@
+import type { ExtensionContext } from 'vscode';
+import { commands } from 'vscode';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function executeCommand<T = unknown>(command: KnownCommand, ...rest: any[]) {
+  return commands.executeCommand<T>(command, ...rest);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function registerCommand(command: KnownCommand, context: ExtensionContext, callback: (...args: any[]) => any) {
+  context.subscriptions.push(commands.registerCommand(command, callback));
+}
+export type KnownCommand =
+  | VSCodeCommand
+  | EngineCommand
+  | DebugCommand
+  | ProjectViewCommand
+  | ViewCommand
+  | JavaCommand
+  | ConfigEditorCommand
+  | EditorCommand
+  | 'ivy.addDevContainer'
+  | 'ivy.showStatusBarQuickPick'
+  | 'ivy.openSettings';
+type VSCodeCommand =
+  | 'setContext'
+  | 'vscode.open'
+  | 'vscode.openWith'
+  | 'vscode.executeCompletionItemProvider'
+  | 'vscode.executeDefinitionProvider'
+  | 'vscode.executeHoverProvider'
+  | 'copyFilePath'
+  | 'workbench.action.openSettings'
+  | 'workbench.action.reloadWindow'
+  | 'workbench.action.browser.open'
+  | 'workbench.action.browser.closeAll';
+type EngineCommand =
+  | 'engine.deployProjects'
+  | 'engine.switchEngineReleaseTrain'
+  | 'engine.deactivateAnimation'
+  | 'engine.activateAnimation';
+type DebugCommand = 'ivy.debug.attachProcess';
+type ProjectViewCommand =
+  | 'ivyProjects.refreshEntry'
+  | 'ivyProjects.revealProjectInFileSystem'
+  | 'ivyProjects.deployProject'
+  | 'ivyProjects.addBusinessProcess'
+  | 'ivyProjects.addCallableSubProcess'
+  | 'ivyProjects.addWebServiceProcess'
+  | 'ivyProjects.importBpmnProcess'
+  | 'ivyProjects.importIvyProject'
+  | 'ivyProjects.exportIvyProject'
+  | 'ivyProjects.installLocalMarketProduct'
+  | 'ivyProjects.installMarketProduct'
+  | 'ivyProjects.addNewProject'
+  | 'ivyProjects.addNewTestProject'
+  | 'ivyProjects.addNewHtmlDialog'
+  | 'ivyProjects.addNewFormDialog'
+  | 'ivyProjects.addNewOfflineDialog'
+  | 'ivyProjects.addNewDataClass'
+  | 'ivyProjects.addNewEntityClass'
+  | 'ivyProjects.addNewCaseMap'
+  | 'ivyProjects.stopBpmEngine'
+  | 'ivyProjects.convertProject'
+  | 'ivyProjects.convertAllProjects'
+  | 'ivyProjects.migrateProgramConfigs'
+  | 'ivyProjects.convertDialogFormToJsf'
+  | 'ivyProjects.addDependency'
+  | 'ivyProjects.downloadDependencySources';
+type ViewCommand =
+  | 'ivyBrowserView.focus'
+  | 'ivyBrowserView.openDevWfUi'
+  | 'ivyBrowserView.openPortal'
+  | 'ivyBrowserView.openEngineCockpit'
+  | 'ivyBrowserView.openPreview'
+  | 'ivyPanelView.openRuntimeLog'
+  | 'ivyPanelView.openWelcomePage'
+  | 'ivyPanelView.openMarket'
+  | 'ivyPanelView.openExtensionLog'
+  | 'ivyPanelView.openEngineLog';
+export type ConfigEditorCommand =
+  | 'ivyEditor.openVariableEditor'
+  | 'ivyEditor.openRoleEditor'
+  | 'ivyEditor.openUserEditor'
+  | 'ivyEditor.openPersistenceEditor'
+  | 'ivyEditor.openDatabaseEditor'
+  | 'ivyEditor.openWebServiceClientEditor'
+  | 'ivyEditor.openRestClientEditor'
+  | 'ivyEditor.openCustomFieldEditor';
+export type EditorCommand = 'ivyEditor.openCmsEditor';
+export type JavaCommand =
+  | 'java.project.import.command'
+  | 'java.clean.workspace'
+  | 'java.projectConfiguration.update'
+  | 'java.server.mode.switch'
+  | 'java.workspace.compile';

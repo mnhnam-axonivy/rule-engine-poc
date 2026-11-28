@@ -1,0 +1,46 @@
+import { Flex } from '@axonivy/ui-components';
+import { IvyIcons } from '@axonivy/ui-icons';
+import { useTranslation } from 'react-i18next';
+import { useVscode } from '../../util/useVscode';
+import { ShortcutCard } from './Shortcut';
+
+export const ShortcutSection = () => {
+  const { t } = useTranslation();
+  const { openUrl } = useVscode();
+
+  return (
+    <Flex direction='column' gap={4} className='w-full'>
+      <h2 className='text-lg font-bold'>{t('shortcuts')}</h2>
+      <div className='grid h-full grid-cols-2 gap-3'>
+        <ShortcutCard
+          title={t('shortcut.documentation')}
+          value={'https://developer.axonivy.com/doc'}
+          description={t('shortcut.documentationDescription')}
+          icon={IvyIcons.File}
+          onClick={openUrl}
+        />
+        <ShortcutCard
+          title={t('shortcut.market')}
+          value={'https://market.axonivy.com/'}
+          description={t('shortcut.marketDescription')}
+          icon={IvyIcons.Market}
+          onClick={openUrl}
+        />
+        <ShortcutCard
+          title={t('shortcut.community')}
+          value={'https://community.axonivy.com/'}
+          description={t('shortcut.communityDescription')}
+          icon={IvyIcons.Comment}
+          onClick={openUrl}
+        />
+        <ShortcutCard
+          title={t('shortcut.news')}
+          value={'https://developer.axonivy.com/news'}
+          description={t('shortcut.newsDescription')}
+          icon={IvyIcons.InfoCircle}
+          onClick={openUrl}
+        />
+      </div>
+    </Flex>
+  );
+};

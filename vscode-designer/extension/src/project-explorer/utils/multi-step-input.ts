@@ -1,0 +1,387 @@
+import path from 'path';
+import type { InputBox, InputBoxValidationMessage, QuickInput, QuickPickItem } from 'vscode';
+import { Disposable, InputBoxValidationSeverity, l10n, QuickInputButtons, Uri, window } from 'vscode';
+import { logErrorMessage } from '../../base/logging-util';
+import { type AddCommandSelectionContext } from '../ivy-project-explorer';
+import { resolveNamespaceFromPath, type ResourceDirectoryTarget } from './util';
+
+export class MultiStepCancelledError extends Error {
+  constructor(message?: string) {
+    super(message);
+    this.name = 'MultiStepCancelledError';
+  }
+}
+
+export class MultiStepForceBack extends Error {
+  constructor(message?: string) {
+    super(message ?? '');
+    this.name = 'MultiStepForceBack';
+  }
+}
+
+export class MultiStepInvalidStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MultiStepInvalidStateError';
+  }
+}
+
+type InputBoxValidationResult = string | InputBoxValidationMessage | undefined;
+
+export interface MSStateBase {
+  dialogTitle: string;
+  currentStep: number;
+  totalSteps: number;
+}
+
+export const enum InputFlowAction {
+  back,
+  cancel
+}
+
+export interface ProjectSelection extends QuickPickItem {
+  label: string;
+  description: string;
+  path: string;
+}
+
+export interface LocalizedQuickPickItem extends QuickPickItem {
+  localizedLabel?: string;
+  localizedDescription?: string;
+  localizedDetail?: string;
+}
+
+export const resolveAddCommandSelectionContext = async (
+  selectionContext: AddCommandSelectionContext,
+  resourceDirectoryTarget: ResourceDirectoryTarget
+): Promise<{
+  projectFromSelection: ProjectSelection | undefined;
+  namespaceFromSelection: string | undefined;
+}> => {
+  const { projectPathSelection: projectPathFromSelection, uriSelection: uriFromSelection } = selectionContext;
+  if (!projectPathFromSelection || projectPathFromSelection === '') {
+    return { projectFromSelection: undefined, namespaceFromSelection: undefined };
+  }
+  const projectFromSelection: ProjectSelection = {
+    label: projectPathFromSelection.substring(projectPathFromSelection.lastIndexOf(path.sep) + 1),
+    description: projectPathFromSelection,
+    path: projectPathFromSelection
+  };
+  if (!uriFromSelection) {
+    return { projectFromSelection: projectFromSelection, namespaceFromSelection: undefined };
+  }
+  const namespaceFromSelection = await resolveNamespaceFromPath(uriFromSelection, projectPathFromSelection, resourceDirectoryTarget);
+  return { projectFromSelection, namespaceFromSelection };
+};
+
+type StateWithProjectAndNamespace = MSStateBase & {
+  project: ProjectSelection;
+  namespace: string;
+};
+
+function stateHasProjectAndNamespace(state: MSStateBase): state is StateWithProjectAndNamespace {
+  return 'project' in state && 'namespace' in state;
+}
+
+export const overrideProjectDefaultNamespaceIfAllowed = async <S extends MSStateBase>(
+  state: S,
+  previousProject: ProjectSelection | undefined,
+  resourceDirectoryTarget: ResourceDirectoryTarget,
+  validationFunction: (namespace: string) => string | undefined
+): Promise<void> => {
+  if (!stateHasProjectAndNamespace(state)) {
+    return;
+  }
+  if (previousProject === undefined || state.project.path !== previousProject.path) {
+    const projectDefaultNamespace = await resolveNamespaceFromPath(
+      Uri.file(state.project.path),
+      state.project.path,
+      resourceDirectoryTarget
+    );
+    if (validationFunction(projectDefaultNamespace) === undefined) {
+      state.namespace = projectDefaultNamespace;
+    }
+  }
+  return;
+};
+
+export type InputStep<T extends MSStateBase> = (input: MultiStepInput<T>, state: T) => Thenable<InputStep<T>> | Promise<void>;
+
+interface TextInputParameters {
+  title: string;
+  titleSuffix?: string;
+  currentStep: number;
+  totalSteps: number;
+  value?: string;
+  prompt?: string;
+  placeholder?: string;
+  validationFunction?: (value: string) => InputBoxValidationResult | Promise<InputBoxValidationResult>;
+  onBack?: (typedValue: string) => void;
+  onChange?: (typedValue: string, input: InputBox) => void;
+  ignoreFocusOut?: boolean;
+}
+
+interface BaseQuickPickParameters<P extends QuickPickItem> {
+  title: string;
+  titleSuffix?: string;
+  currentStep: number;
+  totalSteps: number;
+  value?: string;
+  canSelectMany?: boolean;
+  items: P[];
+  selectedItems?: P[];
+  placeholder?: string;
+  ignoreFocusOut?: boolean;
+  matchOnDescription?: boolean;
+  matchOnDetail?: boolean;
+  validationFunction?: (selectedItems: P[]) => string | undefined;
+  onBack?: (typedValue: string, selectedItems: P[]) => void;
+  onItemButton?: (item: P) => void | Promise<void>;
+}
+
+interface SingleQuickPickParameters<P extends QuickPickItem> extends BaseQuickPickParameters<P> {
+  canSelectMany?: false;
+}
+interface MultiQuickPickParameters<P extends QuickPickItem> extends BaseQuickPickParameters<P> {
+  canSelectMany: true;
+}
+
+type QuickPickResult<T, M extends boolean> = M extends true ? T[] : T;
+
+const formatTitle = (title: string, titleSuffix?: string) => (titleSuffix ? `${title} - ${titleSuffix}` : title);
+
+export class MultiStepInput<T extends MSStateBase> {
+  private current?: QuickInput;
+  private currentStep: InputStep<T> | undefined;
+  async stepThrough(steps: InputStep<T>[], state: T) {
+    if (steps.length === 0) {
+      return;
+    }
+    let stepIndex = 0;
+    this.currentStep = steps[stepIndex];
+    while (this.currentStep) {
+      if (this.current) {
+        this.current.enabled = false;
+        this.current.busy = true;
+      }
+      try {
+        await this.currentStep(this, state);
+        stepIndex++;
+        state.currentStep = stepIndex + 1;
+        this.currentStep = steps[stepIndex];
+      } catch (err) {
+        if (err == InputFlowAction.back) {
+          stepIndex = Math.max(0, stepIndex - 1);
+          state.currentStep = stepIndex + 1;
+          this.currentStep = steps[stepIndex];
+        } else if (err == InputFlowAction.cancel) {
+          throw new MultiStepCancelledError();
+        } else if (err instanceof MultiStepForceBack) {
+          stepIndex = Math.max(0, stepIndex - 1);
+          state.currentStep = stepIndex + 1;
+          this.currentStep = steps[stepIndex];
+        } else {
+          this.current?.hide();
+          throw err;
+        }
+      }
+    }
+    if (this.current) {
+      this.current.dispose();
+    }
+  }
+
+  async showTextInput({
+    title,
+    titleSuffix,
+    currentStep,
+    totalSteps,
+    value,
+    prompt,
+    validationFunction,
+    onBack,
+    onChange,
+    ignoreFocusOut,
+    placeholder
+  }: TextInputParameters): Promise<string> {
+    const disposables: Disposable[] = [];
+    const initialValidation = await validationFunction?.(value ?? '');
+
+    const p = new Promise<string>((resolve, reject) => {
+      const input = window.createInputBox();
+      input.title = formatTitle(title, titleSuffix);
+      input.step = currentStep;
+      input.totalSteps = totalSteps;
+      input.value = value ?? '';
+      input.prompt = prompt ?? '';
+      input.placeholder = placeholder ?? '';
+      input.ignoreFocusOut = ignoreFocusOut ?? true;
+      input.buttons = currentStep > 1 ? [QuickInputButtons.Back] : [];
+      input.validationMessage = initialValidation;
+      disposables.push(
+        input.onDidTriggerButton(item => {
+          if (item === QuickInputButtons.Back) {
+            onBack?.(input.value);
+            reject(InputFlowAction.back);
+          }
+        }),
+        input.onDidAccept(async () => {
+          input.enabled = false;
+          input.busy = true;
+          const validationResult = await validationFunction?.(input.value ?? '');
+          if (typeof validationResult === 'string' ? validationResult : validationResult?.severity === InputBoxValidationSeverity.Error) {
+            input.validationMessage = validationResult;
+          } else {
+            resolve(input.value);
+          }
+          input.enabled = true;
+          input.busy = false;
+        }),
+        input.onDidHide(() => {
+          reject(InputFlowAction.cancel);
+        }),
+        input.onDidChangeValue(async () => {
+          const validatedValue = input.value;
+          const validationResult = await validationFunction?.(validatedValue);
+          if (input.value !== validatedValue) {
+            return;
+          }
+          if (validationResult) {
+            input.validationMessage = validationResult;
+          } else {
+            input.validationMessage = undefined;
+          }
+          onChange?.(input.value, input);
+        })
+      );
+      if (this.current) {
+        this.current.dispose();
+      }
+      this.current = input;
+      this.current.show();
+    });
+
+    try {
+      return await p;
+    } finally {
+      disposables.forEach(d => d.dispose());
+    }
+  }
+
+  async showQuickPick<T extends LocalizedQuickPickItem, M extends boolean = false>(
+    params: M extends true ? MultiQuickPickParameters<T> : SingleQuickPickParameters<T>
+  ): Promise<QuickPickResult<T, M>> {
+    const disposables: Disposable[] = [];
+
+    const p = new Promise<QuickPickResult<T, M>>((resolve, reject) => {
+      const input = window.createQuickPick<T>();
+      const shownItems: T[] = params.items.map(item => ({
+        ...item,
+        label: item.localizedLabel ?? item.label,
+        description: item.localizedDescription ?? item.description,
+        detail: item.localizedDetail ?? item.detail
+      }));
+      const getDisplayedValue = (value: string) => {
+        const index = params.items.findIndex(item => item.label === value);
+        return index >= 0 ? (shownItems[index]?.label ?? value) : value;
+      };
+      const getOriginalValue = (value: string) => {
+        const index = shownItems.findIndex(item => item.label === value);
+        return index >= 0 ? (params.items[index]?.label ?? value) : value;
+      };
+      const originalItem = (shownItem: T) => {
+        const index = shownItems.indexOf(shownItem);
+        return params.items[index];
+      };
+      const originalItems = (shownSelection: readonly T[]) =>
+        shownSelection.map(originalItem).filter((item): item is T => item !== undefined);
+      const baseTitle = formatTitle(params.title, params.titleSuffix);
+      const getSelectionValidationMessage = (): string | undefined => {
+        if (!params.canSelectMany) {
+          return undefined;
+        }
+        if (input.selectedItems.length === 0) {
+          const validation = params.validationFunction?.([]) ?? l10n.t('No items selected. Please select at least one item.');
+          return validation;
+        }
+        return params.validationFunction?.(originalItems(input.selectedItems));
+      };
+      const updateSelectionValidationTitle = () => {
+        const validationMessage = getSelectionValidationMessage();
+        input.title = validationMessage ? `${baseTitle} - ${validationMessage}` : baseTitle;
+      };
+      input.title = baseTitle;
+      input.step = params.currentStep;
+      input.totalSteps = params.totalSteps;
+      input.ignoreFocusOut = params.ignoreFocusOut ?? true;
+      input.value = getDisplayedValue(params.value ?? '');
+      input.canSelectMany = params.canSelectMany ?? false;
+      input.placeholder = params.placeholder ?? '';
+      input.items = shownItems;
+      input.matchOnDescription = params.matchOnDescription ?? false;
+      input.matchOnDetail = params.matchOnDetail ?? false;
+      if (params.canSelectMany) {
+        if (params.selectedItems) {
+          input.selectedItems = shownItems.filter((shownItem, index) =>
+            params.selectedItems?.some(selected => selected.label === params.items[index]?.label)
+          );
+        }
+
+        updateSelectionValidationTitle();
+      }
+      input.buttons = params.currentStep > 1 ? [QuickInputButtons.Back] : [];
+      disposables.push(
+        input.onDidTriggerButton(item => {
+          if (item === QuickInputButtons.Back) {
+            params.onBack?.(getOriginalValue(input.value), originalItems(input.selectedItems));
+            reject(InputFlowAction.back);
+          }
+        }),
+        input.onDidTriggerItemButton(async ({ item }) => {
+          const original = originalItem(item);
+          if (!original) {
+            return;
+          }
+          try {
+            await params.onItemButton?.(original);
+          } catch (err) {
+            logErrorMessage(err instanceof Error ? err.message : String(err));
+          }
+        }),
+        input.onDidAccept(() => {
+          if (params.canSelectMany) {
+            const validationMessage = getSelectionValidationMessage();
+            updateSelectionValidationTitle();
+            if (validationMessage) {
+              logErrorMessage(validationMessage);
+              return;
+            }
+            resolve(originalItems(input.selectedItems) as QuickPickResult<T, M>);
+          }
+        }),
+        input.onDidChangeSelection(items => {
+          if (!params.canSelectMany && items.length === 1 && items[0]) {
+            resolve(originalItem(items[0]) as QuickPickResult<T, M>);
+          } else if (params.canSelectMany) {
+            updateSelectionValidationTitle();
+            return;
+          } else {
+            return;
+          }
+        }),
+        input.onDidHide(() => {
+          reject(InputFlowAction.cancel);
+        })
+      );
+      this.current?.dispose();
+      this.current = input;
+      this.current.show();
+    });
+
+    try {
+      return await p;
+    } finally {
+      disposables.forEach(d => d.dispose());
+    }
+  }
+}

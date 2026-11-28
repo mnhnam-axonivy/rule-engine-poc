@@ -1,0 +1,508 @@
+import path from 'path';
+import type { ExtensionContext } from 'vscode';
+import { commands, l10n, Uri, window } from 'vscode';
+import { DidChangeWatchedFilesNotification } from 'vscode-languageserver-protocol';
+import { executeCommand } from '../base/commands';
+import { config } from '../base/configurations';
+import { JavaClassPathReader } from '../base/java-class-path-reader';
+import { runJavaProjectImport } from '../base/java-extension-api';
+import { logErrorMessage } from '../base/logging-util';
+import { askToReloadWindow } from '../base/reload-window';
+import { StatusBar } from '../base/status-bar';
+import { toWebSocketUrl } from '../base/url-util';
+import { decreaseWorkspaceLock, increaseWorkspaceLock, isWorkspaceLocked } from '../base/workspace-lock';
+import { registerProcessDebugging } from '../debug/process-debug';
+import { CaseMapEditorProvider } from '../editors/casemap-editor/casemap-editor-provider';
+import { CmsEditorProvider } from '../editors/cms-editor/cms-editor-provider';
+import { CustomFieldEditorProvider } from '../editors/custom-field-editor/custom-field-editor-provider';
+import { DatabaseEditorProvider } from '../editors/database-editor/database-editor-provider';
+import DataClassEditorProvider from '../editors/dataclass-editor/dataclass-editor-provider';
+import FormEditorProvider from '../editors/form-editor/form-editor-provider';
+import { IvyLanguageServerClientProvider } from '../editors/ivy-language-server/ivy-language-server-client';
+import { PersistenceEditorProvider } from '../editors/persistence-editor/persistence-editor-provider';
+import ProcessEditorProvider from '../editors/process-editor/process-editor-provider';
+import { RestClientEditorProvider } from '../editors/restclient-editor/restclient-editor-provider';
+import { RoleEditorProvider } from '../editors/role-editor/role-editor-provider';
+import { UserEditorProvider } from '../editors/user-editor/user-editor-provider';
+import { VariableEditorProvider } from '../editors/variable-editor/variable-editor-provider';
+import { WebServiceEditorProvider } from '../editors/webservice-editor/webservice-editor-provider';
+import { XhtmlLanguageClientProvider } from '../editors/xhtml-lsp/xhtml-language-client';
+import { IvyProjectManager } from '../project-explorer/ivy-project-manager';
+import { ProjectFileWatcherManager } from '../project-explorer/project-file-watcher';
+import { resolveDefaultNamespace } from '../project-explorer/utils/util';
+import { extensionVersion } from '../version/extension-version';
+import { IvyBrowserViewProvider } from '../views/browser/ivy-browser-view-provider';
+import { RuntimeLogViewProvider } from '../views/runtimelog-view';
+import {
+  IvyEngineApi,
+  type CreateCaseMapParams,
+  type CreateDataClassParams,
+  type CreateProcessFromBpmnParams,
+  type CreateProcessParams,
+  type CreateProjectParams,
+  type CreateUserDialogParams
+} from './api/engine-api';
+import type { ImportProjectsBody, ProductInstallParams } from './api/generated/client';
+import { IvyDiagnostics } from './diagnostics';
+import { EngineDownloader } from './engine-downloader';
+import { engineOutputChannel } from './engine-output-channel';
+import { engineDirFromGlobalState, engineReleaseTrain, switchEngineReleaseTrain, updateGlobalStateEngineDir } from './engine-release-train';
+import { EngineRunner } from './engine-runner';
+import { ReleaseTrainValidator } from './release-train-validator';
+import { WebIdeWebSocketProvider } from './web-ide-ws/web-ide-websocket-provider';
+
+export class IvyEngineManager {
+  private static _instance: IvyEngineManager;
+
+  private readonly engineRunner: EngineRunner;
+  private ivyEngineApi?: IvyEngineApi;
+  private started = false;
+  private startPromise?: Promise<void>;
+  private postCompileStarted = false;
+  private resolvedEngineUrl?: string;
+  private resolvedEngineDir?: string;
+  private websocketUrl?: URL;
+
+  private constructor(readonly context: ExtensionContext) {
+    const engineDir = this.resolveEngineDir();
+    this.engineRunner = new EngineRunner(engineDir);
+  }
+
+  static init(context: ExtensionContext) {
+    if (!IvyEngineManager._instance) {
+      IvyEngineManager._instance = new IvyEngineManager(context);
+    }
+    return IvyEngineManager._instance;
+  }
+
+  async resolveEngineDir(): Promise<string | undefined> {
+    if (!config.engineRunByExtension()) {
+      return; // ok to be undefined, e.g. in cloud setup
+    }
+    const releaseTrain = engineReleaseTrain();
+    const releaseTrainValidator = new ReleaseTrainValidator(extensionVersion);
+    const validationResult = await releaseTrainValidator.validate(releaseTrain);
+    if (!validationResult.valid) {
+      return this.handleInvalidReleaseTrain(validationResult.reason);
+    }
+    if (validationResult.isDirectory) {
+      this.resolvedEngineDir = releaseTrain;
+      return releaseTrain;
+    }
+    const engineDownloader = new EngineDownloader(this.context);
+    const globalStateEngineDir = engineDirFromGlobalState(this.context, releaseTrain);
+    if (globalStateEngineDir) {
+      const result = await releaseTrainValidator.isValidEngineDir(globalStateEngineDir);
+      if (result.valid) {
+        engineDownloader.tryToUpdateDevEngine(releaseTrain, globalStateEngineDir, result.engineVersion);
+        this.resolvedEngineDir = globalStateEngineDir;
+        return globalStateEngineDir;
+      }
+    }
+    const newEngineDir = await engineDownloader.loadReleaseTrain(releaseTrain);
+    if ((await releaseTrainValidator.isValidEngineDir(newEngineDir)).valid) {
+      await updateGlobalStateEngineDir(this.context, releaseTrain, newEngineDir);
+      this.resolvedEngineDir = newEngineDir;
+      return newEngineDir;
+    }
+    logErrorMessage(l10n.t('Downloaded engine is invalid: {0}', newEngineDir));
+  }
+
+  private async handleInvalidReleaseTrain(reason?: string) {
+    const errorMessage = l10n.t('Engine release train validation failed: {0}', reason ?? '');
+    engineOutputChannel.appendLine(errorMessage);
+    const newTrain = await switchEngineReleaseTrain(errorMessage);
+    if (!newTrain) {
+      return logErrorMessage(l10n.t('No engine release train selected.'));
+    }
+    return await this.resolveEngineDir();
+  }
+
+  async switchEngineReleaseTrain() {
+    if (await switchEngineReleaseTrain()) {
+      await askToReloadWindow(l10n.t('Engine release train switched'));
+    }
+  }
+
+  async start() {
+    if (this.started) {
+      return this.startPromise;
+    }
+    this.started = true;
+    this.startPromise = this.startEngine();
+    try {
+      await this.startPromise;
+    } catch (error) {
+      this.started = false;
+      this.startPromise = undefined;
+      throw error;
+    }
+  }
+
+  private async startEngine() {
+    this.resolvedEngineUrl = await this.resolveEngineUrl();
+    await executeCommand('setContext', 'ivy:isStarted', 'true');
+    this.ivyEngineApi = await IvyEngineApi.init(this.resolvedEngineUrl.toString());
+    await this.initExistingProjects();
+    let devContextPath = this.ivyEngineApi.devContextPath;
+    devContextPath += devContextPath.endsWith('/') ? '' : '/';
+    this.websocketUrl = new URL(devContextPath, toWebSocketUrl(this.resolvedEngineUrl));
+    WebIdeWebSocketProvider(this.websocketUrl);
+    await IvyDiagnostics.instance.refresh();
+  }
+
+  async postCompileStart() {
+    if (this.postCompileStarted) {
+      return;
+    }
+    if (!this.ivyEngineApi || !this.resolvedEngineUrl || !this.websocketUrl) {
+      return;
+    }
+    this.postCompileStarted = true;
+    IvyBrowserViewProvider.register(this.context, this.resolvedEngineUrl, this.ivyEngineApi.devContextPath);
+    ProcessEditorProvider.register(this.context, this.websocketUrl);
+    FormEditorProvider.register(this.context, this.websocketUrl);
+    VariableEditorProvider.register(this.context, this.websocketUrl);
+    CmsEditorProvider.register(this.context, this.websocketUrl);
+    DatabaseEditorProvider.register(this.context, this.websocketUrl);
+    DataClassEditorProvider.register(this.context, this.websocketUrl);
+    RoleEditorProvider.register(this.context, this.websocketUrl);
+    PersistenceEditorProvider.register(this.context, this.websocketUrl);
+    UserEditorProvider.register(this.context, this.websocketUrl);
+    CaseMapEditorProvider.register(this.context, this.websocketUrl);
+    RestClientEditorProvider.register(this.context, this.websocketUrl);
+    WebServiceEditorProvider.register(this.context, this.websocketUrl);
+    CustomFieldEditorProvider.register(this.context);
+
+    RuntimeLogViewProvider(this.websocketUrl);
+    registerProcessDebugging(this.context, this.ivyEngineApi);
+    decreaseWorkspaceLock();
+
+    await this.deployProjects();
+    await JavaClassPathReader.init(this.context);
+    ProjectFileWatcherManager.init(this.context);
+    this.registerLanguageClients(this.websocketUrl);
+    await IvyDiagnostics.instance.refresh();
+  }
+
+  private async resolveEngineUrl() {
+    let engineUrl = config.engineUrl() ?? '';
+    if (config.engineRunByExtension()) {
+      await this.engineRunner.start();
+      engineUrl = this.engineRunner.engineUrl;
+    }
+    return engineUrl;
+  }
+
+  private async initExistingProjects() {
+    const ivyProjectPaths = await IvyProjectManager.instance.getIvyProjects();
+    await this.initProjects(ivyProjectPaths);
+  }
+
+  public async initProjects(ivyProjectPaths: string[]) {
+    if (ivyProjectPaths.length === 0) {
+      return;
+    }
+    await StatusBar.withStatusBarProgress(
+      {
+        text: l10n.t('Initialize projects')
+      },
+      async () => {
+        const ivyProjectsToDeploy = [];
+        for (const projectDir of ivyProjectPaths) {
+          try {
+            await this.ivyEngineApi?.findOrCreateProject(projectDir);
+            ivyProjectsToDeploy.push(projectDir);
+          } catch {
+            continue;
+          }
+        }
+        if (!isWorkspaceLocked()) {
+          await this.deployProjects(ivyProjectsToDeploy);
+        }
+      }
+    );
+  }
+
+  private async registerLanguageClients(websocketUrl: URL) {
+    const ivyLanguageClient = await IvyLanguageServerClientProvider(websocketUrl);
+    const xhtmlLanguageClient = await XhtmlLanguageClientProvider(websocketUrl);
+
+    commands.registerCommand('ivyProjects.runWorkspaceValidation', async () => {
+      await ivyLanguageClient.sendNotification(DidChangeWatchedFilesNotification.type, {
+        changes: []
+      });
+      await xhtmlLanguageClient.sendNotification(DidChangeWatchedFilesNotification.type, {
+        changes: []
+      });
+      await IvyDiagnostics.instance.refresh();
+    });
+  }
+
+  public async deployProjects(ivyProjectDirectory?: string | string[]) {
+    if (isWorkspaceLocked()) {
+      return;
+    }
+    const ivyProjectDirectories =
+      ivyProjectDirectory === undefined
+        ? await IvyProjectManager.instance.getIvyProjects()
+        : typeof ivyProjectDirectory === 'string'
+          ? [ivyProjectDirectory]
+          : ivyProjectDirectory;
+    let statusMessage = l10n.t('Deploying projects');
+    if (ivyProjectDirectories.length === 1 && ivyProjectDirectories[0]) {
+      const projectPath = ivyProjectDirectories[0];
+      const projectName = path.basename(projectPath);
+      statusMessage = l10n.t('Deploying project {0}', projectName);
+    }
+    await StatusBar.withStatusBarProgress(
+      { text: statusMessage },
+      async () => await this.ivyEngineApi?.deployProjects({ projectDirs: ivyProjectDirectories })
+    );
+  }
+
+  public async deployIarProjects(iars: string[]) {
+    const statusMessage = l10n.t('Deploying IAR dependencies');
+    await StatusBar.withStatusBarProgress({ text: statusMessage }, async () => await this.ivyEngineApi?.deployIarProjects({ iars }));
+  }
+
+  public async stopBpmEngine(ivyProjectDirectory: string) {
+    await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Stopping BPM Engine of {0}', path.basename(ivyProjectDirectory)) },
+      async () => await this.ivyEngineApi?.stopBpmEngine({ projectDir: ivyProjectDirectory })
+    );
+  }
+
+  public async createProcess(newProcessParams: CreateProcessParams) {
+    return await this.createAndOpenProcess(newProcessParams);
+  }
+
+  public async createProcessFromBpmn(input: CreateProcessFromBpmnParams) {
+    await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Importing BPMN process') },
+      async () => await this.ivyEngineApi?.createProcessFromBpmn(input)
+    );
+  }
+
+  public async importIvyProject(input: ImportProjectsBody) {
+    try {
+      increaseWorkspaceLock();
+      await this.ivyEngineApi?.importIvyProject(input);
+    } finally {
+      decreaseWorkspaceLock();
+    }
+    await runJavaProjectImport();
+    await IvyProjectManager.instance.refresh();
+  }
+
+  public async installMarketProduct(input: ProductInstallParams) {
+    const engineApi = this.ivyEngineApi;
+    if (!engineApi) {
+      throw new Error('Axon Ivy Engine is not ready to install a Market Product.');
+    }
+    await StatusBar.withStatusBarProgress({ text: l10n.t('Importing market product') }, async () => {
+      try {
+        increaseWorkspaceLock();
+        await engineApi.installMarketProduct(input);
+      } finally {
+        decreaseWorkspaceLock();
+      }
+    });
+    await runJavaProjectImport();
+    await IvyProjectManager.instance.refresh();
+  }
+
+  public async createUserDialog(newUserDialogParams: CreateUserDialogParams) {
+    const hdBean = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Creating new User Dialog') },
+      async () => await this.ivyEngineApi?.createUserDialog(newUserDialogParams)
+    );
+    if (hdBean?.uri) {
+      executeCommand('vscode.open', Uri.parse(hdBean.uri));
+    }
+    return hdBean;
+  }
+
+  public async createProject(newProjectParams: CreateProjectParams) {
+    await StatusBar.withStatusBarProgress({ text: l10n.t('Creating new project') }, async () => {
+      try {
+        increaseWorkspaceLock();
+        await this.ivyEngineApi?.createProject(newProjectParams);
+      } finally {
+        decreaseWorkspaceLock();
+      }
+      await runJavaProjectImport();
+      await this.createAndOpenProcess({
+        name: 'BusinessProcess',
+        kind: 'Business Process',
+        path: newProjectParams.path,
+        namespace: await resolveDefaultNamespace(newProjectParams.path, 'process')
+      });
+      await IvyProjectManager.instance.refresh();
+    });
+  }
+
+  public async createTestProject(newTestProjectParams: CreateProjectParams) {
+    return await StatusBar.withStatusBarProgress({ text: l10n.t('Creating new test project') }, async () => {
+      try {
+        increaseWorkspaceLock();
+        return await this.ivyEngineApi?.createProject(newTestProjectParams);
+      } finally {
+        decreaseWorkspaceLock();
+      }
+    });
+  }
+
+  public async createDataClass(params: CreateDataClassParams) {
+    const dataClassBean = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Creating new Data Class') },
+      async () => await this.ivyEngineApi?.createDataClass(params)
+    );
+    if (dataClassBean && params.projectDir) {
+      const dataClassUri = Uri.joinPath(Uri.file(params.projectDir), dataClassBean.path);
+      executeCommand('vscode.open', dataClassUri);
+    }
+    return dataClassBean;
+  }
+
+  public async createEntityClass(params: CreateDataClassParams) {
+    const dataClassBean = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Creating new Entity Class') },
+      async () => await this.ivyEngineApi?.createEntityClass(params)
+    );
+    if (dataClassBean && params.projectDir) {
+      const dataClassUri = Uri.joinPath(Uri.file(params.projectDir), dataClassBean.path);
+      executeCommand('vscode.open', dataClassUri);
+    }
+    return dataClassBean;
+  }
+
+  public async createCaseMap(params: CreateCaseMapParams) {
+    const caseMapBean = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Creating new Case Map') },
+      async () => await this.ivyEngineApi?.createCaseMap(params)
+    );
+    if (caseMapBean && params.projectDir) {
+      const caseMapUri = Uri.joinPath(Uri.file(params.projectDir), caseMapBean.path);
+      executeCommand('vscode.open', caseMapUri);
+    }
+  }
+
+  private async createAndOpenProcess(newProcessParams: CreateProcessParams) {
+    const processBean = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Creating new Process') },
+      async () => await this.ivyEngineApi?.createProcess(newProcessParams)
+    );
+    if (processBean?.uri) {
+      executeCommand('vscode.open', Uri.parse(processBean.uri));
+    }
+    return processBean;
+  }
+
+  public async deleteProject(ivyProjectDirectory: string) {
+    await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Deleting project') },
+      async () => await this.ivyEngineApi?.deleteProject({ projectDir: ivyProjectDirectory })
+    );
+  }
+
+  public async convertProject(ivyProjectDirectory: string) {
+    return await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Converting project') },
+      async () => await this.ivyEngineApi?.convertProject({ projectDir: ivyProjectDirectory })
+    );
+  }
+
+  public async refreshProjectStatuses() {
+    return await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Refreshing project statuses') },
+      async () => await this.ivyEngineApi?.refreshProjectStatuses()
+    );
+  }
+
+  public async migrateProgramConfigs() {
+    if (!this.ivyEngineApi || isWorkspaceLocked({ warn: true })) {
+      return;
+    }
+    const migrateLabel = l10n.t('Migrate');
+    const confirmation = await window.showWarningMessage(
+      l10n.t('This will migrate Program configurations across every process in this workspace and save changed process files.'),
+      { modal: true },
+      migrateLabel
+    );
+    if (confirmation !== migrateLabel) {
+      return;
+    }
+    const result = await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Migrating Program configurations') },
+      async () => await this.ivyEngineApi?.migrateProgramConfigs()
+    );
+    if (!result) {
+      return;
+    }
+    const modifiedCount = result.modifiedProcessFiles.length;
+    const message =
+      modifiedCount === 0
+        ? l10n.t('All Program configurations are already up to date.')
+        : modifiedCount === 1
+          ? l10n.t('Migrated Program configurations in one process file.')
+          : l10n.t('Migrated Program configurations in {0} process files.', modifiedCount);
+    await window.showInformationMessage(message);
+  }
+
+  public async invalidateClassLoader(ivyProjectDirectory: string) {
+    if (isWorkspaceLocked()) {
+      return;
+    }
+    return await StatusBar.withStatusBarProgress(
+      { text: l10n.t('Invalidating class loader') },
+      async () => await this.ivyEngineApi?.invalidateClassLoader({ projectDir: ivyProjectDirectory })
+    );
+  }
+
+  public async getEngineVersion() {
+    if (!this.ivyEngineApi) {
+      return;
+    }
+    const engineInfo = await this.ivyEngineApi.getEngineVersion();
+    return engineInfo.version;
+  }
+
+  public async getWorkspaceId() {
+    if (!this.ivyEngineApi) {
+      return;
+    }
+    return this.ivyEngineApi.getWorkspaceId();
+  }
+
+  public async projects(withDependencies = false) {
+    return this.ivyEngineApi?.projects({ withDependencies });
+  }
+
+  public async deployPortal() {
+    return this.ivyEngineApi?.deployPortal();
+  }
+
+  async stop() {
+    await this.engineRunner.stop();
+  }
+
+  get engineApi() {
+    return this.ivyEngineApi;
+  }
+
+  get engineUrl() {
+    return this.resolvedEngineUrl ?? '';
+  }
+
+  get engineDir() {
+    return this.resolvedEngineDir;
+  }
+
+  public static get instance() {
+    if (IvyEngineManager._instance) {
+      return IvyEngineManager._instance;
+    }
+    throw new Error('IvyEngineManager has not been initialized');
+  }
+}

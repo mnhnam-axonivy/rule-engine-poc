@@ -1,0 +1,48 @@
+import fs from 'fs';
+import { Uri } from 'vscode';
+
+// from https://github.com/vitejs/vite/blob/main/packages/vite/src/node/plugins/manifest.ts
+export type ViteManifest = Record<string, ViteManifestChunk>;
+
+export interface ViteManifestChunk {
+  src?: string;
+  file: string;
+  css?: string[];
+  assets?: string[];
+  isEntry?: boolean;
+  name?: string;
+  isDynamicEntry?: boolean;
+  imports?: string[];
+  dynamicImports?: string[];
+}
+
+export interface ViteManifestEntry {
+  source: string;
+  chunk: ViteManifestChunk;
+}
+
+export const ROOT_ENTRY = 'index.html';
+
+export function parseBuildManifest(root: Uri): ViteManifest {
+  const manifest = Uri.joinPath(root, 'build.manifest.json').fsPath;
+  return JSON.parse(fs.readFileSync(manifest, 'utf8'));
+}
+
+export function findRootEntry(manifest: ViteManifest): ViteManifestEntry {
+  const entry = Object.entries(manifest).find(entry => entry[1].isEntry);
+  if (!entry) {
+    throw new Error('Could not find root entry');
+  }
+  return { source: entry[0], chunk: entry[1] };
+}
+
+export function findRootHtml(appPath: Uri, manifest: ViteManifest): Uri {
+  const rootEntry = findRootEntry(manifest);
+  return Uri.joinPath(appPath, rootEntry.chunk.src ?? rootEntry.source);
+}
+
+export function findEditorWorker(rootPath: Uri): Uri | undefined {
+  // Only some webviews (e.g. process-editor) bundle a Monaco worker, so we check existence before returning.
+  const workerPath = Uri.joinPath(rootPath, 'assets', 'editor.worker.js');
+  return fs.existsSync(workerPath.fsPath) ? workerPath : undefined;
+}

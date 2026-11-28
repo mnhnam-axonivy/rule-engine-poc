@@ -49,12 +49,13 @@ class TestBusinessRuleTask {
     fixture.var(Var.TIMEOUT_SECONDS, "10");
   }
 
+  /** The element maps the inputs to fields of the process data and of nested data classes, the result to in.discount. */
   @Test
-  void inputsAndResultsAreMappedByName(BpmClient client) {
+  void inputsAndResults_goToTheMappedFields(BpmClient client) {
     TestStore.store("mock-discount", "discount", "amount", "segment", "city", "vip");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":12.5}"));
 
-    var execution = execute(client, "byName", sampleData());
+    var execution = execute(client, "mockDiscount", sampleData());
     TestData result = execution.subResult().param("data", TestData.class);
 
     assertThat(result.getErrorMessage()).isNull();
@@ -78,7 +79,7 @@ class TestBusinessRuleTask {
     var data = new TestData();
     data.setDiscount(99);
 
-    TestData result = run(client, "byName", data);
+    TestData result = run(client, "mockDiscount", data);
 
     assertThat(result.getErrorMessage()).isNull();
     JsonNode input = MockDmnEngine.calls("evaluate").get(0).input();
@@ -88,30 +89,45 @@ class TestBusinessRuleTask {
     assertThat(result.getDiscount()).as("a null result clears the field").isNull();
   }
 
-  /** Input fields and Output fields only describe a new DMN. For an existing decision everything goes by name. */
+  /** The mapping of the element: an input reads a field or a calculation, the result fills a field of another name. */
   @Test
-  void inputAndOutputFields_areNotUsedForAnExistingDecision(BpmClient client) {
-    // the element says "total = in.amount, in.customer.name, in.customer.address.city" and "in.points"
-    TestStore.store("mock-explicit", "score", "amount", "name", "city");
+  void mappedInputsAndResult_useTheChosenProcessData(BpmClient client) {
+    // the element maps amount to in.purchaseAmount, name to a calculation and score to in.points
+    TestStore.store("mock-explicit", "score", "amount", "name");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"score\":42}"));
+    var data = sampleData();
+    data.setPurchaseAmount(2500);
 
-    TestData result = run(client, "fieldsOfAnExistingDecision", sampleData());
+    TestData result = run(client, "mapped", data);
 
     assertThat(result.getErrorMessage()).isNull();
     JsonNode input = MockDmnEngine.calls("evaluate").get(0).input();
-    assertThat(input.propertyNames()).as("the inputs of the decision, found by name")
-        .containsExactlyInAnyOrder("amount", "name", "city");
-    assertThat(input.get("amount").asInt()).isEqualTo(1500);
-    assertThat(result.getPoints()).as("the result 'score' has no field of its name").isNull();
+    assertThat(input.get("amount").asInt()).as("chosen: in.purchaseAmount, not in.amount").isEqualTo(2500);
+    assertThat(input.get("name").asString()).as("chosen: a calculation").isEqualTo("Jane Doe (GOLD)");
+    assertThat(result.getPoints()).as("the result 'score' fills the chosen in.points").isEqualTo(42);
   }
 
   @Test
-  void wholeModel_everyResultIsMappedToItsField(BpmClient client) {
+  void mappedEntryOfAStructuredResult_fillsTheChosenField(BpmClient client) {
+    // the element maps the entry product of the decision offer to in.nextStep; score is left empty
+    TestStore.store("mock-recommend", "offer", "amount");
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"offer\":{\"product\":\"Lamp\",\"score\":0.5}}"));
+
+    TestData result = run(client, "mappedStructure", sampleData());
+
+    assertThat(result.getErrorMessage()).isNull();
+    assertThat(result.getNextStep()).as("chosen: in.nextStep").isEqualTo("Lamp");
+    assertThat(result.getRecommendation()).as("score is left empty: not written, though in.recommendation.score has its name")
+        .isNull();
+  }
+
+  @Test
+  void wholeModel_everyResultGoesToItsField(BpmClient client) {
     TestStore.store("mock-all", "any", "amount");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("""
         {"approved":true,"nextStep":"Route to CFO","dueDate":"2026-12-15","deliveredAt":"2026-12-01T10:30:00",
          "upgrade":"SILVER","recommendation":{"product":"Sofa","score":0.75,"validUntil":"2027-01-31"},
-         "labels":["urgent","b2b"],"points":3,"discount":10,"unknown":"ignored"}
+         "labels":["urgent","b2b"],"points":3,"discount":10,"type":"Gold"}
         """));
 
     TestData result = run(client, "wholeModel", sampleData());
@@ -128,10 +144,12 @@ class TestBusinessRuleTask {
     assertThat(result.getLabels()).as("list").containsExactly("urgent", "b2b");
     assertThat(result.getPoints()).as("number as Integer").isEqualTo(3);
     assertThat(result.getDiscount().intValue()).as("number").isEqualTo(10);
+    assertThat(result.getType()).as("no field chosen: not written, though in.type has its name").isEqualTo("Silver");
   }
 
+  /** The element maps the entries of the structure to the fields of a nested data class. */
   @Test
-  void structuredResult_fillsADataClass(BpmClient client) {
+  void structuredResult_fillsTheFieldsOfADataClass(BpmClient client) {
     TestStore.store("mock-recommend", "offer", "amount");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"offer\":{\"product\":\"Lamp\",\"score\":0.5}}"));
 
@@ -186,7 +204,7 @@ class TestBusinessRuleTask {
     TestStore.store("mock-discount", "discount", "amount");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.failed("discount", "the value is not allowed"));
 
-    TestData result = run(client, "byName", sampleData());
+    TestData result = run(client, "mockDiscount", sampleData());
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.DMN);
     assertThat(result.getErrorMessage()).contains("the value is not allowed");
@@ -195,7 +213,7 @@ class TestBusinessRuleTask {
 
   @Test
   void unknownModel_raisesBpmnError(BpmClient client) {
-    TestData result = run(client, "byName", sampleData());
+    TestData result = run(client, "mockDiscount", sampleData());
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.DMN);
     assertThat(result.getErrorMessage()).contains("mock-discount");
@@ -208,7 +226,7 @@ class TestBusinessRuleTask {
     fixture.var(Var.URL, "http://localhost:9");
     fixture.var(Var.CONNECT_TIMEOUT_SECONDS, "2");
 
-    TestData result = run(client, "byName", sampleData());
+    TestData result = run(client, "mockDiscount", sampleData());
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.UNREACHABLE);
     assertThat(result.getErrorMessage()).contains("http://localhost:9").contains(Var.URL);
@@ -231,14 +249,16 @@ class TestBusinessRuleTask {
     assertThat(duration).as("RuleEngine.TimeoutSeconds is 1 second").isLessThan(3500);
   }
 
+  /** The element maps no process data to the input type: the field in.type is not taken for its name. */
   @Test
-  void inputWithoutField_raisesMappingError(BpmClient client) {
-    TestStore.store("mock-discount", "discount", "amount", "creditScore");
+  void inputWithoutMapping_raisesMappingError(BpmClient client) {
+    TestStore.store("mock-discount", "discount", "amount", "type");
 
-    TestData result = run(client, "byName", sampleData());
+    TestData result = run(client, "mockDiscount", sampleData());
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.MAPPING);
-    assertThat(result.getErrorMessage()).contains("[creditScore]").contains("in.creditScore, set before the Business Rule Task");
+    assertThat(result.getErrorMessage()).contains("[type]")
+        .contains("Choose the process data of each input in the section Input of the Business Rule Task");
     assertThat(MockDmnEngine.calls("evaluate")).isEmpty();
   }
 
@@ -247,7 +267,7 @@ class TestBusinessRuleTask {
     TestStore.store("mock-discount", "discount", "amount");
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":\"a lot\"}"));
 
-    TestData result = run(client, "byName", sampleData());
+    TestData result = run(client, "mockDiscount", sampleData());
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.MAPPING);
     assertThat(result.getErrorMessage()).contains("in.discount").contains("a lot");
@@ -300,7 +320,10 @@ class TestBusinessRuleTask {
     assertThat(VersionStore.current().exists("discount")).isFalse();
   }
 
-  /** A rule owner added a column in the Portal: the file does not know it, the version that answers needs it. */
+  /**
+   * A rule owner added a column in the Portal: the file does not know it, the version that answers needs it. The
+   * element maps it already.
+   */
   @Test
   void versionFromThePortal_answers_withTheInputsItNeeds(BpmClient client) {
     MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":20}"));
@@ -318,9 +341,23 @@ class TestBusinessRuleTask {
     assertThat(evaluation.dmn()).isEqualTo(VersionStore.current().content("discount", 2));
     assertThat(evaluation.input().propertyNames()).as("the inputs of the version from the Portal")
         .containsExactlyInAnyOrder("purchaseAmount", "type", "country", "segment");
-    assertThat(evaluation.input().get("segment").asString()).as("found in the process data by its name")
-        .isEqualTo("GOLD");
+    assertThat(evaluation.input().get("segment").asString()).as("mapped to in.customer.segment").isEqualTo("GOLD");
     assertThat(VersionStore.current().versions("discount")).as("the unchanged file is not stored again").hasSize(2);
+  }
+
+  /** A column of the Portal that the element does not map stops the evaluation, until the process maps it. */
+  @Test
+  void versionFromThePortal_withAnInputTheElementDoesNotMap_raisesMappingError(BpmClient client) {
+    MockDmnEngine.onEvaluate(call -> MockDmnEngine.results("{\"discount\":20}"));
+    run(client, "demoDiscount", sampleData()); // stores the file as version 1
+    TestStore.store("discount", TestStore.dmn("discount", "discount", "purchaseAmount", "type", "country", "vip"),
+        VersionSource.PORTAL, true);
+
+    TestData result = run(client, "demoDiscount", sampleData());
+
+    assertThat(result.getErrorCode()).isEqualTo(RuleErrors.MAPPING);
+    assertThat(result.getErrorMessage()).contains("[vip]");
+    assertThat(MockDmnEngine.calls("evaluate")).as("only the evaluation of version 1").hasSize(1);
   }
 
   /** A version from the project is replaced by the file: the file says what is needed. */

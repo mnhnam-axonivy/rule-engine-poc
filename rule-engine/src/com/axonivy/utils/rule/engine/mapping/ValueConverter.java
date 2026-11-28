@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.axonivy.utils.rule.engine.dmn.generator.BeanProperties;
-import com.axonivy.utils.rule.engine.dmn.generator.FeelNames;
 
 import ch.ivyteam.ivy.scripting.objects.Date;
 import ch.ivyteam.ivy.scripting.objects.DateTime;

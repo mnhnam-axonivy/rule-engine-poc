@@ -9,9 +9,9 @@
     {
       "id": "s0",
       "type": "CallSubStart",
-      "name": "byName(TestData)",
+      "name": "mockDiscount(TestData)",
       "config": {
-        "signature": "byName",
+        "signature": "mockDiscount",
         "input": {
           "params": [
             {
@@ -55,12 +55,17 @@
       "type": "ProgramInterface",
       "name": [
         "Business Rule Task",
-        "byName"
+        "mockDiscount"
       ],
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "mock-discount#discount"
+          "decision": "mock-discount#discount",
+          "decision[mock-discount#discount].input.amount": "in.amount",
+          "decision[mock-discount#discount].input.segment": "in.customer.segment",
+          "decision[mock-discount#discount].input.city": "in.customer.address.city",
+          "decision[mock-discount#discount].input.vip": "in.customer.vip",
+          "decision[mock-discount#discount].output.discount": "in.discount"
         }
       },
       "visual": {
@@ -131,9 +136,9 @@
     {
       "id": "s1",
       "type": "CallSubStart",
-      "name": "fieldsOfAnExistingDecision(TestData)",
+      "name": "mapped(TestData)",
       "config": {
-        "signature": "fieldsOfAnExistingDecision",
+        "signature": "mapped",
         "input": {
           "params": [
             {
@@ -177,14 +182,15 @@
       "type": "ProgramInterface",
       "name": [
         "Business Rule Task",
-        "fieldsOfAnExistingDecision"
+        "mapped"
       ],
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
           "decision": "mock-explicit#score",
-          "inputs": "total = in.amount, in.customer.name, in.customer.address.city",
-          "outputs": "in.points"
+          "decision[mock-explicit#score].input.amount": "in.purchaseAmount",
+          "decision[mock-explicit#score].input.name": "in.customer.name + \" (\" + in.customer.segment + \")\"",
+          "decision[mock-explicit#score].output.score": "in.points"
         }
       },
       "visual": {
@@ -306,7 +312,17 @@
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "mock-all"
+          "decision": "mock-all",
+          "decision[mock-all].input.amount": "in.amount",
+          "decision[mock-all].output.approved.approved": "in.approved",
+          "decision[mock-all].output.nextStep.nextStep": "in.nextStep",
+          "decision[mock-all].output.dueDate.dueDate": "in.dueDate",
+          "decision[mock-all].output.deliveredAt.deliveredAt": "in.deliveredAt",
+          "decision[mock-all].output.upgrade.upgrade": "in.upgrade",
+          "decision[mock-all].output.recommendation.recommendation": "in.recommendation",
+          "decision[mock-all].output.labels.labels": "in.labels",
+          "decision[mock-all].output.points.points": "in.points",
+          "decision[mock-all].output.discount.discount": "in.discount"
         }
       },
       "visual": {
@@ -428,7 +444,10 @@
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "mock-recommend#offer"
+          "decision": "mock-recommend#offer",
+          "decision[mock-recommend#offer].input.amount": "in.amount",
+          "decision[mock-recommend#offer].output.product": "in.recommendation.product",
+          "decision[mock-recommend#offer].output.score": "in.recommendation.score"
         }
       },
       "visual": {
@@ -672,7 +691,15 @@
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "mock-types#check"
+          "decision": "mock-types#check",
+          "decision[mock-types#check].input.customer": "in.customer",
+          "decision[mock-types#check].input.amount": "in.amount",
+          "decision[mock-types#check].input.quantity": "in.quantity",
+          "decision[mock-types#check].input.orderDate": "in.orderDate",
+          "decision[mock-types#check].input.orderedAt": "in.orderedAt",
+          "decision[mock-types#check].input.openingTime": "in.openingTime",
+          "decision[mock-types#check].input.deliveryTime": "in.deliveryTime",
+          "decision[mock-types#check].input.positions": "in.positions"
         }
       },
       "visual": {
@@ -914,7 +941,12 @@
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "discount#discount"
+          "decision": "discount#discount",
+          "decision[discount#discount].input.purchaseAmount": "in.purchaseAmount",
+          "decision[discount#discount].input.type": "in.type",
+          "decision[discount#discount].input.country": "in.customer.address.country",
+          "decision[discount#discount].input.segment": "in.customer.segment",
+          "decision[discount#discount].output.discount": "in.discount"
         }
       },
       "visual": {
@@ -985,9 +1017,9 @@
     {
       "id": "s8",
       "type": "CallSubStart",
-      "name": "create(TestData)",
+      "name": "mappedStructure(TestData)",
       "config": {
-        "signature": "create",
+        "signature": "mappedStructure",
         "input": {
           "params": [
             {
@@ -1031,15 +1063,14 @@
       "type": "ProgramInterface",
       "name": [
         "Business Rule Task",
-        "create"
+        "mappedStructure"
       ],
       "config": {
         "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
         "userConfig": {
-          "decision": "#create",
-          "newModel": "test-generated",
-          "inputs": "in.amount, in.customer.segment, in.customer.vip, in.customer.address",
-          "outputs": "in.discount"
+          "decision": "mock-recommend#offer",
+          "decision[mock-recommend#offer].output.product": "in.nextStep",
+          "decision[mock-recommend#offer].input.amount": "in.amount"
         }
       },
       "visual": {
